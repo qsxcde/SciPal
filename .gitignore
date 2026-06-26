@@ -1,0 +1,16 @@
+.DS_Store
+__pycache__/
+*.pyc
+.env
+data/
+backend/data/
+backend/storage/sqlite/scipal.db
+.claude/
+.superpowers/
+.worktrees/
+.claude/
+.pytest_cache/
+.vscode/
+tests/
+eval_outputs/
+docs/

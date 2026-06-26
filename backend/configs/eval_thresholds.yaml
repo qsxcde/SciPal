@@ -1,0 +1,17 @@
+retrieval:
+  recall_at_k:
+    min: 0.8
+  ndcg_at_k:
+    min: 0.75
+
+generation:
+  faithfulness:
+    min: 0.85
+  hallucination_rate:
+    max: 0.05
+
+e2e:
+  task_success_rate:
+    min: 0.8
+  abstention_accuracy:
+    min: 0.9
