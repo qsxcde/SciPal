@@ -4,15 +4,11 @@ from datetime import UTC, datetime
 from backend.domain.states import DocumentStage
 from backend.domain.states import SessionStatus
 from backend.storage.sqlite.connection import connect, transaction
-from backend.storage.sqlite.schema import init_db
-
-
 def now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
 def create_session(title: str = "新论文会话", user_id: str | None = None) -> dict:
-    init_db()
     session_id = str(uuid.uuid4())
     timestamp = now_iso()
     with transaction() as conn:
@@ -30,7 +26,6 @@ def create_session(title: str = "新论文会话", user_id: str | None = None) -
 
 
 def get_session(session_id: str) -> dict | None:
-    init_db()
     with connect() as conn:
         row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
         return dict(row) if row else None
@@ -70,21 +65,16 @@ def update_session_title(session_id: str, title: str) -> None:
 
 
 def list_sessions() -> list[dict]:
-    init_db()
     with connect() as conn:
         rows = conn.execute(
             """
             SELECT
               s.*,
-              COUNT(DISTINCT d.id) AS document_count,
-              COUNT(DISTINCT m.id) AS message_count,
-              COUNT(DISTINCT c.id) AS indexed_chunks
+              (SELECT COUNT(*) FROM documents WHERE session_id = s.id) AS document_count,
+              (SELECT COUNT(*) FROM messages WHERE session_id = s.id) AS message_count,
+              (SELECT COUNT(*) FROM chunks WHERE session_id = s.id) AS indexed_chunks
             FROM sessions s
-            LEFT JOIN documents d ON d.session_id = s.id
-            LEFT JOIN messages m ON m.session_id = s.id
-            LEFT JOIN chunks c ON c.session_id = s.id
             WHERE s.is_archived = 0
-            GROUP BY s.id
             ORDER BY s.is_pinned DESC, s.updated_at DESC
             """
         ).fetchall()

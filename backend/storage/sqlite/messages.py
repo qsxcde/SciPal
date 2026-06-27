@@ -4,7 +4,6 @@ from typing import Literal
 
 from backend.rag.ingestion.metadata import SourceRef
 from backend.storage.sqlite.connection import connect, transaction
-from backend.storage.sqlite.schema import init_db
 from backend.storage.sqlite.sessions import now_iso, touch_session
 
 
@@ -28,7 +27,7 @@ def create_message(
     sources: list[SourceRef] | None = None,
     status: Literal["complete", "failed"] = "complete",
 ) -> dict:
-    init_db()
+
     message_id = str(uuid.uuid4())
     timestamp = now_iso()
     sources_json = _encode_sources(sources)
@@ -48,7 +47,7 @@ def create_message(
 
 
 def get_message(message_id: str) -> dict | None:
-    init_db()
+
     with connect() as conn:
         row = conn.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
     if not row:
@@ -59,7 +58,7 @@ def get_message(message_id: str) -> dict | None:
 
 
 def list_messages(session_id: str) -> list[dict]:
-    init_db()
+
     with connect() as conn:
         rows = conn.execute(
             "SELECT * FROM messages WHERE session_id = ? ORDER BY created_at ASC",

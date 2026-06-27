@@ -11,6 +11,7 @@ import logging
 
 from backend.app.services.document_service import recover_orphaned_documents
 from backend.app.services.job_runner import InProcessJobRunner
+from backend.storage.sqlite.schema import init_db
 
 logger = logging.getLogger(__name__)
 runner = InProcessJobRunner()
@@ -18,6 +19,7 @@ runner = InProcessJobRunner()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    init_db()
     try:
         recover_orphaned_documents()
     except Exception:

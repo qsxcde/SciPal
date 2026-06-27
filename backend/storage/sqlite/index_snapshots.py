@@ -5,7 +5,6 @@ from backend.domain.states import IndexSnapshotStatus
 from backend.storage.sqlite.connection import connect
 from backend.storage.sqlite.connection import row_to_dict
 from backend.storage.sqlite.connection import transaction
-from backend.storage.sqlite.schema import init_db
 from backend.storage.sqlite.sessions import now_iso
 
 
@@ -15,7 +14,7 @@ def create_building_snapshot(
     chunks_path: str,
     document_ids: list[str],
 ) -> dict:
-    init_db()
+
     snapshot_id = str(uuid.uuid4())
     timestamp = now_iso()
     with transaction() as conn:
@@ -44,7 +43,7 @@ def create_building_snapshot(
 
 
 def mark_snapshot_ready(snapshot_id: str) -> bool:
-    init_db()
+
     timestamp = now_iso()
     with transaction() as conn:
         target_snapshot = conn.execute(
@@ -91,7 +90,7 @@ def mark_snapshot_ready(snapshot_id: str) -> bool:
 
 
 def mark_snapshot_failed(snapshot_id: str, error_message: str) -> bool:
-    init_db()
+
     with transaction() as conn:
         cursor = conn.execute(
             """
@@ -117,7 +116,7 @@ def rollback_snapshot_promotion(
     previous_ready_snapshot_id: str | None,
     error_message: str,
 ) -> bool:
-    init_db()
+
     timestamp = now_iso()
     with transaction() as conn:
         if previous_ready_snapshot_id is not None:
@@ -156,7 +155,7 @@ def rollback_snapshot_promotion(
 
 
 def get_active_ready_snapshot(session_id: str) -> dict | None:
-    init_db()
+
     with connect() as conn:
         row = conn.execute(
             """
@@ -171,7 +170,7 @@ def get_active_ready_snapshot(session_id: str) -> dict | None:
 
 
 def get_snapshot(snapshot_id: str) -> dict | None:
-    init_db()
+
     with connect() as conn:
         row = conn.execute(
             "SELECT * FROM index_snapshots WHERE id = ?",

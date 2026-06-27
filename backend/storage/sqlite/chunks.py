@@ -3,14 +3,13 @@ import uuid
 
 from backend.rag.ingestion.metadata import Chunk, ChunkMetadata
 from backend.storage.sqlite.connection import connect, transaction
-from backend.storage.sqlite.schema import init_db
 from backend.storage.sqlite.sessions import now_iso
 
 
 def insert_chunks(session_id: str, document_id: str, parsed_chunks: list[Chunk]) -> None:
     if not parsed_chunks:
         return
-    init_db()
+
     timestamp = now_iso()
     with transaction() as conn:
         conn.executemany(
@@ -61,7 +60,7 @@ def insert_chunks(session_id: str, document_id: str, parsed_chunks: list[Chunk])
 
 
 def list_chunks(session_id: str) -> list[Chunk]:
-    init_db()
+
     with connect() as conn:
         rows = conn.execute(
             "SELECT * FROM chunks WHERE session_id = ? ORDER BY created_at ASC, chunk_index ASC",
@@ -92,7 +91,7 @@ def list_chunks(session_id: str) -> list[Chunk]:
 def list_chunks_for_documents(session_id: str, document_ids: list[str]) -> list[Chunk]:
     if not document_ids:
         return []
-    init_db()
+
     placeholders = ", ".join("?" for _ in document_ids)
     with connect() as conn:
         rows = conn.execute(
@@ -126,7 +125,7 @@ def list_chunks_for_documents(session_id: str, document_ids: list[str]) -> list[
 
 
 def list_chunk_document_ids(session_id: str) -> list[str]:
-    init_db()
+
     with connect() as conn:
         rows = conn.execute(
             """
@@ -142,7 +141,7 @@ def list_chunk_document_ids(session_id: str) -> list[str]:
 
 
 def delete_chunks_for_document(document_id: str) -> None:
-    init_db()
+
     timestamp = now_iso()
     with transaction() as conn:
         conn.execute("DELETE FROM chunks WHERE document_id = ?", (document_id,))
@@ -158,7 +157,7 @@ def delete_chunks_for_document(document_id: str) -> None:
 
 
 def count_chunks(session_id: str) -> int:
-    init_db()
+
     with connect() as conn:
         row = conn.execute("SELECT COUNT(*) AS total FROM chunks WHERE session_id = ?", (session_id,)).fetchone()
         return int(row["total"])

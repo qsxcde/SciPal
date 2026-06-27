@@ -7,7 +7,6 @@ from backend.domain.states import TERMINAL_JOB_STATUSES
 from backend.storage.sqlite.connection import connect
 from backend.storage.sqlite.connection import row_to_dict
 from backend.storage.sqlite.connection import transaction
-from backend.storage.sqlite.schema import init_db
 from backend.storage.sqlite.sessions import now_iso
 
 
@@ -18,7 +17,7 @@ def create_job(
     stage: DocumentStage,
     payload_json: str | None = None,
 ) -> dict:
-    init_db()
+
     job_id = str(uuid.uuid4())
     timestamp = now_iso()
     with transaction() as conn:
@@ -39,7 +38,7 @@ def create_job(
 
 
 def list_runnable_jobs(limit: int = 10) -> list[dict]:
-    init_db()
+
     with connect() as conn:
         rows = conn.execute(
             """
@@ -54,7 +53,7 @@ def list_runnable_jobs(limit: int = 10) -> list[dict]:
 
 
 def list_running_jobs(limit: int = 10) -> list[dict]:
-    init_db()
+
     with connect() as conn:
         rows = conn.execute(
             """
@@ -69,7 +68,7 @@ def list_running_jobs(limit: int = 10) -> list[dict]:
 
 
 def list_jobs_for_session(session_id: str) -> list[dict]:
-    init_db()
+
     with connect() as conn:
         rows = conn.execute(
             """
@@ -83,7 +82,7 @@ def list_jobs_for_session(session_id: str) -> list[dict]:
 
 
 def mark_job_running(job_id: str) -> bool:
-    init_db()
+
     with transaction() as conn:
         cursor = conn.execute(
             """
@@ -101,7 +100,7 @@ def mark_job_running(job_id: str) -> bool:
 
 
 def requeue_interrupted_job(job_id: str) -> bool:
-    init_db()
+
     with transaction() as conn:
         cursor = conn.execute(
             """
@@ -134,7 +133,7 @@ def mark_job_finished(
 ) -> bool:
     if status not in TERMINAL_JOB_STATUSES:
         raise ValueError("任务只能以终态结束")
-    init_db()
+
     with transaction() as conn:
         cursor = conn.execute(
             """
@@ -150,7 +149,7 @@ def mark_job_finished(
 
 
 def get_job(job_id: str) -> dict | None:
-    init_db()
+
     with connect() as conn:
         row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return row_to_dict(row)

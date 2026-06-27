@@ -2,7 +2,6 @@ import uuid
 
 from backend.storage.sqlite.connection import connect, transaction
 from backend.storage.sqlite.jobs import get_job
-from backend.storage.sqlite.schema import init_db
 from backend.storage.sqlite.sessions import now_iso, touch_session
 
 
@@ -14,7 +13,7 @@ def create_document(
     file_size: int,
     document_id: str | None = None,
 ) -> dict:
-    init_db()
+
     document_id = document_id or str(uuid.uuid4())
     timestamp = now_iso()
     with transaction() as conn:
@@ -36,14 +35,14 @@ def create_document(
 
 
 def get_document(document_id: str) -> dict | None:
-    init_db()
+
     with connect() as conn:
         row = conn.execute("SELECT * FROM documents WHERE id = ?", (document_id,)).fetchone()
         return dict(row) if row else None
 
 
 def list_documents(session_id: str) -> list[dict]:
-    init_db()
+
     with connect() as conn:
         rows = conn.execute(
             "SELECT * FROM documents WHERE session_id = ? ORDER BY created_at ASC",
@@ -64,7 +63,7 @@ def create_document_with_job(
     job_payload_json: str | None = None,
 ) -> tuple[dict, dict]:
     """Create a document and its ingestion job in a single atomic transaction."""
-    init_db()
+
     document_id = document_id or str(uuid.uuid4())
     job_id = str(uuid.uuid4())
     timestamp = now_iso()
@@ -100,7 +99,7 @@ def create_document_with_job(
 
 
 def delete_document(document_id: str) -> None:
-    init_db()
+
     document = get_document(document_id)
     if document is None:
         return
@@ -134,7 +133,7 @@ def update_document_status(
 
 def list_orphaned_uploaded_documents() -> list[dict]:
     """Find documents with status 'uploaded' that have no associated job."""
-    init_db()
+
     with connect() as conn:
         rows = conn.execute(
             """
@@ -155,7 +154,7 @@ def update_document_artifacts(
     parser_version: str | None,
     parse_quality_status: str | None,
 ) -> None:
-    init_db()
+
     timestamp = now_iso()
     with transaction() as conn:
         conn.execute(
