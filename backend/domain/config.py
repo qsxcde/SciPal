@@ -37,6 +37,18 @@ class RuntimeSettings(BaseSettings):
     mineru_show_download_progress: bool = False
     scipal_eval_output_dir: str = "eval_outputs"
     scipal_eval_document_map_path: str = "docs/eval_document_map.json"
+    # Index poll parameters
+    index_poll_interval: float = 0.05
+    index_poll_max_interval: float = 1.0
+    index_max_wait: float = 10.0
+    runner_idle_poll_interval: float = 0.05
+    # Retrieval parameters
+    source_excerpt_max_chars: int = 220
+    # User-facing messages
+    msg_index_not_ready: str = "论文仍在处理中，请稍后重试。"
+    msg_empty_retrieval: str = "未在当前检索结果中找到可支持该问题的论文依据。"
+    msg_no_valid_citations: str = "模型生成的回答中未引用有效论文来源，请核实。"
+    msg_default_session_title: str = "新论文会话"
 
     model_config = SettingsConfigDict(env_file=backend_root() / ".env", extra="ignore")
 

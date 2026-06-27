@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from fastapi import APIRouter
@@ -32,6 +33,9 @@ async def chat(
         try:
             async for event in events:
                 yield encode_sse_event(event)
+        except asyncio.CancelledError:
+            logger.info("SSE stream cancelled by client session=%s", session_id)
+            return
         except Exception as exc:
             logger.exception("Unhandled error in SSE stream session=%s", session_id)
             yield encode_sse_event(ChatStreamErrorEvent(type="error", value="internal_error"))

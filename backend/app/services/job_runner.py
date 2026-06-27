@@ -3,13 +3,13 @@ import logging
 import threading
 from pathlib import Path
 
+from backend.domain.config import settings
 from backend.domain.states import DocumentStage
 from backend.domain.states import JobStatus
 from backend.storage.sqlite import documents as document_repo
 from backend.storage.sqlite import jobs as job_repo
 from backend.app.services.ingestion_service import run_document_ingestion_job
 
-RUNNER_IDLE_POLL_INTERVAL_SECONDS = 0.05
 logger = logging.getLogger(__name__)
 
 
@@ -142,5 +142,5 @@ class InProcessJobRunner:
                 logger.exception("Job runner tick failed")
                 processed = 0
             if processed == 0:
-                self._stop_event.wait(RUNNER_IDLE_POLL_INTERVAL_SECONDS)
+                self._stop_event.wait(settings.runner_idle_poll_interval)
         logger.info("Job runner loop stopped")

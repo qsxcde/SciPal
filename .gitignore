@@ -14,3 +14,4 @@ backend/storage/sqlite/scipal.db
 tests/
 eval_outputs/
 docs/
+CLAUDE.md

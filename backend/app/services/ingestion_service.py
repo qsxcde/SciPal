@@ -9,6 +9,7 @@ from backend.app.services.index_service import commit_ready_snapshot
 from backend.domain.exceptions import PaperParseError
 from backend.domain.states import DocumentStage
 from backend.rag.ingestion.artifacts import save_ingestion_artifacts
+from backend.rag.ingestion.metadata import Chunk
 from backend.rag.ingestion.pipeline import process_pdf_document
 from backend.storage.paths import raw_session_dir
 from backend.storage.sqlite import chunks as chunk_repo
@@ -25,131 +26,19 @@ def run_document_ingestion_job(
     pdf_bytes: bytes,
 ) -> dict:
     document_id = document["id"]
-    snapshot: dict | None = None
-    job_start = time.monotonic()
-    stage = "start"
+    snapshot = None
     try:
-        logger.info(
-            "Starting document ingestion session_id=%s document_id=%s filename=%s bytes=%d",
-            session_id,
-            document_id,
-            document["filename"],
-            len(pdf_bytes),
-        )
-        stage = "parsing"
-        document_repo.update_document_status(document_id, DocumentStage.parsing)
-        parse_start = time.monotonic()
-        logger.info(
-            "Starting document parsing session_id=%s document_id=%s filename=%s",
-            session_id,
-            document_id,
-            document["filename"],
-        )
-        ingestion_result = process_pdf_document(
-            pdf_bytes=pdf_bytes,
-            paper_id=document_id,
-            filename=document["filename"],
-        )
-        logger.info(
-            "Completed document parsing session_id=%s document_id=%s parser=%s version=%s pages=%d chunks=%d quality=%s elapsed=%.2fs",
-            session_id,
-            document_id,
-            ingestion_result.document_ir.parser_name,
-            ingestion_result.document_ir.parser_version,
-            ingestion_result.document_ir.page_count,
-            len(ingestion_result.chunks),
-            ingestion_result.quality_report.overall_status,
-            time.monotonic() - parse_start,
-        )
-        stage = "artifacts"
-        artifacts = save_ingestion_artifacts(
-            artifact_dir=raw_session_dir(session_id) / "parsed" / document_id,
-            document_ir=ingestion_result.document_ir,
-            raw_markdown=ingestion_result.raw_markdown,
-            normalized_markdown=ingestion_result.markdown,
-            quality_report=ingestion_result.quality_report,
-        )
-        logger.info(
-            "Saved ingestion artifacts session_id=%s document_id=%s ir_path=%s markdown_path=%s quality_report_path=%s",
-            session_id,
-            document_id,
-            artifacts.ir_path,
-            artifacts.markdown_path,
-            artifacts.quality_report_path,
-        )
-        document_repo.update_document_artifacts(
-            document_id=document_id,
-            parsed_ir_path=str(artifacts.ir_path),
-            parsed_markdown_path=str(artifacts.markdown_path),
-            quality_report_path=str(artifacts.quality_report_path),
-            parser_name=ingestion_result.document_ir.parser_name,
-            parser_version=ingestion_result.document_ir.parser_version,
-            parse_quality_status=ingestion_result.quality_report.overall_status,
-        )
-        chunks = ingestion_result.chunks
-        document_repo.update_document_status(document_id, DocumentStage.parsed)
-        stage = "chunk_insert"
-        chunk_repo.delete_chunks_for_document(document_id)
-        chunk_repo.insert_chunks(
-            session_id=session_id,
-            document_id=document_id,
-            parsed_chunks=chunks,
-        )
-        logger.info(
-            "Inserted %d chunks session_id=%s document_id=%s",
-            len(chunks),
-            session_id,
-            document_id,
-        )
-        document_repo.update_document_status(
-            document_id,
-            DocumentStage.chunked,
-            chunk_count=len(chunks),
-        )
-        stage = "snapshot_build"
-        logger.info(
-            "Building candidate index snapshot session_id=%s document_id=%s chunk_count=%d",
-            session_id,
-            document_id,
-            len(chunks),
-        )
-        snapshot = build_candidate_snapshot(session_id, document_id)
-        logger.info(
-            "Built candidate index snapshot session_id=%s document_id=%s snapshot_id=%s",
-            session_id,
-            document_id,
-            snapshot["id"],
-        )
-        stage = "indexing"
-        document_repo.update_document_status(
-            document_id,
-            DocumentStage.indexing,
-            chunk_count=len(chunks),
-        )
-        stage = "snapshot_commit"
-        ready_snapshot = commit_ready_snapshot(
-            session_id,
-            snapshot["id"],
-            document_id,
-            len(chunks),
-        )
-        logger.info(
-            "Committed ready index snapshot session_id=%s document_id=%s snapshot_id=%s elapsed=%.2fs",
-            session_id,
-            document_id,
-            ready_snapshot["id"],
-            time.monotonic() - job_start,
-        )
+        chunks = _do_parse_document(session_id, document, pdf_bytes)
+        snapshot = _do_build_and_commit_index(session_id, document_id, chunks)
         return {
-            "snapshot": ready_snapshot,
+            "snapshot": snapshot,
             "chunk_count": len(chunks),
         }
     except Exception as exc:
         logger.exception(
-            "Document ingestion failed session_id=%s document_id=%s stage=%s",
+            "Document ingestion failed session_id=%s document_id=%s",
             session_id,
             document_id,
-            stage,
         )
         _mark_failed(
             document_id,
@@ -159,6 +48,103 @@ def run_document_ingestion_job(
             preserve_candidate_snapshot_files=getattr(exc, "preserve_candidate_snapshot_files", False),
         )
         raise
+
+
+def _do_parse_document(session_id: str, document: dict, pdf_bytes: bytes) -> list[Chunk]:
+    document_id = document["id"]
+    logger.info(
+        "Starting document parsing session_id=%s document_id=%s filename=%s bytes=%d",
+        session_id, document_id, document["filename"], len(pdf_bytes),
+    )
+
+    document_repo.update_document_status(document_id, DocumentStage.parsing)
+    parse_start = time.monotonic()
+    ingestion_result = process_pdf_document(
+        pdf_bytes=pdf_bytes,
+        paper_id=document_id,
+        filename=document["filename"],
+    )
+    logger.info(
+        "Completed document parsing session_id=%s document_id=%s parser=%s version=%s "
+        "pages=%d chunks=%d quality=%s elapsed=%.2fs",
+        session_id, document_id,
+        ingestion_result.document_ir.parser_name,
+        ingestion_result.document_ir.parser_version,
+        ingestion_result.document_ir.page_count,
+        len(ingestion_result.chunks),
+        ingestion_result.quality_report.overall_status,
+        time.monotonic() - parse_start,
+    )
+
+    artifacts = save_ingestion_artifacts(
+        artifact_dir=raw_session_dir(session_id) / "parsed" / document_id,
+        document_ir=ingestion_result.document_ir,
+        raw_markdown=ingestion_result.raw_markdown,
+        normalized_markdown=ingestion_result.markdown,
+        quality_report=ingestion_result.quality_report,
+    )
+    logger.info(
+        "Saved ingestion artifacts session_id=%s document_id=%s ir_path=%s",
+        session_id, document_id, artifacts.ir_path,
+    )
+
+    document_repo.update_document_artifacts(
+        document_id=document_id,
+        parsed_ir_path=str(artifacts.ir_path),
+        parsed_markdown_path=str(artifacts.markdown_path),
+        quality_report_path=str(artifacts.quality_report_path),
+        parser_name=ingestion_result.document_ir.parser_name,
+        parser_version=ingestion_result.document_ir.parser_version,
+        parse_quality_status=ingestion_result.quality_report.overall_status,
+    )
+    chunks = ingestion_result.chunks
+    document_repo.update_document_status(document_id, DocumentStage.parsed)
+
+    chunk_repo.delete_chunks_for_document(document_id)
+    chunk_repo.insert_chunks(
+        session_id=session_id,
+        document_id=document_id,
+        parsed_chunks=chunks,
+    )
+    document_repo.update_document_status(
+        document_id,
+        DocumentStage.chunked,
+        chunk_count=len(chunks),
+    )
+
+    logger.info(
+        "Inserted %d chunks session_id=%s document_id=%s",
+        len(chunks), session_id, document_id,
+    )
+    return chunks
+
+
+def _do_build_and_commit_index(session_id: str, document_id: str, chunks: list[Chunk]) -> dict:
+    logger.info(
+        "Building candidate index snapshot session_id=%s document_id=%s chunk_count=%d",
+        session_id, document_id, len(chunks),
+    )
+
+    document_repo.update_document_status(
+        document_id, DocumentStage.indexing, chunk_count=len(chunks),
+    )
+
+    snapshot = build_candidate_snapshot(session_id, document_id)
+    logger.info(
+        "Built candidate index snapshot session_id=%s document_id=%s snapshot_id=%s",
+        session_id, document_id, snapshot["id"],
+    )
+
+    job_start = time.monotonic()
+    ready_snapshot = commit_ready_snapshot(
+        session_id, snapshot["id"], document_id, len(chunks),
+    )
+    logger.info(
+        "Committed ready index snapshot session_id=%s document_id=%s snapshot_id=%s elapsed=%.2fs",
+        session_id, document_id, ready_snapshot["id"],
+        time.monotonic() - job_start,
+    )
+    return ready_snapshot
 
 
 def _mark_failed(

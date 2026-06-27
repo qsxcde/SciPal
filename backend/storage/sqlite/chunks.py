@@ -59,6 +59,26 @@ def insert_chunks(session_id: str, document_id: str, parsed_chunks: list[Chunk])
         )
 
 
+def _row_to_chunk(row: dict) -> Chunk:
+    return Chunk(
+        text=row["text_content"],
+        metadata=ChunkMetadata(
+            paper_id=row["document_id"],
+            section=row["section"],
+            chunk_index=row["chunk_index"],
+            type=row["type"],
+            section_path=_json_load(row["section_path_json"]),
+            page_start=row["page_start"],
+            page_end=row["page_end"],
+            bbox=_json_load(row["bbox_json"]),
+            block_ids=_json_load(row["block_ids_json"]),
+            block_types=_json_load(row["block_types_json"]),
+            linked_block_ids=_json_load(row["linked_block_ids_json"]),
+            confidence=row["confidence"],
+        ),
+    )
+
+
 def list_chunks(session_id: str) -> list[Chunk]:
 
     with connect() as conn:
@@ -66,26 +86,7 @@ def list_chunks(session_id: str) -> list[Chunk]:
             "SELECT * FROM chunks WHERE session_id = ? ORDER BY created_at ASC, chunk_index ASC",
             (session_id,),
         ).fetchall()
-    return [
-        Chunk(
-            text=row["text_content"],
-            metadata=ChunkMetadata(
-                paper_id=row["document_id"],
-                section=row["section"],
-                chunk_index=row["chunk_index"],
-                type=row["type"],
-                section_path=_json_load(row["section_path_json"]),
-                page_start=row["page_start"],
-                page_end=row["page_end"],
-                bbox=_json_load(row["bbox_json"]),
-                block_ids=_json_load(row["block_ids_json"]),
-                block_types=_json_load(row["block_types_json"]),
-                linked_block_ids=_json_load(row["linked_block_ids_json"]),
-                confidence=row["confidence"],
-            ),
-        )
-        for row in rows
-    ]
+    return [_row_to_chunk(row) for row in rows]
 
 
 def list_chunks_for_documents(session_id: str, document_ids: list[str]) -> list[Chunk]:
@@ -102,26 +103,7 @@ def list_chunks_for_documents(session_id: str, document_ids: list[str]) -> list[
             """,
             (session_id, *document_ids),
         ).fetchall()
-    return [
-        Chunk(
-            text=row["text_content"],
-            metadata=ChunkMetadata(
-                paper_id=row["document_id"],
-                section=row["section"],
-                chunk_index=row["chunk_index"],
-                type=row["type"],
-                section_path=_json_load(row["section_path_json"]),
-                page_start=row["page_start"],
-                page_end=row["page_end"],
-                bbox=_json_load(row["bbox_json"]),
-                block_ids=_json_load(row["block_ids_json"]),
-                block_types=_json_load(row["block_types_json"]),
-                linked_block_ids=_json_load(row["linked_block_ids_json"]),
-                confidence=row["confidence"],
-            ),
-        )
-        for row in rows
-    ]
+    return [_row_to_chunk(row) for row in rows]
 
 
 def list_chunk_document_ids(session_id: str) -> list[str]:

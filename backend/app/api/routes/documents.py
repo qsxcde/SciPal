@@ -25,9 +25,13 @@ def upload_document(
     session = session_repo.get_session(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found. Please create a session first.")
-    if file.size and file.size > settings.upload_max_bytes:
+    if file.size is None:
+        raise HTTPException(status_code=413, detail="Cannot determine file size")
+    if file.size > settings.upload_max_bytes:
         raise HTTPException(status_code=413, detail="File too large (max 50MB)")
     pdf_bytes = file.file.read()
+    if not pdf_bytes.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF")
     intake = intake_document_upload(
         session_id=session_id,
         filename=file.filename or "paper.pdf",

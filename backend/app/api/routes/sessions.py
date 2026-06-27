@@ -18,7 +18,7 @@ def create_session():
 
 @router.get("/sessions/{session_id}", response_model=SessionSnapshot)
 def get_session(session_id: str):
-    snapshot = sessions.get_session_snapshot(session_id)
+    snapshot = session_service.get_session_snapshot(session_id)
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Session not found")
     return snapshot
@@ -33,6 +33,7 @@ def update_session(session_id: str, payload: SessionUpdateRequest):
     )
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
+    # Re-fetch with computed fields (document_count, message_count, indexed_chunks)
     summary = next((item for item in sessions.list_sessions() if item["id"] == session_id), None)
     if summary is None:
         raise HTTPException(status_code=404, detail="Session not found")

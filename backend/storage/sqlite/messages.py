@@ -4,7 +4,7 @@ from typing import Literal
 
 from backend.rag.ingestion.metadata import SourceRef
 from backend.storage.sqlite.connection import connect, transaction
-from backend.storage.sqlite.sessions import now_iso, touch_session
+from backend.storage.sqlite.sessions import now_iso
 
 
 def _encode_sources(sources: list[SourceRef] | None) -> str | None:
@@ -39,7 +39,6 @@ def create_message(
             """,
             (message_id, session_id, role, content, sources_json, status, timestamp),
         )
-    touch_session(session_id)
     message = get_message(message_id)
     if message is None:
         raise RuntimeError("创建消息失败")

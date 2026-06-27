@@ -1,5 +1,6 @@
 from collections.abc import Generator
 
+from backend.domain.config import settings
 from backend.rag.generation.llm import stream_completion_tokens
 from backend.rag.generation.prompt_template import build_prompt
 from backend.rag.ingestion.metadata import Chunk, SourceRef
@@ -25,7 +26,7 @@ def build_sources(chunks: list[Chunk]) -> list[SourceRef]:
             paper_id=chunk.metadata.paper_id,
             section=chunk.metadata.section,
             chunk_index=chunk.metadata.chunk_index,
-            text_excerpt=chunk.text[:220],
+            text_excerpt=chunk.text[:settings.source_excerpt_max_chars],
             page_start=chunk.metadata.page_start,
             page_end=chunk.metadata.page_end,
             block_ids=chunk.metadata.block_ids,

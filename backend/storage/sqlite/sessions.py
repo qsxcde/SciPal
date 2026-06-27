@@ -8,7 +8,7 @@ def now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def create_session(title: str = "新论文会话", user_id: str | None = None) -> dict:
+def create_session(title: str, user_id: str | None = None) -> dict:
     session_id = str(uuid.uuid4())
     timestamp = now_iso()
     with transaction() as conn:

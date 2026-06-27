@@ -1,3 +1,5 @@
+import re
+
 from pydantic import BaseModel
 
 from backend.domain.exceptions import PaperParseError
@@ -15,7 +17,6 @@ from backend.rag.ingestion.text_pdf_backend import TextPDFBackend
 
 def _safe_paper_id(paper_id: str) -> str:
     """Sanitize paper_id to avoid filesystem issues (Windows reserved chars, etc.)."""
-    import re
     cleaned = re.sub(r'[<>:"/\\|?*]', "_", paper_id)
     return cleaned or "_"
 

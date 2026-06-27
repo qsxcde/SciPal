@@ -1,8 +1,7 @@
 import uuid
 
 from backend.storage.sqlite.connection import connect, transaction
-from backend.storage.sqlite.jobs import get_job
-from backend.storage.sqlite.sessions import now_iso, touch_session
+from backend.storage.sqlite.sessions import now_iso
 
 
 def create_document(
@@ -27,7 +26,6 @@ def create_document(
             """,
             (document_id, session_id, filename, file_path, mime_type, file_size, timestamp, timestamp),
         )
-    touch_session(session_id)
     document = get_document(document_id)
     if document is None:
         raise RuntimeError("创建文档失败")
@@ -51,53 +49,6 @@ def list_documents(session_id: str) -> list[dict]:
         return [dict(row) for row in rows]
 
 
-def create_document_with_job(
-    session_id: str,
-    filename: str,
-    file_path: str,
-    mime_type: str,
-    file_size: int,
-    document_id: str | None = None,
-    job_type: str = "document_ingestion",
-    job_stage: str = "uploaded",
-    job_payload_json: str | None = None,
-) -> tuple[dict, dict]:
-    """Create a document and its ingestion job in a single atomic transaction."""
-
-    document_id = document_id or str(uuid.uuid4())
-    job_id = str(uuid.uuid4())
-    timestamp = now_iso()
-    with transaction() as conn:
-        conn.execute(
-            """
-            INSERT INTO documents (
-              id, session_id, filename, file_path, mime_type, file_size,
-              chunk_count, status, error_message, created_at, updated_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, 0, 'uploaded', NULL, ?, ?)
-            """,
-            (document_id, session_id, filename, file_path, mime_type, file_size, timestamp, timestamp),
-        )
-        conn.execute(
-            """
-            INSERT INTO jobs (
-              id, session_id, document_id, type, status, stage, attempt,
-              error_message, payload_json, created_at, started_at, finished_at
-            )
-            VALUES (?, ?, ?, ?, 'queued', ?, 0, NULL, ?, ?, NULL, NULL)
-            """,
-            (job_id, session_id, document_id, job_type, job_stage, job_payload_json, timestamp),
-        )
-    touch_session(session_id)
-    document = get_document(document_id)
-    job = get_job(job_id)
-    if document is None:
-        raise RuntimeError("创建文档失败")
-    if job is None:
-        raise RuntimeError("创建任务失败")
-    return document, job
-
-
 def delete_document(document_id: str) -> None:
 
     document = get_document(document_id)
@@ -107,7 +58,6 @@ def delete_document(document_id: str) -> None:
         conn.execute("DELETE FROM chunks WHERE document_id = ?", (document_id,))
         conn.execute("DELETE FROM jobs WHERE document_id = ?", (document_id,))
         conn.execute("DELETE FROM documents WHERE id = ?", (document_id,))
-    touch_session(document["session_id"])
 
 
 def update_document_status(

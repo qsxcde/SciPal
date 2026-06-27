@@ -4,8 +4,10 @@ import uuid
 from contextlib import suppress
 from pathlib import Path
 
+from backend.domain.config import settings
 from backend.domain.states import DocumentStage
 from backend.storage.sqlite import documents as document_repo
+from backend.storage.sqlite import jobs as job_repo
 from backend.storage.sqlite import sessions as session_repo
 from backend.storage.paths import session_document_file_path
 
@@ -22,18 +24,24 @@ def intake_document_upload(
     document_id = str(uuid.uuid4())
     file_path = session_document_file_path(session_id, document_id)
     session = session_repo.get_session(session_id)
+    document = None
+    job = None
     try:
         file_path.write_bytes(pdf_bytes)
-        document, job = document_repo.create_document_with_job(
+        document = document_repo.create_document(
             session_id=session_id,
             filename=filename,
             file_path=str(file_path),
             mime_type=mime_type,
             file_size=len(pdf_bytes),
             document_id=document_id,
+        )
+        job = job_repo.create_job(
+            session_id=session_id,
+            document_id=document_id,
             job_type="document_ingestion",
-            job_stage=DocumentStage.uploaded,
-            job_payload_json=json.dumps(
+            stage=DocumentStage.uploaded,
+            payload_json=json.dumps(
                 {
                     "document_id": document_id,
                     "filename": filename,
@@ -42,6 +50,7 @@ def intake_document_upload(
                 ensure_ascii=False,
             ),
         )
+        session_repo.touch_session(session_id)
     except Exception:
         with suppress(RuntimeError, OSError):
             document_repo.delete_document(document_id)
@@ -57,7 +66,7 @@ def intake_document_upload(
         raise
 
     with suppress(RuntimeError, OSError):
-        if session_repo.is_default_session_title(session_id):
+        if session and session["title"] == settings.msg_default_session_title:
             session_repo.update_session_title(session_id, document["filename"])
     return {
         "document": document,

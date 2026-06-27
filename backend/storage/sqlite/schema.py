@@ -5,19 +5,18 @@ from backend.storage.sqlite.connection import connect
 CURRENT_SCHEMA_VERSION = 1
 
 _init_lock = threading.RLock()
-_in_progress = False
+_init_in_progress = threading.local()
 
 
 def init_db() -> None:
-    """线程安全的 schema 初始化。用 _in_progress 阻断递归（connect→init_db→connect），
-    用 user_version 校验数据库是否已初始化（兼容多数据库测试场景）。"""
-    global _in_progress
-    if _in_progress:
+    """Thread-safe schema initialization. Uses RLock for cross-thread safety
+    and a thread-local flag to prevent re-entrance from connect() calling back into init_db()."""
+    if getattr(_init_in_progress, "active", False):
         return
     with _init_lock:
-        if _in_progress:
+        if getattr(_init_in_progress, "active", False):
             return
-        _in_progress = True
+        _init_in_progress.active = True
     try:
         conn = connect()
         try:
@@ -31,7 +30,7 @@ def init_db() -> None:
         finally:
             conn.close()
     finally:
-        _in_progress = False
+        _init_in_progress.active = False
 
 
 def _create_initial_schema(conn) -> None:

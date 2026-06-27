@@ -15,10 +15,11 @@ from backend.rag.retrieval.hybrid_retriever import HybridRetrievalOptions
 from backend.rag.retrieval.hybrid_retriever import retrieve_hybrid_context
 from backend.rag.retrieval.retriever import retrieve_seed_chunks
 
+from backend.domain.config import settings
+
 MAX_EXPANDED_CHUNKS = 8
 SAME_SECTION_WINDOW = 1
 ADJACENT_WINDOW = 1
-EMPTY_RETRIEVAL_REFUSAL_TEXT = "未在当前检索结果中找到可支持该问题的论文依据。"
 CITATION_PATTERN = re.compile(r"\[Chunk:\s*(\d+)\]")
 
 
@@ -127,7 +128,7 @@ def stream_answer(
 ) -> Generator[StreamAnswerEvent, None, None]:
     chunks, sources = retrieve_context(store, query, options=options)
     if not chunks:
-        yield {"type": "token", "value": EMPTY_RETRIEVAL_REFUSAL_TEXT}
+        yield {"type": "token", "value": settings.msg_empty_retrieval}
         yield {"type": "sources", "value": []}
         return
     token_stream = stream_answer_for_chunks(chunks, query)
@@ -147,7 +148,7 @@ def stream_answer(
 
     yield {"type": "sources", "value": streamed_sources}
     if not has_valid_citations:
-        yield {"type": "warning", "value": "模型生成的回答中未引用有效论文来源，请核实。"}
+        yield {"type": "warning", "value": settings.msg_no_valid_citations}
 
 
 def evaluate_answer(
@@ -164,13 +165,13 @@ def evaluate_answer(
         include_diagnostics=True,
     )
     if not chunks:
-        answer = EMPTY_RETRIEVAL_REFUSAL_TEXT
+        answer = settings.msg_empty_retrieval
     else:
         generated_answer = generate_answer(chunks, query)
         answer = (
             generated_answer
             if _answer_has_valid_chunk_citations(generated_answer, chunks)
-            else EMPTY_RETRIEVAL_REFUSAL_TEXT
+            else settings.msg_empty_retrieval
         )
     return ChatEvaluationResult(
         answer=answer,
