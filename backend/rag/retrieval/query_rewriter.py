@@ -1,5 +1,8 @@
 import json
 from collections.abc import Callable
+from functools import cache
+from pathlib import Path
+import tomllib
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
@@ -29,26 +32,22 @@ def fallback_query_pack(query: str) -> QueryPack:
     )
 
 
+@cache
+def _load_query_rewrite_prompt() -> str:
+    path = Path(__file__).resolve().parents[2] / "prompts" / "prompts.toml"
+    with open(path, "rb") as f:
+        return tomllib.load(f)["query_rewrite"]["system"]
+
+
 def build_query_rewrite_prompt(
     query: str,
     source_language: str,
     target_language: str,
 ) -> str:
-    return (
-        "Rewrite the user query into a retrieval-ready query pack.\n"
-        f"Source language: {source_language}\n"
-        f"Target language: {target_language}\n"
-        "Return JSON only with this exact contract:\n"
-        "{"
-        '"translated_query": "string", '
-        '"retrieval_query": "string", '
-        '"keywords": ["string"]'
-        "}\n"
-        "Do not add extra fields. Preserve meaning, translate for the target language, "
-        "and keep proper nouns, abbreviations, author names, model names, numbers, metrics, "
-        "and units unchanged. 专有名词、缩写、作者名、模型名、数字、指标、单位必须原样保留。 "
-        "and keep retrieval_query optimized for search.\n"
-        f"User query: {query}"
+    return _load_query_rewrite_prompt().format(
+        source_language=source_language,
+        target_language=target_language,
+        query=query,
     )
 
 

@@ -1,19 +1,22 @@
+from functools import cache
+from pathlib import Path
+import tomllib
+
 from backend.rag.ingestion.metadata import Chunk
 
-SYSTEM_PROMPT = (
-    "你是一个严谨的中文学术论文助手。"
-    "请始终使用中文回答用户问题，即使论文片段或用户问题包含英文。"
-    "只能基于提供的论文片段回答，不要编造论文中没有的信息。"
-    "回答要精确，并在关键结论后标注来源章节或片段编号。"
-    "必须仅使用本轮检索结果中提供的引用，不得引用未出现的片段。"
-)
+_PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 
-CITATION_INSTRUCTIONS = (
-    "引用要求："
-    "1. 每个关键结论后都要使用 [Chunk: N] 的格式标注依据。"
-    "2. N 必须是本轮检索结果中的真实 Chunk 编号。"
-    "3. 如果当前检索结果无法支持回答，就明确说明无法根据当前论文片段回答。"
-)
+
+@cache
+def _load_prompts() -> dict:
+    path = _PROMPTS_DIR / "prompts.toml"
+    with open(path, "rb") as f:
+        return tomllib.load(f)
+
+
+_root = _load_prompts()["rag_answer"]
+SYSTEM_PROMPT = _root["system"]
+CITATION_INSTRUCTIONS = _root["citation"]
 
 
 def build_prompt(
