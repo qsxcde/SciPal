@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -16,6 +17,7 @@ from backend.rag.retrieval.query_rewriter import QueryPack, generate_query_pack
 
 logger = logging.getLogger(__name__)
 _bm25_cache: dict[str, tuple[str, BM25Retriever]] = {}
+_bm25_cache_lock = threading.Lock()
 
 
 def _bm25_fingerprint(chunks: list[Chunk]) -> str:
@@ -29,11 +31,12 @@ def _bm25_fingerprint(chunks: list[Chunk]) -> str:
 def _get_bm25_retriever(chunks: list[Chunk]) -> BM25Retriever:
     """Get or create a cached BM25Retriever for the given chunks."""
     fp = _bm25_fingerprint(chunks)
-    cached = _bm25_cache.get("default")
-    if cached is not None and cached[0] == fp:
-        return cached[1]
-    retriever = BM25Retriever(chunks)
-    _bm25_cache["default"] = (fp, retriever)
+    with _bm25_cache_lock:
+        cached = _bm25_cache.get("default")
+        if cached is not None and cached[0] == fp:
+            return cached[1]
+        retriever = BM25Retriever(chunks)
+        _bm25_cache["default"] = (fp, retriever)
     logger.debug("Built new BM25Retriever fingerprint=%s chunks=%d", fp, len(chunks))
     return retriever
 

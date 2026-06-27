@@ -9,6 +9,12 @@ from backend.app.api.routes import documents
 from backend.app.api.routes import sessions
 import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 from backend.app.services.document_service import recover_orphaned_documents
 from backend.app.services.job_runner import InProcessJobRunner
 from backend.storage.sqlite.schema import init_db

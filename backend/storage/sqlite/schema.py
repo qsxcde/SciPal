@@ -1,16 +1,23 @@
+import threading
+
 from backend.storage.sqlite.connection import connect
 
 CURRENT_SCHEMA_VERSION = 1
 
+_init_lock = threading.RLock()
 _in_progress = False
 
 
 def init_db() -> None:
-    """每次 connect() 调用时执行；user_version 检查确保对已存在的 DB 零开销，对新 DB 文件（测试隔离）也能正确初始化。"""
+    """线程安全的 schema 初始化。用 _in_progress 阻断递归（connect→init_db→connect），
+    用 user_version 校验数据库是否已初始化（兼容多数据库测试场景）。"""
     global _in_progress
     if _in_progress:
         return
-    _in_progress = True
+    with _init_lock:
+        if _in_progress:
+            return
+        _in_progress = True
     try:
         conn = connect()
         try:

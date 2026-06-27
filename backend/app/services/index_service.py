@@ -15,9 +15,8 @@ from backend.rag.retrieval.filters import filter_indexable_chunks
 logger = logging.getLogger(__name__)
 
 
-def build_candidate_snapshot(session_id: str, document_id: str, pdf_bytes: bytes) -> dict:
+def build_candidate_snapshot(session_id: str, document_id: str) -> dict:
     """Build and persist a candidate index snapshot without promoting it."""
-    _ = pdf_bytes
     start = time.monotonic()
     candidate_token = str(uuid.uuid4())
     index_path = _snapshot_index_path(session_id, candidate_token)

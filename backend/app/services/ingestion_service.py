@@ -113,7 +113,7 @@ def run_document_ingestion_job(
             document_id,
             len(chunks),
         )
-        snapshot = build_candidate_snapshot(session_id, document_id, pdf_bytes)
+        snapshot = build_candidate_snapshot(session_id, document_id)
         logger.info(
             "Built candidate index snapshot session_id=%s document_id=%s snapshot_id=%s",
             session_id,

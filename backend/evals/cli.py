@@ -1,8 +1,12 @@
 import argparse
+import asyncio
 import json
+from collections.abc import Coroutine
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
+
+_T = TypeVar("_T")
 
 from backend.evals.configs import get_config_set
 from backend.evals.dataset import dataset_fingerprint, load_dataset
@@ -196,7 +200,6 @@ def _evaluate_with_scipal(
   config: RetrievalConfig,
 ) -> "ChatEvaluationResult":
   """Evaluate one question against a live SciPal session with retrieval overrides."""
-  import asyncio
   from backend.rag.pipeline.online_pipeline import RetrievalOptions
   from backend.app.services.chat_service import evaluate_session_chat
 
@@ -211,12 +214,24 @@ def _evaluate_with_scipal(
     seed_top_k=config.seed_top_k,
     rrf_k=config.rrf_k,
   )
-  return asyncio.run(evaluate_session_chat(
+  return _run_async(evaluate_session_chat(
     session_id=session_id,
     content=question,
     top_k=config.top_k,
     retrieval_options=retrieval_options,
   ))
+
+
+def _run_async(coro: "Coroutine[None, None, _T]") -> _T:
+    """Safely run a coroutine from CLI context; raises if called within an event loop."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    raise RuntimeError(
+        "This async CLI helper is called from within a running event loop. "
+        "Invoke the coroutine directly instead."
+    )
 
 
 def _evaluate_retrieval_only(
@@ -225,7 +240,6 @@ def _evaluate_retrieval_only(
   config: RetrievalConfig,
 ) -> "ChatEvaluationResult":
   """Evaluate one question against a SciPal session without live generation."""
-  import asyncio
   from backend.rag.pipeline.online_pipeline import RetrievalOptions
   from backend.app.services.chat_service import evaluate_session_retrieval
 
@@ -240,7 +254,7 @@ def _evaluate_retrieval_only(
     seed_top_k=config.seed_top_k,
     rrf_k=config.rrf_k,
   )
-  return asyncio.run(evaluate_session_retrieval(
+  return _run_async(evaluate_session_retrieval(
     session_id=session_id,
     content=question,
     top_k=config.top_k,

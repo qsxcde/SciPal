@@ -1,4 +1,6 @@
 import json
+import logging
+import re
 from collections.abc import Callable
 from functools import cache
 from pathlib import Path
@@ -7,6 +9,8 @@ import tomllib
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from backend.rag.generation.llm import complete_text
+
+logger = logging.getLogger(__name__)
 
 
 class QueryPack(BaseModel):
@@ -53,7 +57,6 @@ def build_query_rewrite_prompt(
 
 def _strip_markdown_fence(text: str) -> str:
     """Remove ```json ... ``` or ``` ... ``` markdown fences from LLM output."""
-    import re
     text = re.sub(r"^```(?:json)?\s*\n?", "", text.strip(), flags=re.MULTILINE)
     text = re.sub(r"\n```\s*$", "", text, flags=re.MULTILINE)
     return text.strip()
@@ -74,4 +77,5 @@ def generate_query_pack(
             payload["keywords"] = []
         return QueryPack.model_validate(payload)
     except Exception:
+        logger.exception("generate_query_pack failed for query=%r", query)
         return fallback_query_pack(query)
