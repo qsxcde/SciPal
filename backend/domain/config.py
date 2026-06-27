@@ -47,9 +47,14 @@ class RuntimeSettings(BaseSettings):
     max_expanded_chunks: int = 8
     same_section_window: int = 1
     adjacent_window: int = 1
+    bm25_top_k: int = 8
+    dense_top_k: int = 8
+    seed_top_k: int = 8
+    rrf_k: int = 60
+    include_linked_blocks: bool = False
     # Reranker
     reranker_enabled: bool = True
-    reranker_model_id: str = "Qwen/Qwen3-Reranker-0.6B"
+    reranker_model_id: str = "BAAI/bge-reranker-v2-m3"
     reranker_device: str = "cpu"
     reranker_auto_download: bool = True
     reranker_max_length: int = 1024

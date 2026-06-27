@@ -213,6 +213,8 @@ def _evaluate_with_scipal(
     dense_top_k=config.dense_top_k,
     seed_top_k=config.seed_top_k,
     rrf_k=config.rrf_k,
+    enable_reranker=config.enable_reranker,
+    rerank_top_k=config.rerank_top_k,
   )
   return _run_async(evaluate_session_chat(
     session_id=session_id,
@@ -253,6 +255,8 @@ def _evaluate_retrieval_only(
     dense_top_k=config.dense_top_k,
     seed_top_k=config.seed_top_k,
     rrf_k=config.rrf_k,
+    enable_reranker=config.enable_reranker,
+    rerank_top_k=config.rerank_top_k,
   )
   return _run_async(evaluate_session_retrieval(
     session_id=session_id,

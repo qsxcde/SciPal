@@ -12,19 +12,18 @@ from backend.rag.ingestion.metadata import Chunk
 
 logger = logging.getLogger(__name__)
 
-_reranker: "QwenReranker | None" = None
+_reranker: "CrossEncoderReranker | None" = None
 _reranker_lock = threading.Lock()
 
 
-class QwenReranker:
-    """Cross-encoder reranker using Qwen3-Reranker-0.6B."""
+class CrossEncoderReranker:
+    """Generic cross-encoder reranker supporting any HF sequence-classification model."""
 
     def __init__(self, model_path: str | Path, device: str = "cpu"):
         load_start = time.monotonic()
         self.tokenizer = AutoTokenizer.from_pretrained(
             str(model_path), trust_remote_code=True,
         )
-        # Qwen3-Reranker 无默认 pad_token，batch 推理需要
         if self.tokenizer.pad_token_id is None:
             self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
         self.model = (
@@ -39,8 +38,8 @@ class QwenReranker:
         if device != "cpu":
             self.model = self.model.to(device)
         logger.info(
-            "Loaded reranker model path=%s device=%s elapsed=%.2fs",
-            model_path, device, time.monotonic() - load_start,
+            "Loaded reranker model=%s path=%s device=%s elapsed=%.2fs",
+            settings.reranker_model_id, model_path, device, time.monotonic() - load_start,
         )
 
     def rerank(self, query: str, chunks: list[Chunk], top_k: int) -> list[Chunk]:
@@ -53,7 +52,12 @@ class QwenReranker:
             max_length=settings.reranker_max_length, return_tensors="pt",
         )
         with torch.no_grad():
-            scores = self.model(**inputs).logits.squeeze(-1).tolist()
+            logits = self.model(**inputs).logits
+        # 兼容 num_labels=1（单分）和 num_labels>1（取末维正类分）
+        if logits.shape[-1] == 1:
+            scores = logits.squeeze(-1).tolist()
+        else:
+            scores = logits[:, -1].tolist()
         if isinstance(scores, float):
             scores = [scores]
         scored = list(zip(scores, chunks))
@@ -61,7 +65,7 @@ class QwenReranker:
         return [chunk for _, chunk in scored[:top_k]]
 
 
-def get_reranker() -> QwenReranker | None:
+def get_reranker() -> CrossEncoderReranker | None:
     """Lazy singleton — returns None if reranker is disabled or fails to load."""
     global _reranker
     if not settings.reranker_enabled:
@@ -75,12 +79,12 @@ def get_reranker() -> QwenReranker | None:
     return _reranker
 
 
-def _load_reranker() -> QwenReranker | None:
+def _load_reranker() -> CrossEncoderReranker | None:
     model_path = _resolve_reranker_model_path()
     if model_path is None:
         return None
     try:
-        return QwenReranker(model_path, device=settings.reranker_device)
+        return CrossEncoderReranker(model_path, device=settings.reranker_device)
     except Exception:
         logger.exception("Failed to load reranker model, reranker disabled")
         return None
@@ -88,7 +92,8 @@ def _load_reranker() -> QwenReranker | None:
 
 def _reranker_model_dir() -> Path:
     from backend.domain.config import model_dir
-    return model_dir() / "reranker" / "Qwen3-Reranker-0.6B"
+    model_name = settings.reranker_model_id.rsplit("/", 1)[-1]
+    return model_dir() / "reranker" / model_name
 
 
 def _resolve_reranker_model_path() -> Path | None:

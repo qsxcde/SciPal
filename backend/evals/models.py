@@ -56,6 +56,8 @@ class RetrievalConfig(BaseModel):
   dense_top_k: int = 5
   seed_top_k: int = 5
   rrf_k: int = 60
+  enable_reranker: bool = True
+  rerank_top_k: int = 8
 
   @field_validator("top_k", "max_expanded_chunks")
   @classmethod

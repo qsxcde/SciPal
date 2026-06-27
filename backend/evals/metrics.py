@@ -244,7 +244,7 @@ def _build_evaluator_embeddings() -> object:
 
   return HuggingFaceEmbeddings(
     model_name=settings.embedding_model,
-    model_kwargs={"device": "cpu"},
+    model_kwargs={"device": settings.embedding_device},
     encode_kwargs={"normalize_embeddings": True},
   )
 

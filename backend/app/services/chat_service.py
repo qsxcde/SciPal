@@ -30,16 +30,16 @@ MISSING_SOURCES_EVENT_ERROR = "Stream protocol error: missing sources event from
 def production_retrieval_options() -> RetrievalOptions:
     return RetrievalOptions(
         strategy="hybrid",
-        bm25_top_k=5,
-        dense_top_k=5,
-        seed_top_k=5,
-        rrf_k=60,
-        max_expanded_chunks=8,
-        same_section_window=0,
-        adjacent_window=1,
-        include_linked_blocks=False,
-        enable_reranker=True,
-        rerank_top_k=8,
+        bm25_top_k=settings.bm25_top_k,
+        dense_top_k=settings.dense_top_k,
+        seed_top_k=settings.seed_top_k,
+        rrf_k=settings.rrf_k,
+        max_expanded_chunks=settings.max_expanded_chunks,
+        same_section_window=settings.same_section_window,
+        adjacent_window=settings.adjacent_window,
+        include_linked_blocks=settings.include_linked_blocks,
+        enable_reranker=settings.reranker_enabled,
+        rerank_top_k=settings.rerank_top_k,
     )
 
 
