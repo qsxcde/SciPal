@@ -22,10 +22,6 @@ const displayText = computed(() => {
 
   return props.message.text;
 });
-
-function buildSourceKey(section: string, chunkIndex: number, index: number): string {
-  return `${section}-${chunkIndex}-${index}`;
-}
 </script>
 
 <template>
@@ -49,19 +45,7 @@ function buildSourceKey(section: string, chunkIndex: number, index: number): str
         <MarkdownContent :text="displayText" />
       </div>
 
-      <div
-        v-if="props.message.sources?.length"
-        class="source-tags"
-      >
-        <span
-          v-for="(source, index) in props.message.sources"
-          :key="buildSourceKey(source.section, source.chunk_index, index)"
-        >
-          [{{ index + 1 }}] {{ source.section }} · #{{ source.chunk_index }}
-        </span>
-      </div>
-
-      <MessageActions
+<MessageActions
         v-if="props.message.role === 'assistant' && props.message.text.trim()"
         :content="props.message.text"
       />
@@ -145,22 +129,6 @@ function buildSourceKey(section: string, chunkIndex: number, index: number): str
   color: var(--color-text);
   background: rgba(255, 255, 255, 0.7);
   border-color: var(--color-border);
-}
-
-.source-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.source-tags span {
-  padding: 6px 9px;
-  color: var(--color-text);
-  font-size: 11px;
-  font-weight: 700;
-  background: var(--color-surface-alt);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
 }
 
 @media (max-width: 760px) {

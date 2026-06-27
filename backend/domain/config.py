@@ -59,6 +59,12 @@ class RuntimeSettings(BaseSettings):
     reranker_auto_download: bool = True
     reranker_max_length: int = 1024
     rerank_top_k: int = 8
+    # MinerU Cloud API
+    mineru_api_base_url: str = "https://mineru.net"
+    mineru_api_key: str | None = None
+    mineru_api_timeout: int = 300
+    mineru_api_poll_interval: float = 2.0
+    mineru_api_max_poll_time: int = 600
     # CORS
     cors_origin_regex: str = r"http://(localhost|127\.0\.0\.1):\d+"
     # User-facing messages

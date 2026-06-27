@@ -17,7 +17,7 @@ from backend.rag.retrieval.retriever import retrieve_seed_chunks
 
 from backend.domain.config import settings
 
-CITATION_PATTERN = re.compile(r"\[Chunk:\s*(\d+)\]")
+CITATION_PATTERN = re.compile(r"\[Section:\s*(.+?)\]")
 
 
 class StreamTokenEvent(TypedDict):
@@ -223,6 +223,6 @@ def _serialize_route(route: object) -> dict[str, object]:
 
 
 def _answer_has_valid_chunk_citations(answer: str, retrieved_chunks: list[Chunk]) -> bool:
-    valid_chunk_ids = {chunk.metadata.chunk_index for chunk in retrieved_chunks}
-    cited_chunk_ids = {int(match) for match in CITATION_PATTERN.findall(answer)}
-    return bool(cited_chunk_ids) and cited_chunk_ids.issubset(valid_chunk_ids)
+    valid_sections = {chunk.metadata.section for chunk in retrieved_chunks}
+    cited_sections = set(CITATION_PATTERN.findall(answer))
+    return bool(cited_sections) and cited_sections.issubset(valid_sections)

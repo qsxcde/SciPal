@@ -16,7 +16,6 @@ def _load_prompts() -> dict:
 
 _root = _load_prompts()["rag_answer"]
 SYSTEM_PROMPT = _root["system"]
-CITATION_INSTRUCTIONS = _root["citation"]
 
 
 def build_prompt(
@@ -29,7 +28,6 @@ def build_prompt(
     context = "\n\n---\n\n".join(_format_chunk_for_prompt(chunk) for chunk in selected_chunks)
     return (
         f"{SYSTEM_PROMPT}\n\n"
-        f"{CITATION_INSTRUCTIONS}\n\n"
         f"论文片段:\n{context}\n\n"
         f"用户问题: {question}\n\n"
         "请用中文作答。"

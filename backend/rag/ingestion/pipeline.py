@@ -1,24 +1,40 @@
+import logging
 import re
 
 from pydantic import BaseModel
 
+from backend.domain.config import settings
 from backend.domain.exceptions import PaperParseError
 from backend.rag.ingestion.chunking import build_chunks
 from backend.rag.ingestion.document_ir import DocumentIR
 from backend.rag.ingestion.document_ir import QualityReport
 from backend.rag.ingestion.exporters import export_markdown
 from backend.rag.ingestion.metadata import Chunk, ChunkMetadata
+from backend.rag.ingestion.mineru_api_backend import MinerUApiBackend
 from backend.rag.ingestion.mineru_backend import MinerUBackend
 from backend.rag.ingestion.normalizer import normalize_parser_output
 from backend.rag.ingestion.parser_backend import ParserBackend
 from backend.rag.ingestion.parser_backend import RawParserResult
 from backend.rag.ingestion.text_pdf_backend import TextPDFBackend
 
+logger = logging.getLogger(__name__)
+
 
 def _safe_paper_id(paper_id: str) -> str:
     """Sanitize paper_id to avoid filesystem issues (Windows reserved chars, etc.)."""
     cleaned = re.sub(r'[<>:"/\\|?*]', "_", paper_id)
     return cleaned or "_"
+
+
+def _resolve_parser_chain() -> list[ParserBackend]:
+    """Build fallback chain: MinerU API (if configured) → local MinerU → TextPDF."""
+    backends: list[ParserBackend] = [MinerUBackend(), TextPDFBackend()]
+    if settings.mineru_api_key:
+        backends.insert(0, MinerUApiBackend())
+        logger.info("Parser chain: MinerUApiBackend -> MinerUBackend -> TextPDFBackend")
+    else:
+        logger.info("Parser chain (no API key): MinerUBackend -> TextPDFBackend")
+    return backends
 
 
 class IngestionResult(BaseModel):
@@ -43,17 +59,26 @@ def process_pdf_document(
     filename: str,
     parser_backend: ParserBackend | None = None,
 ) -> IngestionResult:
-    backend = parser_backend or MinerUBackend()
-    try:
-        raw: RawParserResult = backend.parse(pdf_bytes, filename=filename)
-    except Exception as exc:
-        if parser_backend is not None:
-            raise PaperParseError(f"Failed to parse PDF: {exc}") from exc
-        backend = TextPDFBackend()
+    if parser_backend is not None:
+        backends = [parser_backend]
+    else:
+        backends = _resolve_parser_chain()
+
+    first_error: Exception | None = None
+    for backend in backends:
+        logger.info("Trying parser backend: %s", backend.name)
         try:
-            raw = backend.parse(pdf_bytes, filename=filename)
-        except Exception:
-            raise PaperParseError(f"Failed to parse PDF: {exc}") from exc
+            raw: RawParserResult = backend.parse(pdf_bytes, filename=filename)
+            logger.info("Parser backend succeeded: %s", backend.name)
+            break
+        except Exception as exc:
+            logger.warning("Parser backend %s failed: %s", backend.name, exc)
+            if first_error is None:
+                first_error = exc
+            continue
+    else:
+        msg = str(first_error) if first_error else "all parsers failed"
+        raise PaperParseError(f"Failed to parse PDF: {msg}") from first_error
 
     document_ir = normalize_parser_output(
         raw=raw,
