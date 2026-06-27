@@ -40,23 +40,55 @@ def build_candidate_snapshot(session_id: str, document_id: str, pdf_bytes: bytes
         document_ids=document_ids,
     )
     try:
-        store = FAISSVectorStore()
+        previous_ready = snapshot_repo.get_active_ready_snapshot(session_id)
+        if previous_ready is not None:
+            store = FAISSVectorStore.load(
+                index_path=Path(previous_ready["index_path"]),
+                chunks_path=Path(previous_ready["chunks_path"]),
+            )
+            logger.info(
+                "Loaded previous ready snapshot %s with %d vectors for session_id=%s",
+                previous_ready["id"],
+                store._index.ntotal,
+                session_id,
+            )
+        else:
+            store = FAISSVectorStore()
+
         source_chunks = chunk_repo.list_chunks_for_documents(session_id, document_ids)
-        indexable_chunks = filter_indexable_chunks(source_chunks)
+
+        if previous_ready is not None:
+            existing_doc_ids = set(previous_ready["document_ids"])
+            new_chunks = [c for c in source_chunks if c.metadata.paper_id not in existing_doc_ids]
+            indexable_new = filter_indexable_chunks(new_chunks)
+            skipped_count = len(source_chunks) - len(new_chunks)
+            logger.info(
+                "Loaded %d chunks for candidate snapshot session_id=%s snapshot_id=%s "
+                "documents=%d (skipped %d already-indexed chunks from %d docs)",
+                len(source_chunks),
+                session_id,
+                snapshot["id"],
+                len(document_ids),
+                skipped_count,
+                len(existing_doc_ids),
+            )
+        else:
+            indexable_new = filter_indexable_chunks(source_chunks)
+            logger.info(
+                "Loaded %d chunks for candidate snapshot session_id=%s snapshot_id=%s documents=%d",
+                len(source_chunks),
+                session_id,
+                snapshot["id"],
+                len(document_ids),
+            )
+
         logger.info(
-            "Loaded %d chunks for candidate snapshot session_id=%s snapshot_id=%s documents=%d",
-            len(source_chunks),
+            "Indexing %d new chunks for candidate snapshot session_id=%s snapshot_id=%s",
+            len(indexable_new),
             session_id,
             snapshot["id"],
-            len(document_ids),
         )
-        logger.info(
-            "Indexing %d chunks for candidate snapshot session_id=%s snapshot_id=%s",
-            len(indexable_chunks),
-            session_id,
-            snapshot["id"],
-        )
-        store.add_chunks(indexable_chunks)
+        store.add_chunks(indexable_new)
         store.save(index_path=index_path, chunks_path=chunks_path)
     except Exception as exc:
         logger.exception(
@@ -71,7 +103,7 @@ def build_candidate_snapshot(session_id: str, document_id: str, pdf_bytes: bytes
         "Saved candidate index snapshot session_id=%s snapshot_id=%s chunks=%d index_path=%s chunks_path=%s elapsed=%.2fs",
         session_id,
         snapshot["id"],
-        len(indexable_chunks),
+        len(indexable_new),
         index_path,
         chunks_path,
         time.monotonic() - start,
