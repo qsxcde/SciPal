@@ -38,6 +38,8 @@ def production_retrieval_options() -> RetrievalOptions:
         same_section_window=0,
         adjacent_window=1,
         include_linked_blocks=False,
+        enable_reranker=True,
+        rerank_top_k=8,
     )
 
 

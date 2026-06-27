@@ -59,6 +59,8 @@ class RetrievalOptions(BaseModel):
     dense_top_k: int = 5
     seed_top_k: int = 5
     rrf_k: int = 60
+    enable_reranker: bool = True
+    rerank_top_k: int = 8
 
 
 class RetrievalDiagnostics(BaseModel):
@@ -89,6 +91,8 @@ def retrieve_context(
                 adjacent_window=retrieval_options.adjacent_window,
                 include_linked_blocks=retrieval_options.include_linked_blocks,
                 rrf_k=retrieval_options.rrf_k,
+                enable_reranker=retrieval_options.enable_reranker,
+                rerank_top_k=retrieval_options.rerank_top_k,
             ),
         )
         sources = build_sources(hybrid_result.prompt_chunks)

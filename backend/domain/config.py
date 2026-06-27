@@ -47,6 +47,13 @@ class RuntimeSettings(BaseSettings):
     max_expanded_chunks: int = 8
     same_section_window: int = 1
     adjacent_window: int = 1
+    # Reranker
+    reranker_enabled: bool = True
+    reranker_model_id: str = "Qwen/Qwen3-Reranker-0.6B"
+    reranker_device: str = "cpu"
+    reranker_auto_download: bool = True
+    reranker_max_length: int = 1024
+    rerank_top_k: int = 8
     # CORS
     cors_origin_regex: str = r"http://(localhost|127\.0\.0\.1):\d+"
     # User-facing messages

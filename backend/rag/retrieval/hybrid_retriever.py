@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -51,6 +52,8 @@ class HybridRetrievalOptions:
     adjacent_window: int = 1
     include_linked_blocks: bool = False
     rrf_k: int = 60
+    enable_reranker: bool = True
+    rerank_top_k: int = 8
 
 
 @dataclass(frozen=True)
@@ -110,6 +113,20 @@ def retrieve_hybrid_context(
         rrf_k=retrieval_options.rrf_k,
     )
     ranked_chunks = [candidate.chunk for candidate in ranked_candidates]
+
+    if retrieval_options.enable_reranker and retrieval_options.rerank_top_k > 0:
+        from backend.rag.retrieval import reranker as _reranker_mod
+        reranker = _reranker_mod.get_reranker()
+        if reranker is not None:
+            rerank_start = time.monotonic()
+            reranked = reranker.rerank(dense_query, ranked_chunks, top_k=retrieval_options.rerank_top_k)
+            if reranked:
+                logger.info(
+                    "Reranked %d chunks to %d elapsed=%.2fs",
+                    len(ranked_chunks), len(reranked), time.monotonic() - rerank_start,
+                )
+                ranked_chunks = reranked
+
     prompt_chunks, expansion_debug = _expand_prompt_chunks(
         ranked_chunks,
         all_chunks,

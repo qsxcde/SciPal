@@ -15,3 +15,6 @@ tests/
 eval_outputs/
 docs/
 CLAUDE.md
+backend/storage/sqlite
+backend/storage/sqlite/scipal.db-shm
+backend/storage/sqlite/scipal.db-wal
