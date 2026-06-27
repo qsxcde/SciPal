@@ -17,9 +17,6 @@ from backend.rag.retrieval.retriever import retrieve_seed_chunks
 
 from backend.domain.config import settings
 
-MAX_EXPANDED_CHUNKS = 8
-SAME_SECTION_WINDOW = 1
-ADJACENT_WINDOW = 1
 CITATION_PATTERN = re.compile(r"\[Chunk:\s*(\d+)\]")
 
 
@@ -54,9 +51,9 @@ class ChatEvaluationResult(BaseModel):
 
 class RetrievalOptions(BaseModel):
     strategy: Literal["dense", "bm25", "hybrid"] = "dense"
-    max_expanded_chunks: int = MAX_EXPANDED_CHUNKS
-    same_section_window: int = SAME_SECTION_WINDOW
-    adjacent_window: int = ADJACENT_WINDOW
+    max_expanded_chunks: int = 8
+    same_section_window: int = 1
+    adjacent_window: int = 1
     include_linked_blocks: bool = True
     bm25_top_k: int = 5
     dense_top_k: int = 5

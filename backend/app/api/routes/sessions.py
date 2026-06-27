@@ -33,8 +33,7 @@ def update_session(session_id: str, payload: SessionUpdateRequest):
     )
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
-    # Re-fetch with computed fields (document_count, message_count, indexed_chunks)
-    summary = next((item for item in sessions.list_sessions() if item["id"] == session_id), None)
+    summary = sessions.get_session_summary(session_id)
     if summary is None:
         raise HTTPException(status_code=404, detail="Session not found")
     return summary

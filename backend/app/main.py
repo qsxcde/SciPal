@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.routes import chat
 from backend.app.api.routes import documents
 from backend.app.api.routes import sessions
+from backend.domain.config import settings
 import logging
 
 logging.basicConfig(
@@ -45,7 +46,7 @@ app = FastAPI(title="SciPal API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    allow_origin_regex=settings.cors_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -31,13 +31,6 @@ def get_session(session_id: str) -> dict | None:
         return dict(row) if row else None
 
 
-def is_default_session_title(session_id: str) -> bool:
-    session = get_session(session_id)
-    if session is None:
-        return False
-    return session["title"] == "新论文会话"
-
-
 def touch_session(session_id: str) -> None:
     timestamp = now_iso()
     with transaction() as conn:
@@ -185,3 +178,20 @@ def update_session(session_id: str, title: str | None = None, is_pinned: int | N
             (next_title, next_is_pinned, timestamp, session_id),
         )
     return get_session(session_id)
+
+
+def get_session_summary(session_id: str) -> dict | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+              s.*,
+              (SELECT COUNT(*) FROM documents WHERE session_id = s.id) AS document_count,
+              (SELECT COUNT(*) FROM messages WHERE session_id = s.id) AS message_count,
+              (SELECT COUNT(*) FROM chunks WHERE session_id = s.id) AS indexed_chunks
+            FROM sessions s
+            WHERE s.id = ? AND s.is_archived = 0
+            """,
+            (session_id,),
+        ).fetchone()
+        return dict(row) if row else None

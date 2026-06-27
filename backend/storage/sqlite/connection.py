@@ -15,8 +15,6 @@ def get_db_path() -> Path:
 
 
 def connect() -> sqlite3.Connection:
-    from backend.storage.sqlite.schema import init_db
-
     db_path = get_db_path()
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
@@ -28,8 +26,6 @@ def connect() -> sqlite3.Connection:
     conn.execute("PRAGMA temp_store = MEMORY")
     conn.execute("PRAGMA cache_size = -8000")
     conn.execute("PRAGMA mmap_size = 268435456")
-
-    init_db()
     return conn
 
 

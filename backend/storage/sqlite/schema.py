@@ -2,15 +2,14 @@ import threading
 
 from backend.storage.sqlite.connection import connect
 
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 
 _init_lock = threading.RLock()
 _init_in_progress = threading.local()
 
 
 def init_db() -> None:
-    """Thread-safe schema initialization. Uses RLock for cross-thread safety
-    and a thread-local flag to prevent re-entrance from connect() calling back into init_db()."""
+    """Thread-safe schema initialization and migration."""
     if getattr(_init_in_progress, "active", False):
         return
     with _init_lock:
@@ -20,8 +19,12 @@ def init_db() -> None:
     try:
         conn = connect()
         try:
-            if conn.execute("PRAGMA user_version").fetchone()[0] < CURRENT_SCHEMA_VERSION:
+            current_version = conn.execute("PRAGMA user_version").fetchone()[0]
+            if current_version < 1:
                 _create_initial_schema(conn)
+                current_version = 1
+            if current_version < CURRENT_SCHEMA_VERSION:
+                _migrate_schema(conn, current_version)
                 conn.execute(f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}")
             conn.commit()
         except Exception:
@@ -31,6 +34,15 @@ def init_db() -> None:
             conn.close()
     finally:
         _init_in_progress.active = False
+
+
+def _migrate_schema(conn, from_version: int) -> None:
+    """Run incremental schema migrations."""
+    if from_version < 2:
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_chunks_unique_document_chunk "
+            "ON chunks(document_id, chunk_index)"
+        )
 
 
 def _create_initial_schema(conn) -> None:
@@ -138,6 +150,7 @@ def _create_initial_schema(conn) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_session_id ON chunks(session_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON chunks(document_id)")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_chunks_unique_document_chunk ON chunks(document_id, chunk_index)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_session_status ON jobs(session_id, status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_index_snapshots_session_status ON index_snapshots(session_id, status)")

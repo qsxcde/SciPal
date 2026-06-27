@@ -44,6 +44,11 @@ class RuntimeSettings(BaseSettings):
     runner_idle_poll_interval: float = 0.05
     # Retrieval parameters
     source_excerpt_max_chars: int = 220
+    max_expanded_chunks: int = 8
+    same_section_window: int = 1
+    adjacent_window: int = 1
+    # CORS
+    cors_origin_regex: str = r"http://(localhost|127\.0\.0\.1):\d+"
     # User-facing messages
     msg_index_not_ready: str = "论文仍在处理中，请稍后重试。"
     msg_empty_retrieval: str = "未在当前检索结果中找到可支持该问题的论文依据。"
