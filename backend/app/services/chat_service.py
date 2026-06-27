@@ -49,29 +49,6 @@ def _to_thread(fn, *args, **kwargs):
 
 
 
-async def _async_wrap_sync_gen(sync_gen):
-    """Iterate a sync generator synchronously, yielding events asynchronously."""
-    results: list = []
-    retval: list[object] = [None]
-    caught_exc: list[BaseException] = []
-    _gen = iter(sync_gen)
-    while True:
-        try:
-            results.append(next(_gen))
-        except StopIteration as _stop:
-            retval[0] = _stop.value
-            break
-        except Exception as _be:
-            caught_exc.append(_be)
-            break
-    for event in results:
-        yield event
-    if retval[0] is not None:
-        yield {"type": "_retval", "value": retval[0]}
-    if caught_exc:
-        raise caught_exc[0]
-
-
 async def stream_session_chat(
     session_id: str,
     content: str,
@@ -115,7 +92,21 @@ async def stream_session_chat(
         except TypeError:
             stream = chat_pipeline.stream_answer(store, content)
 
-        async for event in _async_wrap_sync_gen(stream):
+        def _advance_gen(gen):
+            try:
+                return (False, next(gen))
+            except StopIteration as e:
+                return (True, e.value)
+
+        loop = asyncio.get_running_loop()
+        _gen = iter(stream)
+        while True:
+            done, event = await loop.run_in_executor(None, _advance_gen, _gen)
+            if done:
+                if event is not None:
+                    event = {"type": "_retval", "value": event}
+                else:
+                    break
             if isinstance(event, str):
                 if used_explicit_stream_protocol:
                     raise RuntimeError("Stream protocol error: mixed legacy and explicit stream events.")
