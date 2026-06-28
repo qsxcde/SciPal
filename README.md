@@ -25,7 +25,7 @@ SciPal 是一个面向学术论文阅读场景的 RAG 问答系统。用户上�
 | PDF 解析 | MinerU |
 | Embedding | sentence-transformers |
 | 向量检索 | FAISS |
-| LLM | DeepSeek，使用 OpenAI Python SDK 调用 |
+| LLM | DeepSeek（主用）+ GLM/Qwen（可选 fallback）+ Ollama 本地（可选 fallback），通过 OpenAI Python SDK 统一调用 |
 | 持久化 | SQLite + 会话目录文件存储 |
 | 测试 | pytest |
 
@@ -70,7 +70,7 @@ SciPal 是一个面向学术论文阅读场景的 RAG 问答系统。用户上�
    - `retrieving`
    - `generating`
 4. 基于 active snapshot 对应的 FAISS 索引检索上下文。
-5. 调用 DeepSeek 进行中文流式生成。
+5. 调用 LLM（DeepSeek 优先，不可用时自动降级到备用模型）进行中文流式生成。
 6. 返回 `sources` 和 `done` 事件，并持久化 assistant message。
 7. 若生成中途失败，assistant message 仍会以 `failed` 状态落库，保留已生成内容。
 
@@ -104,6 +104,11 @@ MINERU_DISABLE_OCR=true
 MINERU_TABLE_ENABLE=true
 MINERU_FORMULA_ENABLE=true
 MINERU_SHOW_DOWNLOAD_PROGRESS=false
+# 可选：多模型 Fallback（DeepSeek 不可用时自动降级）
+# LLM_FALLBACK_ENABLED=true
+# FALLBACK_API_KEY=sk-...
+# FALLBACK_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+# FALLBACK_MODEL=glm-4-flash
 ```
 
 说明：
@@ -222,7 +227,7 @@ python -m backend.evals.cli run \
 - 当前输入区部分工具按钮仅完成 UI 占位，未对接真实功能。
 - 当前解析链路仅支持文本型 PDF。
 - 当前检索按单会话、单 active snapshot 组织，尚未扩展到跨论文联合检索。
-- 当前问答生成依赖外部模型服务和 embedding 资源可用性。
+- 当前问答生成依赖外部模型服务（DeepSeek 为主，支持 GLM/Qwen/Ollama 降级）和 embedding 资源可用性。
 
 ## License
 
