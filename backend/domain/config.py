@@ -81,6 +81,13 @@ class RuntimeSettings(BaseSettings):
     term_expand_enabled: bool = True
     term_expand_glossary_path: str = "backend/data/term_glossary.json"
     term_expand_llm_fallback: bool = True
+    # Multi-model fallback
+    llm_fallback_enabled: bool = False
+    fallback_api_key: str | None = None
+    fallback_base_url: str | None = None
+    fallback_model: str = "glm-4-flash"
+    ollama_base_url: str | None = None
+    ollama_model: str = "qwen2.5:7b"
     # Auth
     jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
