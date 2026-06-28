@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import logging
-import threading
 import time
 from pathlib import Path
 
@@ -12,8 +13,31 @@ from backend.rag.ingestion.metadata import Chunk
 
 logger = logging.getLogger(__name__)
 
-_reranker: "CrossEncoderReranker | None" = None
-_reranker_lock = threading.Lock()
+
+class FallbackReranker:
+    """Reranker that tries remote API first, falls back to local cross-encoder."""
+
+    def __init__(self) -> None:
+        self._local: CrossEncoderReranker | None = None
+
+    def rerank(self, query: str, chunks: list[Chunk], top_k: int) -> list[Chunk]:
+        if not chunks:
+            return []
+        if settings.reranker_remote_enabled and settings.embedding_remote_api_key:
+            from backend.rag.retrieval import remote_reranker
+            remote_result = remote_reranker.rerank(query, chunks, top_k)
+            if remote_result is not None:
+                return remote_result
+        local = self._get_local()
+        if local is None:
+            return chunks[:top_k]
+        return local.rerank(query, chunks, top_k)
+
+    def _get_local(self) -> CrossEncoderReranker | None:
+        if self._local is not None:
+            return self._local
+        self._local = _load_reranker()
+        return self._local
 
 
 class CrossEncoderReranker:
@@ -65,18 +89,10 @@ class CrossEncoderReranker:
         return [chunk for _, chunk in scored[:top_k]]
 
 
-def get_reranker() -> CrossEncoderReranker | None:
-    """Lazy singleton — returns None if reranker is disabled or fails to load."""
-    global _reranker
+def get_reranker() -> CrossEncoderReranker | FallbackReranker | None:
     if not settings.reranker_enabled:
         return None
-    if _reranker is not None:
-        return _reranker
-    with _reranker_lock:
-        if _reranker is not None:
-            return _reranker
-        _reranker = _load_reranker()
-    return _reranker
+    return FallbackReranker()
 
 
 def _load_reranker() -> CrossEncoderReranker | None:

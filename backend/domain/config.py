@@ -59,12 +59,19 @@ class RuntimeSettings(BaseSettings):
     reranker_auto_download: bool = True
     reranker_max_length: int = 1024
     rerank_top_k: int = 8
+    reranker_remote_enabled: bool = True
+    reranker_remote_model: str = "BAAI/bge-reranker-v2-m3"
+    reranker_remote_base_url: str = "https://api.siliconflow.cn/v1"
     # MinerU Cloud API
     mineru_api_base_url: str = "https://mineru.net"
     mineru_api_key: str | None = None
     mineru_api_timeout: int = 300
     mineru_api_poll_interval: float = 2.0
     mineru_api_max_poll_time: int = 600
+    # Remote Embedding API (SiliconFlow / OpenAI-compatible)
+    embedding_remote_api_key: str | None = None
+    embedding_remote_model: str = "Qwen/Qwen3-VL-Embedding-8B"
+    embedding_remote_base_url: str = "https://api.siliconflow.cn/v1"
     # CORS
     cors_origin_regex: str = r"http://(localhost|127\.0\.0\.1):\d+"
     # User-facing messages

@@ -143,8 +143,13 @@ class ChatStreamErrorEvent(BaseModel):
     value: str
 
 
+class ChatStreamWarningEvent(BaseModel):
+    type: Literal["warning"]
+    value: str
+
+
 class ChatStreamDoneEvent(BaseModel):
     type: Literal["done"]
 
 
-ChatStreamEvent = ChatStreamStatusEvent | ChatStreamTokenEvent | ChatStreamSourcesEvent | ChatStreamErrorEvent | ChatStreamDoneEvent
+ChatStreamEvent = ChatStreamStatusEvent | ChatStreamTokenEvent | ChatStreamSourcesEvent | ChatStreamErrorEvent | ChatStreamWarningEvent | ChatStreamDoneEvent

@@ -15,6 +15,7 @@ from backend.app.schemas.api import ChatStreamEvent
 from backend.app.schemas.api import ChatStreamSourcesEvent
 from backend.app.schemas.api import ChatStreamStatusEvent
 from backend.app.schemas.api import ChatStreamTokenEvent
+from backend.app.schemas.api import ChatStreamWarningEvent
 from backend.rag.ingestion.metadata import SourceRef
 from backend.rag.pipeline.online_pipeline import ChatEvaluationResult
 from backend.rag.pipeline.online_pipeline import RetrievalOptions
@@ -64,6 +65,11 @@ class _SSEStreamState:
         self.sources: list[SourceRef] = []
         self.used_explicit_protocol = False
         self.received_sources = False
+        self._warning: str = ""
+
+    @property
+    def warning(self) -> str:
+        return self._warning
 
     def feed_token(self, token: str) -> ChatStreamTokenEvent:
         self.tokens.append(token)
@@ -107,6 +113,9 @@ class _SSEStreamState:
                 continue
             if event["type"] == "sources":
                 self.feed_sources(event["value"])
+                continue
+            if event["type"] == "warning":
+                self._warning = event["value"]
                 continue
             raise RuntimeError(f"Stream protocol error: unexpected event type {event['type']!r}.")
 
@@ -192,6 +201,8 @@ async def stream_session_chat(
         sources=state.sources, status="complete",
     )
     await _to_thread(touch_session, session_id)
+    if state.warning:
+        yield ChatStreamWarningEvent(type="warning", value=state.warning)
     yield ChatStreamSourcesEvent(type="sources", value=state.sources)
     yield ChatStreamDoneEvent(type="done")
 
