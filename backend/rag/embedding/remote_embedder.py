@@ -1,5 +1,6 @@
 """Remote embedding via OpenAI-compatible API (Gitee AI / etc.)."""
 import logging
+import threading
 import time
 
 from openai import OpenAI
@@ -10,16 +11,19 @@ from backend.rag.embedding.local_embedder import truncate_for_embedding
 logger = logging.getLogger(__name__)
 
 _client: OpenAI | None = None
+_client_lock = threading.Lock()
 
 
 def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        _client = OpenAI(
-            base_url=settings.embedding_remote_base_url,
-            api_key=settings.embedding_remote_api_key,
-            timeout=30,
-        )
+        with _client_lock:
+            if _client is None:
+                _client = OpenAI(
+                    base_url=settings.embedding_remote_base_url,
+                    api_key=settings.embedding_remote_api_key,
+                    timeout=30,
+                )
     return _client
 
 

@@ -4,6 +4,8 @@ import uuid
 from contextlib import suppress
 from pathlib import Path
 
+from fastapi import HTTPException
+
 from backend.domain.config import settings
 from backend.domain.states import DocumentStage
 from backend.storage.sqlite import documents as document_repo
@@ -14,16 +16,29 @@ from backend.storage.paths import session_document_file_path
 logger = logging.getLogger(__name__)
 
 
+def _validate_upload(file_size: int | None, pdf_bytes: bytes) -> None:
+    if file_size is None:
+        raise HTTPException(status_code=400, detail="Cannot determine file size")
+    if file_size > settings.upload_max_bytes:
+        raise HTTPException(status_code=413, detail="File too large (max 50MB)")
+    if not pdf_bytes.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF")
+
+
 def intake_document_upload(
     session_id: str,
     filename: str,
     mime_type: str,
     pdf_bytes: bytes,
+    file_size: int | None = None,
 ) -> dict:
     """Persist upload intake state and enqueue an ingestion job."""
+    _validate_upload(file_size or len(pdf_bytes), pdf_bytes)
     document_id = str(uuid.uuid4())
     file_path = session_document_file_path(session_id, document_id)
     session = session_repo.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found. Please create a session first.")
     document = None
     job = None
     try:
@@ -50,23 +65,16 @@ def intake_document_upload(
                 ensure_ascii=False,
             ),
         )
-        session_repo.touch_session(session_id)
     except Exception:
         with suppress(RuntimeError, OSError):
             document_repo.delete_document(document_id)
         with suppress(FileNotFoundError):
             file_path.unlink()
-        if session is not None:
-            with suppress(RuntimeError, OSError):
-                session_repo.restore_session_timestamps(
-                    session_id=session_id,
-                    updated_at=session["updated_at"],
-                    last_opened_at=session["last_opened_at"],
-                )
         raise
 
+    session_repo.touch_session(session_id)
     with suppress(RuntimeError, OSError):
-        if session and session["title"] == settings.msg_default_session_title:
+        if session["title"] == settings.msg_default_session_title:
             session_repo.update_session_title(session_id, document["filename"])
     return {
         "document": document,

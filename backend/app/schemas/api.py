@@ -110,7 +110,7 @@ class SessionSnapshot(BaseModel):
 
 class SessionUpdateRequest(BaseModel):
     title: str | None = None
-    is_pinned: int | None = None
+    is_pinned: bool | None = None
 
 
 class DocumentUploadResponse(BaseModel):

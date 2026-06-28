@@ -4,8 +4,6 @@ import time
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from backend.domain.config import settings
 from backend.domain.exceptions import ActiveIndexNotReadyError
 from backend.domain.exceptions import SessionNotFoundError
@@ -25,6 +23,8 @@ from backend.storage.sqlite import sessions as session_repo
 from backend.storage.sqlite.sessions import touch_session
 from backend.rag.pipeline import online_pipeline as chat_pipeline
 from backend.storage.vector_db import registry as index_registry
+
+logger = logging.getLogger(__name__)
 
 MISSING_SOURCES_EVENT_ERROR = "Stream protocol error: missing sources event from stream_answer()."
 
@@ -152,11 +152,7 @@ async def stream_session_chat(
         for status_event in pending_status_events:
             yield status_event
 
-        await _to_thread(
-            message_repo.create_message,
-            session_id=session_id, role="user", content=content,
-        )
-        await _to_thread(touch_session, session_id)
+        await _persist_and_touch(session_id, "user", content)
 
         yield ChatStreamStatusEvent(type="status", value="retrieving")
         yield ChatStreamStatusEvent(type="status", value="generating")
@@ -171,36 +167,16 @@ async def stream_session_chat(
             yield token_event
 
     except ActiveIndexNotReadyError as exc:
-        for status_event in pending_status_events:
-            yield status_event
-        error_message = str(exc) or settings.msg_index_not_ready
-        await _to_thread(
-            message_repo.create_message,
-            session_id=session_id, role="assistant", content=error_message, status="failed",
-        )
-        await _to_thread(touch_session, session_id)
-        yield ChatStreamTokenEvent(type="token", value=error_message)
-        yield ChatStreamSourcesEvent(type="sources", value=[])
-        yield ChatStreamDoneEvent(type="done")
+        async for event in _handle_active_index_not_ready(session_id, exc, pending_status_events):
+            yield event
         return
     except Exception:
         logger.exception("Chat stream failed for session %s", session_id)
-        partial_content = state.full_content or ""
-        await _to_thread(
-            message_repo.create_message,
-            session_id=session_id, role="assistant", content=partial_content, status="failed",
-        )
-        await _to_thread(touch_session, session_id)
-        yield ChatStreamErrorEvent(type="error", value="生成失败，请重试。")
-        yield ChatStreamDoneEvent(type="done")
+        async for event in _handle_stream_failure(session_id, state):
+            yield event
         return
 
-    await _to_thread(
-        message_repo.create_message,
-        session_id=session_id, role="assistant", content=state.full_content,
-        sources=state.sources, status="complete",
-    )
-    await _to_thread(touch_session, session_id)
+    await _persist_and_touch(session_id, "assistant", state.full_content, sources=state.sources)
     if state.warning:
         yield ChatStreamWarningEvent(type="warning", value=state.warning)
     yield ChatStreamSourcesEvent(type="sources", value=state.sources)
@@ -284,6 +260,47 @@ async def _wait_for_ready_index(session_id: str, timeout_seconds: float) -> dict
         await asyncio.sleep(backoff)
         backoff = min(backoff * 2, settings.index_poll_max_interval)
     raise ActiveIndexNotReadyError(settings.msg_index_not_ready)
+
+
+async def _persist_and_touch(
+    session_id: str,
+    role: str,
+    content: str,
+    sources: list | None = None,
+    status: str = "complete",
+) -> None:
+    await _to_thread(
+        message_repo.create_message,
+        session_id=session_id, role=role, content=content,
+        sources=sources, status=status,
+    )
+    await _to_thread(touch_session, session_id)
+
+
+async def _handle_active_index_not_ready(
+    session_id: str,
+    exc: ActiveIndexNotReadyError,
+    pending_status_events: list[ChatStreamStatusEvent],
+) -> AsyncIterator[ChatStreamEvent]:
+    """Yield events when no index snapshot is ready within timeout."""
+    for status_event in pending_status_events:
+        yield status_event
+    error_message = str(exc) or settings.msg_index_not_ready
+    await _persist_and_touch(session_id, "assistant", error_message, status="failed")
+    yield ChatStreamTokenEvent(type="token", value=error_message)
+    yield ChatStreamSourcesEvent(type="sources", value=[])
+    yield ChatStreamDoneEvent(type="done")
+
+
+async def _handle_stream_failure(
+    session_id: str,
+    state: _SSEStreamState,
+) -> AsyncIterator[ChatStreamEvent]:
+    """Yield events when an unexpected error occurs during streaming."""
+    partial_content = state.full_content or ""
+    await _persist_and_touch(session_id, "assistant", partial_content, status="failed")
+    yield ChatStreamErrorEvent(type="error", value="生成失败，请重试。")
+    yield ChatStreamDoneEvent(type="done")
 
 
 def _coerce_sources(value: Any) -> list[SourceRef]:

@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -26,13 +27,13 @@ runner = InProcessJobRunner()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    init_db()
+    await asyncio.to_thread(init_db)
     try:
-        recover_orphaned_documents()
+        await asyncio.to_thread(recover_orphaned_documents)
     except Exception:
         logger.exception("Failed to recover orphaned documents on startup")
     try:
-        runner.recover_interrupted_jobs()
+        await asyncio.to_thread(runner.recover_interrupted_jobs)
     except Exception:
         logger.exception("Failed to recover interrupted jobs on startup")
     try:

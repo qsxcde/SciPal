@@ -26,7 +26,7 @@ def encode_sse_event(payload: ChatStreamEvent) -> str:
 async def chat(
     session_id: str,
     message: ChatMessage,
-):
+) -> StreamingResponse:
     events = stream_session_chat(session_id=session_id, content=message.content)
 
     async def generate():

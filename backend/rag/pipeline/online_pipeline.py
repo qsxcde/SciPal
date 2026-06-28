@@ -73,10 +73,13 @@ class RetrievalDiagnostics(BaseModel):
 def retrieve_context(
     store: AbstractVectorStore,
     query: str,
+    dense_top_k: int | None = None,
     k: int | None = None,
     options: RetrievalOptions | None = None,
     include_diagnostics: bool = False,
 ) -> tuple[list[Chunk], list[SourceRef]] | tuple[list[Chunk], list[SourceRef], RetrievalDiagnostics]:
+    # Backward compatibility: k is deprecated, prefer dense_top_k
+    effective_top_k = dense_top_k if dense_top_k is not None else k
     retrieval_options = options or RetrievalOptions()
     if retrieval_options.strategy in {"bm25", "hybrid"}:
         hybrid_result = retrieve_hybrid_context(
@@ -106,7 +109,7 @@ def retrieve_context(
             return hybrid_result.prompt_chunks, sources, diagnostics
         return hybrid_result.prompt_chunks, sources
 
-    seed_chunks = retrieve_seed_chunks(store, query, k=k)
+    seed_chunks = retrieve_seed_chunks(store, query, k=effective_top_k)
     chunks = expand_context(
         seed_chunks=seed_chunks,
         all_chunks=store.list_chunks(),
@@ -144,8 +147,6 @@ def stream_answer(
 
     answer = "".join(buffered_tokens)
     has_valid_citations = _answer_has_valid_chunk_citations(answer, chunks)
-    if not has_valid_citations:
-        streamed_sources = []
 
     yield {"type": "sources", "value": streamed_sources}
     if not has_valid_citations:

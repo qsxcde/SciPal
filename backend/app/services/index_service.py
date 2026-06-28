@@ -3,6 +3,8 @@ import time
 import uuid
 from pathlib import Path
 
+from backend.domain.exceptions import SnapshotCommitError
+
 from backend.storage.sqlite import chunks as chunk_repo
 from backend.storage.sqlite import documents as document_repo
 from backend.storage.sqlite import index_snapshots as snapshot_repo
@@ -60,8 +62,7 @@ def build_candidate_snapshot(session_id: str, document_id: str) -> dict:
             "Failed candidate index snapshot session_id=%s snapshot_id=%s document_id=%s",
             session_id, snapshot["id"], document_id,
         )
-        setattr(exc, "candidate_snapshot", snapshot)
-        raise
+        raise SnapshotCommitError(str(exc), candidate_snapshot=snapshot) from exc
     logger.info(
         "Saved candidate index snapshot session_id=%s snapshot_id=%s index_path=%s elapsed=%.2fs",
         session_id, snapshot["id"], index_path, time.monotonic() - start,
@@ -143,10 +144,11 @@ def commit_ready_snapshot(
             try:
                 _restore_index_publication(previous_index_metadata, ready_snapshot)
             except Exception as restore_exc:
-                restore_error = RuntimeError("索引元数据恢复失败")
-                setattr(restore_error, "candidate_snapshot", ready_snapshot)
-                setattr(restore_error, "preserve_candidate_snapshot_files", True)
-                raise restore_error from restore_exc
+                raise SnapshotCommitError(
+                    "索引元数据恢复失败",
+                    candidate_snapshot=ready_snapshot,
+                    preserve_candidate_snapshot_files=True,
+                ) from restore_exc
         raise
 
     discard_store(session_id)

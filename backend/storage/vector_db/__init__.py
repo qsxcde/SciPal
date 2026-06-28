@@ -1,1 +1,5 @@
-"""Persistence helpers for local SciPal storage."""
+"""FAISS vector database registry for session-scoped indexes."""
+__all__ = [
+    "registry",
+]
+

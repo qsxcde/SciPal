@@ -7,17 +7,17 @@ router = APIRouter()
 
 
 @router.get("/sessions", response_model=list[SessionSummary])
-def list_sessions():
+def list_sessions() -> list[dict]:
     return sessions.list_sessions()
 
 
 @router.post("/sessions", response_model=SessionCreateResponse)
-def create_session():
+def create_session() -> SessionCreateResponse:
     return SessionCreateResponse(session_id=session_service.create_session())
 
 
 @router.get("/sessions/{session_id}", response_model=SessionSnapshot)
-def get_session(session_id: str):
+def get_session(session_id: str) -> dict:
     snapshot = session_service.get_session_snapshot(session_id)
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -25,21 +25,18 @@ def get_session(session_id: str):
 
 
 @router.patch("/sessions/{session_id}", response_model=SessionSummary)
-def update_session(session_id: str, payload: SessionUpdateRequest):
-    session = sessions.update_session(
+def update_session(session_id: str, payload: SessionUpdateRequest) -> dict:
+    summary = sessions.update_session(
         session_id=session_id,
         title=payload.title,
         is_pinned=payload.is_pinned,
     )
-    if session is None:
-        raise HTTPException(status_code=404, detail="Session not found")
-    summary = sessions.get_session_summary(session_id)
     if summary is None:
         raise HTTPException(status_code=404, detail="Session not found")
     return summary
 
 
 @router.delete("/sessions/{session_id}")
-def delete_session(session_id: str):
+def delete_session(session_id: str) -> dict:
     session_service.destroy_session(session_id)
     return {"status": "deleted"}

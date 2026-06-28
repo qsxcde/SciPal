@@ -161,12 +161,12 @@ def archive_session(session_id: str) -> None:
         )
 
 
-def update_session(session_id: str, title: str | None = None, is_pinned: int | None = None) -> dict | None:
+def update_session(session_id: str, title: str | None = None, is_pinned: bool | None = None) -> dict | None:
     session = get_session(session_id)
     if session is None:
         return None
     next_title = title if title is not None else session["title"]
-    next_is_pinned = is_pinned if is_pinned is not None else session["is_pinned"]
+    next_is_pinned = int(is_pinned) if is_pinned is not None else session["is_pinned"]
     timestamp = now_iso()
     with transaction() as conn:
         conn.execute(
@@ -177,7 +177,7 @@ def update_session(session_id: str, title: str | None = None, is_pinned: int | N
             """,
             (next_title, next_is_pinned, timestamp, session_id),
         )
-    return get_session(session_id)
+    return get_session_summary(session_id)
 
 
 def get_session_summary(session_id: str) -> dict | None:

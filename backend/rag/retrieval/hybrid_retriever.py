@@ -17,7 +17,7 @@ from backend.rag.retrieval.language import Language, detect_language, infer_docu
 from backend.rag.retrieval.query_rewriter import QueryPack, generate_query_pack
 
 logger = logging.getLogger(__name__)
-_bm25_cache: dict[str, tuple[str, BM25Retriever]] = {}
+_bm25_cache: tuple[str, BM25Retriever] | None = None
 _bm25_cache_lock = threading.Lock()
 
 
@@ -33,11 +33,11 @@ def _get_bm25_retriever(chunks: list[Chunk]) -> BM25Retriever:
     """Get or create a cached BM25Retriever for the given chunks."""
     fp = _bm25_fingerprint(chunks)
     with _bm25_cache_lock:
-        cached = _bm25_cache.get("default")
-        if cached is not None and cached[0] == fp:
-            return cached[1]
+        global _bm25_cache
+        if _bm25_cache is not None and _bm25_cache[0] == fp:
+            return _bm25_cache[1]
         retriever = BM25Retriever(chunks)
-        _bm25_cache["default"] = (fp, retriever)
+        _bm25_cache = (fp, retriever)
     logger.debug("Built new BM25Retriever fingerprint=%s chunks=%d", fp, len(chunks))
     return retriever
 
@@ -73,15 +73,12 @@ class HybridRetrievalResult:
     expansion_debug: list[dict[str, object]] = field(default_factory=list)
 
 
-def retrieve_hybrid_context(
-    store: AbstractVectorStore,
+def _detect_and_rewrite(
     query: str,
-    *,
-    options: HybridRetrievalOptions | None = None,
+    all_chunks: list[Chunk],
     query_pack_factory: Callable[[str, str, str], QueryPack] | None = None,
-) -> HybridRetrievalResult:
-    retrieval_options = options or HybridRetrievalOptions()
-    all_chunks = filter_indexable_chunks(store.list_chunks())
+) -> tuple[Language, Language, bool, str, str]:
+    """Detect query/document languages and rewrite query if they differ."""
     query_language = detect_language(query).language
     document_language = infer_document_language(all_chunks)
 
@@ -94,38 +91,79 @@ def retrieve_hybrid_context(
         dense_query = pack.retrieval_query
         bm25_query = " ".join([pack.translated_query, *pack.keywords]).strip()
 
+    return query_language, document_language, used_query_pack, dense_query, bm25_query
+
+
+def _hybrid_search(
+    store: AbstractVectorStore,
+    dense_query: str,
+    bm25_query: str,
+    all_chunks: list[Chunk],
+    options: HybridRetrievalOptions,
+) -> tuple[list[Chunk], list[RetrievalHit], bool]:
+    """Execute dense + BM25 hybrid search and fuse via RRF."""
     bm25 = _get_bm25_retriever(all_chunks)
     bm25_hits = [
         RetrievalHit(chunk=hit.chunk, score=hit.score, rank=hit.rank)
-        for hit in bm25.search(bm25_query, k=retrieval_options.bm25_top_k)
+        for hit in bm25.search(bm25_query, k=options.bm25_top_k)
     ]
-    if retrieval_options.dense_top_k > 0:
+    if options.dense_top_k > 0:
         dense_hits, dense_used_ranked_hits = _collect_dense_hits(
             store,
             dense_query,
-            retrieval_options.dense_top_k,
+            options.dense_top_k,
         )
     else:
         dense_hits, dense_used_ranked_hits = [], False
     ranked_candidates = reciprocal_rank_fusion(
         {"bm25": bm25_hits, "dense": dense_hits},
-        top_k=retrieval_options.seed_top_k,
-        rrf_k=retrieval_options.rrf_k,
+        top_k=options.seed_top_k,
+        rrf_k=options.rrf_k,
     )
     ranked_chunks = [candidate.chunk for candidate in ranked_candidates]
+    return ranked_chunks, ranked_candidates, dense_used_ranked_hits
 
-    if retrieval_options.enable_reranker and retrieval_options.rerank_top_k > 0:
+
+def _rerank_if_needed(
+    query: str,
+    ranked_chunks: list[Chunk],
+    options: HybridRetrievalOptions,
+) -> list[Chunk]:
+    """Apply cross-encoder reranker if enabled and available."""
+    if options.enable_reranker and options.rerank_top_k > 0:
         from backend.rag.retrieval import reranker as _reranker_mod
         reranker = _reranker_mod.get_reranker()
         if reranker is not None:
             rerank_start = time.monotonic()
-            reranked = reranker.rerank(dense_query, ranked_chunks, top_k=retrieval_options.rerank_top_k)
+            reranked = reranker.rerank(query, ranked_chunks, top_k=options.rerank_top_k)
             if reranked:
                 logger.info(
                     "Reranked %d chunks to %d elapsed=%.2fs",
                     len(ranked_chunks), len(reranked), time.monotonic() - rerank_start,
                 )
                 ranked_chunks = reranked
+    return ranked_chunks
+
+
+def retrieve_hybrid_context(
+    store: AbstractVectorStore,
+    query: str,
+    *,
+    options: HybridRetrievalOptions | None = None,
+    query_pack_factory: Callable[[str, str, str], QueryPack] | None = None,
+) -> HybridRetrievalResult:
+    retrieval_options = options or HybridRetrievalOptions()
+    all_chunks = filter_indexable_chunks(store.list_chunks())
+
+    query_language, document_language, used_query_pack, dense_query, bm25_query = _detect_and_rewrite(
+        query, all_chunks, query_pack_factory,
+    )
+
+    ranked_chunks, ranked_candidates, dense_used_ranked_hits = _hybrid_search(
+        store, dense_query, bm25_query, all_chunks, retrieval_options,
+    )
+
+    ranked_chunks = _rerank_if_needed(dense_query, ranked_chunks, retrieval_options)
 
     prompt_chunks, expansion_debug = _expand_prompt_chunks(
         ranked_chunks,

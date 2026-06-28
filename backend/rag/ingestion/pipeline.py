@@ -20,12 +20,6 @@ from backend.rag.ingestion.text_pdf_backend import TextPDFBackend
 logger = logging.getLogger(__name__)
 
 
-def _safe_paper_id(paper_id: str) -> str:
-    """Sanitize paper_id to avoid filesystem issues (Windows reserved chars, etc.)."""
-    cleaned = re.sub(r'[<>:"/\\|?*]', "_", paper_id)
-    return cleaned or "_"
-
-
 def _resolve_parser_chain() -> list[ParserBackend]:
     """Build fallback chain: MinerU API (if configured) → local MinerU → TextPDF."""
     backends: list[ParserBackend] = [MinerUBackend(), TextPDFBackend()]
@@ -45,41 +39,35 @@ class IngestionResult(BaseModel):
     chunks: list[Chunk]
 
 
-def process_pdf(pdf_bytes: bytes, paper_id: str) -> list[Chunk]:
-    return process_pdf_document(
-        pdf_bytes=pdf_bytes,
-        paper_id=paper_id,
-        filename=f"{paper_id}.pdf",
-    ).chunks
-
-
-def process_pdf_document(
+def _try_parsers(
+    backends: list[ParserBackend],
     pdf_bytes: bytes,
-    paper_id: str,
     filename: str,
-    parser_backend: ParserBackend | None = None,
-) -> IngestionResult:
-    if parser_backend is not None:
-        backends = [parser_backend]
-    else:
-        backends = _resolve_parser_chain()
-
+) -> tuple[RawParserResult, ParserBackend]:
+    """Try each parser backend sequentially, returning the first success."""
     first_error: Exception | None = None
     for backend in backends:
         logger.info("Trying parser backend: %s", backend.name)
         try:
             raw: RawParserResult = backend.parse(pdf_bytes, filename=filename)
             logger.info("Parser backend succeeded: %s", backend.name)
-            break
+            return raw, backend
         except Exception as exc:
             logger.warning("Parser backend %s failed: %s", backend.name, exc)
             if first_error is None:
                 first_error = exc
             continue
-    else:
-        msg = str(first_error) if first_error else "all parsers failed"
-        raise PaperParseError(f"Failed to parse PDF: {msg}") from first_error
+    msg = str(first_error) if first_error else "all parsers failed"
+    raise PaperParseError(f"Failed to parse PDF: {msg}") from first_error
 
+
+def _process_parsed_result(
+    raw: RawParserResult,
+    backend: ParserBackend,
+    paper_id: str,
+    filename: str,
+) -> IngestionResult:
+    """Normalize parser output, build chunks, and return IngestionResult."""
     document_ir = normalize_parser_output(
         raw=raw,
         paper_id=paper_id,
@@ -124,3 +112,32 @@ def process_pdf_document(
         quality_report=document_ir.quality_report,
         chunks=chunks,
     )
+
+
+def process_pdf_document(
+    pdf_bytes: bytes,
+    paper_id: str,
+    filename: str,
+    parser_backend: ParserBackend | None = None,
+) -> IngestionResult:
+    if parser_backend is not None:
+        backends = [parser_backend]
+    else:
+        backends = _resolve_parser_chain()
+
+    raw, backend = _try_parsers(backends, pdf_bytes, filename)
+    return _process_parsed_result(raw, backend, paper_id, filename)
+
+
+def process_pdf(pdf_bytes: bytes, paper_id: str) -> list[Chunk]:
+    return process_pdf_document(
+        pdf_bytes=pdf_bytes,
+        paper_id=paper_id,
+        filename=f"{paper_id}.pdf",
+    ).chunks
+
+
+def _safe_paper_id(paper_id: str) -> str:
+    """Sanitize paper_id to avoid filesystem issues (Windows reserved chars, etc.)."""
+    cleaned = re.sub(r'[<>:"/\\|?*]', "_", paper_id)
+    return cleaned or "_"

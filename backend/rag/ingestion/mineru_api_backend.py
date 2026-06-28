@@ -150,8 +150,8 @@ class MinerUApiBackend:
                     size = page_info.get("page_size")
                     if idx is not None and isinstance(size, (list, tuple)) and len(size) >= 2:
                         page_sizes[int(idx)] = (float(size[0]), float(size[1]))
-            except Exception:
-                pass
+            except (json.JSONDecodeError, KeyError, TypeError) as exc:
+                logger.warning("Failed to parse layout.json: %s", exc)
 
         # 1. Prefer content_list_v2.json (page-grouped format)
         cl_v2_name = next((n for n in names if "content_list_v2.json" in n), None)
@@ -159,8 +159,8 @@ class MinerUApiBackend:
             try:
                 data = json.loads(zf.read(cl_v2_name))
                 return self._map_pages_from_cl_v2(data, page_sizes)
-            except Exception:
-                logger.warning("Failed to parse %s, falling back", cl_v2_name)
+            except (json.JSONDecodeError, KeyError, TypeError) as exc:
+                logger.warning("Failed to parse %s, falling back: %s", cl_v2_name, exc)
 
         # 2. Fall back to content_list.json (flat format)
         cl_v1_name = next((n for n in names if "content_list.json" in n and "v2" not in n), None)
@@ -168,16 +168,16 @@ class MinerUApiBackend:
             try:
                 data = json.loads(zf.read(cl_v1_name))
                 return self._map_pages_from_cl_v1(data, page_sizes)
-            except Exception:
-                logger.warning("Failed to parse %s, falling back", cl_v1_name)
+            except (json.JSONDecodeError, KeyError, TypeError) as exc:
+                logger.warning("Failed to parse %s, falling back: %s", cl_v1_name, exc)
 
         # 3. Fall back to content.json (legacy local MinerU format)
         if "content.json" in names:
             try:
                 content = json.loads(zf.read("content.json"))
                 return self._map_pages(content, page_sizes)
-            except Exception:
-                logger.warning("Failed to parse content.json")
+            except (json.JSONDecodeError, KeyError, TypeError) as exc:
+                logger.warning("Failed to parse content.json: %s", exc)
 
         logger.warning("No parseable content file found in result ZIP")
         return []

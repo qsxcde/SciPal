@@ -86,7 +86,7 @@ class InProcessJobRunner:
         session_lock = self._session_locks.setdefault(job["session_id"], threading.Lock())
         with session_lock:
             try:
-                self._run_ingestion_job(job)
+                self._execute_ingestion_job(job)
             except Exception as exc:
                 logger.exception(
                     "Failed ingestion job %s for session %s document %s",
@@ -103,7 +103,7 @@ class InProcessJobRunner:
                     job.get("document_id"),
                 )
 
-    def _run_ingestion_job(self, job: dict) -> None:
+    def _execute_ingestion_job(self, job: dict) -> None:
         if job["type"] != "document_ingestion":
             raise RuntimeError(f"Unsupported job type: {job['type']}")
         if job["stage"] != DocumentStage.uploaded:

@@ -1,0 +1,22 @@
+"""PDF ingestion pipeline: parsing, chunking, metadata extraction, and quality reporting."""
+__all__ = [
+    "artifacts",
+    "block_classifier",
+    "chunking",
+    "document_ir",
+    "exporters",
+    "linker",
+    "metadata",
+    "mineru_api_backend",
+    "mineru_backend",
+    "normalizer",
+    "parser",
+    "parser_backend",
+    "pipeline",
+    "quality",
+    "quality_reporter",
+    "reading_order",
+    "section_builder",
+    "structure",
+    "text_pdf_backend",
+]

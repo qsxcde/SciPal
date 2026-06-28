@@ -7,6 +7,7 @@ from backend.app.services.index_service import build_candidate_snapshot
 from backend.app.services.index_service import cleanup_snapshot_files
 from backend.app.services.index_service import commit_ready_snapshot
 from backend.domain.exceptions import PaperParseError
+from backend.domain.exceptions import SnapshotCommitError
 from backend.domain.states import DocumentStage
 from backend.rag.ingestion.artifacts import save_ingestion_artifacts
 from backend.rag.ingestion.metadata import Chunk
@@ -34,7 +35,7 @@ def run_document_ingestion_job(
             "snapshot": snapshot,
             "chunk_count": len(chunks),
         }
-    except Exception as exc:
+    except SnapshotCommitError as exc:
         logger.exception(
             "Document ingestion failed session_id=%s document_id=%s",
             session_id,
@@ -43,10 +44,18 @@ def run_document_ingestion_job(
         _mark_failed(
             document_id,
             session_id,
-            getattr(exc, "candidate_snapshot", snapshot),
+            exc.candidate_snapshot,
             exc,
-            preserve_candidate_snapshot_files=getattr(exc, "preserve_candidate_snapshot_files", False),
+            preserve_candidate_snapshot_files=exc.preserve_candidate_snapshot_files,
         )
+        raise
+    except Exception as exc:
+        logger.exception(
+            "Document ingestion failed session_id=%s document_id=%s",
+            session_id,
+            document_id,
+        )
+        _mark_failed(document_id, session_id, snapshot, exc)
         raise
 
 
