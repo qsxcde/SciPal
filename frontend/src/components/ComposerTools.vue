@@ -67,13 +67,13 @@ const moreButtonClass = computed(() => ({
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .composer-tools__group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .composer-tools__button {
@@ -91,9 +91,15 @@ const moreButtonClass = computed(() => ({
 .composer-tools__hint {
   overflow: hidden;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .composer-tools__hint {
+    display: none;
+  }
 }
 
 @media (max-width: 760px) {

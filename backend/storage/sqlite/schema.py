@@ -2,7 +2,7 @@ import threading
 
 from backend.storage.sqlite.connection import connect
 
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 _init_lock = threading.RLock()
 
@@ -43,6 +43,21 @@ def _migrate_schema(conn, from_version: int) -> None:
         )
     if from_version < 4:
         _migrate_add_cascade_delete(conn)
+    if from_version < 5:
+        _migrate_add_users_table(conn)
+
+
+def _migrate_add_users_table(conn) -> None:
+    """Add users table for JWT auth (v5)."""
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            hashed_password TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+    """)
 
 
 def _migrate_add_cascade_delete(conn) -> None:
@@ -264,6 +279,14 @@ def _create_initial_schema(conn) -> None:
           error_message TEXT NULL,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            hashed_password TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
         );
         """
     )

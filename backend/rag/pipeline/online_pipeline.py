@@ -61,6 +61,10 @@ class RetrievalOptions(BaseModel):
     rrf_k: int = 60
     enable_reranker: bool = True
     rerank_top_k: int = 8
+    # Query rewrite enhancement
+    history_rewrite_enabled: bool = True
+    history_rewrite_max_rounds: int = 4
+    term_expand_enabled: bool = True
 
 
 class RetrievalDiagnostics(BaseModel):
@@ -77,27 +81,31 @@ def retrieve_context(
     k: int | None = None,
     options: RetrievalOptions | None = None,
     include_diagnostics: bool = False,
+    history: list[dict] | None = None,
 ) -> tuple[list[Chunk], list[SourceRef]] | tuple[list[Chunk], list[SourceRef], RetrievalDiagnostics]:
     # Backward compatibility: k is deprecated, prefer dense_top_k
     effective_top_k = dense_top_k if dense_top_k is not None else k
     retrieval_options = options or RetrievalOptions()
     if retrieval_options.strategy in {"bm25", "hybrid"}:
-        hybrid_result = retrieve_hybrid_context(
-            store,
-            query,
-            options=HybridRetrievalOptions(
-                bm25_top_k=retrieval_options.bm25_top_k,
-                dense_top_k=0 if retrieval_options.strategy == "bm25" else retrieval_options.dense_top_k,
-                seed_top_k=retrieval_options.seed_top_k,
-                max_expanded_chunks=retrieval_options.max_expanded_chunks,
-                same_section_window=retrieval_options.same_section_window,
-                adjacent_window=retrieval_options.adjacent_window,
-                include_linked_blocks=retrieval_options.include_linked_blocks,
-                rrf_k=retrieval_options.rrf_k,
-                enable_reranker=retrieval_options.enable_reranker,
-                rerank_top_k=retrieval_options.rerank_top_k,
-            ),
+        hybrid_opts = HybridRetrievalOptions(
+            bm25_top_k=retrieval_options.bm25_top_k,
+            dense_top_k=0 if retrieval_options.strategy == "bm25" else retrieval_options.dense_top_k,
+            seed_top_k=retrieval_options.seed_top_k,
+            max_expanded_chunks=retrieval_options.max_expanded_chunks,
+            same_section_window=retrieval_options.same_section_window,
+            adjacent_window=retrieval_options.adjacent_window,
+            include_linked_blocks=retrieval_options.include_linked_blocks,
+            rrf_k=retrieval_options.rrf_k,
+            enable_reranker=retrieval_options.enable_reranker,
+            rerank_top_k=retrieval_options.rerank_top_k,
+            history_rewrite_enabled=retrieval_options.history_rewrite_enabled,
+            history_rewrite_max_rounds=retrieval_options.history_rewrite_max_rounds,
+            term_expand_enabled=retrieval_options.term_expand_enabled,
         )
+        try:
+            hybrid_result = retrieve_hybrid_context(store, query, options=hybrid_opts, history=history)
+        except TypeError:
+            hybrid_result = retrieve_hybrid_context(store, query, options=hybrid_opts)
         sources = build_sources(hybrid_result.prompt_chunks)
         diagnostics = RetrievalDiagnostics(
             ranked_chunks=hybrid_result.ranked_chunks,
@@ -129,8 +137,9 @@ def stream_answer(
     store: AbstractVectorStore,
     query: str,
     options: RetrievalOptions | None = None,
+    history: list[dict] | None = None,
 ) -> Generator[StreamAnswerEvent, None, None]:
-    chunks, sources = retrieve_context(store, query, options=options)
+    chunks, sources = retrieve_context(store, query, options=options, history=history)
     if not chunks:
         yield {"type": "token", "value": settings.msg_empty_retrieval}
         yield {"type": "sources", "value": []}

@@ -1,7 +1,8 @@
 from typing import Literal
 
 from pydantic import BaseModel
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File
+from backend.app.core.auth import get_current_user
 from backend.app.services.document_service import intake_document_upload
 
 router = APIRouter()
@@ -19,6 +20,7 @@ class DocumentIntakeResponse(BaseModel):
 def upload_document(
     session_id: str,
     file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
 ) -> DocumentIntakeResponse:
     pdf_bytes = file.file.read()
     intake = intake_document_upload(

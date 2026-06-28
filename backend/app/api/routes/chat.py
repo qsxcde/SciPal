@@ -1,8 +1,9 @@
 import asyncio
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from backend.app.core.auth import get_current_user
 from backend.app.services.chat_service import stream_session_chat
 from backend.app.schemas.api import (
     ChatMessage,
@@ -26,6 +27,7 @@ def encode_sse_event(payload: ChatStreamEvent) -> str:
 async def chat(
     session_id: str,
     message: ChatMessage,
+    user: dict = Depends(get_current_user),
 ) -> StreamingResponse:
     events = stream_session_chat(session_id=session_id, content=message.content)
 

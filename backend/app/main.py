@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.api.routes import auth
 from backend.app.api.routes import chat
 from backend.app.api.routes import documents
 from backend.app.api.routes import sessions
@@ -52,6 +53,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(sessions.router)
 app.include_router(documents.router)
 app.include_router(chat.router)

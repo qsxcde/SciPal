@@ -74,6 +74,17 @@ class RuntimeSettings(BaseSettings):
     embedding_remote_base_url: str = "https://api.siliconflow.cn/v1"
     # CORS
     cors_origin_regex: str = r"http://(localhost|127\.0\.0\.1):\d+"
+    # Query rewrite enhancement
+    history_rewrite_enabled: bool = True
+    history_rewrite_max_rounds: int = 4
+    history_rewrite_min_query_length: int = 3
+    term_expand_enabled: bool = True
+    term_expand_glossary_path: str = "backend/data/term_glossary.json"
+    term_expand_llm_fallback: bool = True
+    # Auth
+    jwt_secret_key: str = ""
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 10080
     # User-facing messages
     msg_index_not_ready: str = "论文仍在处理中，请稍后重试。"
     msg_empty_retrieval: str = "未在当前检索结果中找到可支持该问题的论文依据。"

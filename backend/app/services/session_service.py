@@ -13,8 +13,8 @@ from backend.storage.vector_db import registry as index_registry
 from backend.storage.paths import remove_session_dir
 
 
-def create_session() -> str:
-    session = sessions.create_session(title=settings.msg_default_session_title)
+def create_session(user_id: str | None = None) -> str:
+    session = sessions.create_session(title=settings.msg_default_session_title, user_id=user_id)
     return session["id"]
 
 

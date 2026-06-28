@@ -163,7 +163,7 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  padding: 10px 0 26px;
+  padding: clamp(18px, 2.6vh, 28px) 0 clamp(16px, 2vh, 22px);
   overflow: hidden;
 }
 
@@ -187,7 +187,7 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
 .welcome-panel h3 {
   max-width: 580px;
   color: var(--color-text);
-  font-size: clamp(28px, 4vw, 34px);
+  font-size: clamp(24px, 3.2vw, 30px);
   font-weight: 900;
   line-height: 1.1;
   letter-spacing: -0.03em;
@@ -197,7 +197,7 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
   max-width: 520px;
   margin-top: 10px;
   color: var(--color-text-soft);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .welcome-panel__demo { margin-top: 18px; color: var(--color-text-soft); }
@@ -205,20 +205,20 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
   display: grid;
   width: 100%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 34px;
+  gap: 10px;
+  margin-top: 28px;
 }
 
 .prompt-card {
   justify-content: flex-start;
-  min-height: 62px;
-  padding: 14px;
+  min-height: 54px;
+  padding: 12px;
   color: var(--color-text);
   line-height: 1.45;
   white-space: normal;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 18px;
+  border-radius: 15px;
 }
 
 .message-scroll { min-height: 0; height: 100%; }
@@ -228,11 +228,13 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
 }
 .message-list {
   display: flex;
+  width: min(100%, 1080px);
   min-height: 0;
   flex: 1;
   flex-direction: column;
   gap: 18px;
-  padding: 4px 0 20px;
+  margin: 0 auto;
+  padding: 3px 0 16px;
 }
 
 .scroll-bottom-button.el-button {
@@ -244,5 +246,28 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
 @media (max-width: 760px) {
   .prompt-grid { grid-template-columns: 1fr; }
   .scroll-bottom-button.el-button { right: 12px; bottom: 12px; }
+}
+
+@media (max-width: 1200px) {
+  .message-list {
+    width: min(100%, 900px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .message-list {
+    gap: 14px;
+  }
+}
+
+@media (max-height: 820px) {
+  .conversation-pane {
+    padding-top: 14px;
+    padding-bottom: 12px;
+  }
+
+  .message-list {
+    gap: 12px;
+  }
 }
 </style>

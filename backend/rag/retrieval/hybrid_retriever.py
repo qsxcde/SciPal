@@ -15,6 +15,8 @@ from backend.rag.retrieval.filters import filter_indexable_chunks
 from backend.rag.retrieval.fusion import RetrievalHit, reciprocal_rank_fusion
 from backend.rag.retrieval.language import Language, detect_language, infer_document_language
 from backend.rag.retrieval.query_rewriter import QueryPack, generate_query_pack
+from backend.rag.retrieval.history_rewriter import history_aware_rewrite
+from backend.rag.retrieval.term_expander import term_expand, load_glossary as load_term_glossary
 
 logger = logging.getLogger(__name__)
 _bm25_cache: tuple[str, BM25Retriever] | None = None
@@ -54,6 +56,10 @@ class HybridRetrievalOptions:
     rrf_k: int = 60
     enable_reranker: bool = True
     rerank_top_k: int = 8
+    # Query rewrite enhancement
+    history_rewrite_enabled: bool = True
+    history_rewrite_max_rounds: int = 4
+    term_expand_enabled: bool = True
 
 
 @dataclass(frozen=True)
@@ -62,6 +68,9 @@ class RetrievalRoute:
     document_language: Language
     used_query_pack: bool
     dense_used_ranked_hits: bool
+    used_history_rewrite: bool = False
+    used_term_expand: bool = False
+    term_expand_source: str | None = None
 
 
 @dataclass(frozen=True)
@@ -151,13 +160,48 @@ def retrieve_hybrid_context(
     *,
     options: HybridRetrievalOptions | None = None,
     query_pack_factory: Callable[[str, str, str], QueryPack] | None = None,
+    history: list[dict] | None = None,
 ) -> HybridRetrievalResult:
     retrieval_options = options or HybridRetrievalOptions()
     all_chunks = filter_indexable_chunks(store.list_chunks())
 
+    used_history_rewrite = False
+    used_term_expand = False
+    term_expand_source: str | None = None
+    extra_keywords: list[str] = []
+
+    # Step 1: Multi-turn history context completion
+    if retrieval_options.history_rewrite_enabled and history:
+        rewritten = history_aware_rewrite(
+            query,
+            history,
+            max_rounds=retrieval_options.history_rewrite_max_rounds,
+        )
+        if rewritten != query:
+            logger.info("History rewrite: %r -> %r", query, rewritten)
+            query = rewritten
+            used_history_rewrite = True
+
+    # Step 2: Academic term expansion
+    if retrieval_options.term_expand_enabled:
+        glossary = load_term_glossary()
+        _, extra_keywords, term_expand_source = term_expand(query, glossary)
+        if extra_keywords:
+            used_term_expand = True
+
+    # Step 3: Cross-lingual query rewrite (existing)
     query_language, document_language, used_query_pack, dense_query, bm25_query = _detect_and_rewrite(
         query, all_chunks, query_pack_factory,
     )
+
+    # Merge term expansion keywords into both query streams
+    if extra_keywords:
+        kw_str = " ".join(extra_keywords)
+        if used_query_pack:
+            bm25_query = bm25_query + " " + kw_str
+        else:
+            dense_query = query
+            bm25_query = query + " " + kw_str
 
     ranked_chunks, ranked_candidates, dense_used_ranked_hits = _hybrid_search(
         store, dense_query, bm25_query, all_chunks, retrieval_options,
@@ -180,6 +224,9 @@ def retrieve_hybrid_context(
             document_language=document_language,
             used_query_pack=used_query_pack,
             dense_used_ranked_hits=dense_used_ranked_hits,
+            used_history_rewrite=used_history_rewrite,
+            used_term_expand=used_term_expand,
+            term_expand_source=term_expand_source,
         ),
         ranked_chunks=ranked_chunks,
         prompt_chunks=prompt_chunks,

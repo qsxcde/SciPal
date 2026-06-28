@@ -41,6 +41,9 @@ def production_retrieval_options() -> RetrievalOptions:
         include_linked_blocks=settings.include_linked_blocks,
         enable_reranker=settings.reranker_enabled,
         rerank_top_k=settings.rerank_top_k,
+        history_rewrite_enabled=settings.history_rewrite_enabled,
+        history_rewrite_max_rounds=settings.history_rewrite_max_rounds,
+        term_expand_enabled=settings.term_expand_enabled,
     )
 
 
@@ -152,6 +155,8 @@ async def stream_session_chat(
         for status_event in pending_status_events:
             yield status_event
 
+        # Load message history before persisting current message
+        history = await _to_thread(message_repo.list_messages, session_id)
         await _persist_and_touch(session_id, "user", content)
 
         yield ChatStreamStatusEvent(type="status", value="retrieving")
@@ -159,6 +164,7 @@ async def stream_session_chat(
         try:
             stream = chat_pipeline.stream_answer(
                 store, content, options=production_retrieval_options(),
+                history=history,
             )
         except TypeError:
             stream = chat_pipeline.stream_answer(store, content)

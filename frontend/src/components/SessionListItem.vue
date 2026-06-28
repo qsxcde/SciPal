@@ -100,8 +100,8 @@ function handleRename(): void {
   gap: 6px;
   width: 100%;
   color: var(--color-text);
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(217, 226, 238, 0.84);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
@@ -117,7 +117,8 @@ function handleRename(): void {
 
 .session-item--collapsed {
   justify-content: center;
-  padding: 4px 0;
+  width: 46px;
+  padding: 7px;
 }
 
 .session-item__main {
@@ -125,7 +126,7 @@ function handleRename(): void {
   min-width: 0;
   flex: 1;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   padding: 10px;
   color: inherit;
   text-align: left;
@@ -139,12 +140,15 @@ function handleRename(): void {
 
 .session-item__icon {
   display: grid;
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 34px;
   flex: 0 0 auto;
   place-items: center;
   color: var(--color-accent-strong);
-  font-size: 16px;
+  font-size: 14px;
+  background: var(--color-surface);
+  border: 1px solid rgba(71, 110, 230, 0.24);
+  border-radius: 9px;
 }
 
 .session-item__content {
@@ -157,7 +161,8 @@ function handleRename(): void {
 
 .session-item__title {
   overflow: hidden;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 780;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -182,5 +187,27 @@ function handleRename(): void {
   flex: 0 0 auto;
   margin-right: 4px;
   color: var(--color-text-soft);
+}
+
+@media (max-width: 1100px) {
+  .session-item,
+  .session-item--collapsed {
+    display: flex;
+    width: 46px;
+    justify-content: center;
+    padding: 7px;
+    border-radius: 12px;
+  }
+
+  .session-item__main {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .session-item__content,
+  .session-item__menu,
+  .session-item__pin {
+    display: none;
+  }
 }
 </style>

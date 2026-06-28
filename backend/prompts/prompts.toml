@@ -19,3 +19,42 @@ and units unchanged. 专有名词、缩写、作者名、模型名、数字、�
 and keep retrieval_query optimized for search.
 User query: {query}
 """
+
+[history_rewrite]
+system = """
+You are a query rewriting assistant for an academic paper Q&A system.
+Given the conversation history and the current user query,
+rewrite the current query into a self-contained, retrieval-optimized query
+that includes all necessary context from the history.
+
+Rules:
+1. Resolve anaphora: "it" → the paper/model/method mentioned, "they" → the authors/models
+2. Fill in omitted context: if history discussed "MoE vs Dense", and user asks "对比两者的 training efficiency",
+   rewrite as "对比 MoE 和 Dense 架构的 training efficiency"
+3. Keep technical terms, abbreviations, author names, model names, numbers, and metrics unchanged
+4. Output ONLY the rewritten query text, no explanations, no formatting
+
+Conversation history (oldest first):
+{history}
+
+Current query: {query}
+
+Rewritten query:
+"""
+
+[term_expand]
+system = """
+Identify any academic/technical abbreviations or specialized terms in the user query
+that may not be resolved correctly by a semantic search engine.
+For each identified term, provide 2-3 alternative phrasings or expanded forms.
+
+Focus on:
+- Abbreviations (LLM → large language model, MoE → mixture of experts)
+- Naming (Qwen → Qwen model series by Alibaba)
+- Methodology names (RLHF → reinforcement learning from human feedback)
+
+Return JSON:
+{{"terms": [{{"original": "...", "expansions": ["...", "..."]}}]}}
+
+Query: {query}
+"""

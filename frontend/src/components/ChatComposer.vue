@@ -113,15 +113,15 @@ function toggleMore(): void {
 <style scoped>
 .chat-composer {
   display: flex;
-  width: min(100%, 860px);
+  width: min(100%, 920px);
   min-height: 0;
   margin: 0 auto;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px;
-  background: var(--color-surface);
+  gap: 8px;
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.98);
   border: 1px solid var(--color-border-strong);
-  border-radius: 22px;
+  border-radius: 16px;
   box-shadow: var(--shadow-input);
 }
 
@@ -135,10 +135,11 @@ function toggleMore(): void {
 }
 
 .chat-composer__input :deep(.el-textarea__inner) {
-  min-height: 56px;
+  min-height: 48px;
   padding: 0;
   color: var(--color-text);
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.45;
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -152,24 +153,30 @@ function toggleMore(): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .chat-composer__send {
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   color: #ffffff;
-  background: linear-gradient(180deg, #7f99ee 0%, #6883df 100%);
+  background: linear-gradient(145deg, #5d80ee 0%, #2d55d1 100%);
   border-color: transparent;
-  box-shadow: 0 10px 22px rgba(104, 131, 223, 0.24);
+  box-shadow: 0 12px 25px rgba(71, 110, 230, 0.24);
+}
+
+@media (max-width: 1200px) {
+  .chat-composer {
+    width: min(100%, 820px);
+  }
 }
 
 @media (max-width: 760px) {
   .chat-composer {
     width: 100%;
-    padding: 12px;
-    border-radius: 18px;
+    padding: 10px;
+    border-radius: 15px;
   }
 
   .chat-composer__actions {
@@ -179,6 +186,16 @@ function toggleMore(): void {
 
   .chat-composer__send {
     align-self: flex-end;
+  }
+}
+
+@media (max-height: 820px) {
+  .chat-composer {
+    padding: 9px 10px;
+  }
+
+  .chat-composer__input :deep(.el-textarea__inner) {
+    min-height: 40px;
   }
 }
 </style>

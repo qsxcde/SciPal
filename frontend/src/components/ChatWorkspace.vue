@@ -72,7 +72,8 @@ function handleDraftUpdate(value: string): void {
   height: 100%;
   min-width: 0;
   flex-direction: column;
-  padding: 24px 34px;
+  padding: clamp(18px, 1.8vw, 24px) clamp(24px, 3.2vw, 48px)
+    clamp(20px, 2vw, 28px);
   overflow: hidden;
   background: var(--color-shell);
 }
@@ -84,11 +85,27 @@ function handleDraftUpdate(value: string): void {
   font-size: 13px;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1200px) {
   .chat-workspace {
-    padding: 18px;
+    padding-right: 24px;
+    padding-left: 24px;
   }
+}
 
+@media (max-width: 1100px) {
+  .chat-workspace {
+    padding: 16px 20px 20px;
+  }
+}
+
+@media (max-height: 820px) {
+  .chat-workspace {
+    padding-top: 16px;
+    padding-bottom: 18px;
+  }
+}
+
+@media (max-width: 760px) {
   .error-text {
     width: 100%;
   }

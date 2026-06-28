@@ -1,4 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const TOKEN_KEY = "scipal_token";
 
 type ApiErrorResponse = {
   detail?: string;
@@ -10,6 +11,23 @@ type RequestOptions = {
   method?: "DELETE" | "GET" | "PATCH" | "POST";
 };
 
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+function authHeaders(): HeadersInit {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function readError(res: Response, fallback: string): Promise<Error> {
   const err = (await res.json().catch(() => ({}))) as ApiErrorResponse;
   return new Error(err.detail ?? fallback);
@@ -20,7 +38,8 @@ async function requestJson<T>(
   fallback: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, options);
+  const headers = { ...authHeaders(), ...options.headers } as HeadersInit;
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!res.ok) {
     throw await readError(res, fallback);
   }
@@ -32,12 +51,41 @@ async function requestVoid(
   fallback: string,
   options: RequestOptions = {},
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}${path}`, options);
+  const headers = { ...authHeaders(), ...options.headers } as HeadersInit;
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!res.ok) {
     throw await readError(res, fallback);
   }
 }
 
+// Auth
+export async function register(
+  username: string,
+  password: string,
+): Promise<{ token: string; user: { id: string; username: string } }> {
+  return requestJson("/auth/register", "注册失败", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function login(
+  username: string,
+  password: string,
+): Promise<{ token: string; user: { id: string; username: string } }> {
+  return requestJson("/auth/login", "登录失败", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function getMe(): Promise<{ id: string; username: string }> {
+  return requestJson("/auth/me", "获取用户信息失败");
+}
+
+// Sessions
 export async function createSession(): Promise<string> {
   const data = await requestJson<{ session_id: string }>("/sessions", "创建会话失败", {
     method: "POST",
@@ -182,9 +230,14 @@ export async function* streamChat(
   content: string,
   signal?: AbortSignal,
 ): AsyncGenerator<MessageChunk> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const token = getToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   const res = await fetch(`${API_BASE}/sessions/${sessionId}/messages`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ content }),
     signal,
   });

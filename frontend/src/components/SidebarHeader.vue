@@ -57,14 +57,14 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .sidebar-header__brand {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
 }
 
 .sidebar-header__brand--collapsed {
@@ -73,14 +73,15 @@ defineEmits<{
 
 .sidebar-header__mark {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   place-items: center;
-  color: var(--color-sidebar);
-  font-size: 15px;
+  color: #ffffff;
+  font-size: 16px;
   font-weight: 900;
-  background: var(--color-accent);
-  border-radius: 12px;
+  background: linear-gradient(145deg, #5c7ff0 0%, #244dcc 100%);
+  border-radius: 11px;
+  box-shadow: 0 12px 24px rgba(71, 110, 230, 0.22);
 }
 
 .sidebar-header__copy {
@@ -89,21 +90,22 @@ defineEmits<{
 
 .sidebar-header__copy h1 {
   color: var(--color-text);
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 17px;
+  font-weight: 850;
   line-height: 1.1;
 }
 
 .sidebar-header__copy p {
-  margin-top: 2px;
+  margin-top: 3px;
   color: var(--color-text-soft);
   font-size: 11px;
+  font-weight: 650;
 }
 
 .sidebar-header__actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .sidebar-header__actions :deep(.el-button) {
@@ -112,5 +114,31 @@ defineEmits<{
 
 .sidebar-header__actions--collapsed {
   flex-direction: column;
+}
+
+@media (max-width: 1200px) {
+  .sidebar-header__copy h1 {
+    font-size: 16px;
+  }
+
+  .sidebar-header__actions {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .sidebar-header {
+    justify-content: center;
+  }
+
+  .sidebar-header__brand {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sidebar-header__copy,
+  .sidebar-header__actions {
+    display: none;
+  }
 }
 </style>

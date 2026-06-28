@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SciPal UI Prototype</title>
+    <style>
+      :root {
+        --ink: #172033;
+        --ink-2: #41506a;
+        --ink-3: #6d7890;
+        --line: #d8e0ea;
+        --line-2: #c7d3e2;
+        --paper: #fbfcfe;
+        --panel: #ffffff;
+        --mist: #edf3f8;
+        --mist-2: #f5f8fb;
+        --nav: #f8fafc;
+        --brand: #476ee6;
+        --brand-2: #2c55d2;
+        --aqua: #12a69a;
+        --aqua-soft: #e8f7f5;
+        --amber: #b7791f;
+        --amber-soft: #fff7e8;
+        --shadow: 0 18px 50px rgba(48, 68, 101, 0.1);
+        --soft-shadow: 0 10px 28px rgba(44, 73, 119, 0.08);
+        font-family:
+          Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", Arial,
+          sans-serif;
+        color: var(--ink);
+        background: #e9f0f7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body,
+      .canvas,
+      .app {
+        min-height: 100%;
+      }
+
+      html,
+      body {
+        width: 100%;
+        overflow: hidden;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          linear-gradient(120deg, rgba(71, 110, 230, 0.08), transparent 36%),
+          linear-gradient(180deg, #f7f9fc 0%, #eaf1f7 100%);
+      }
+
+      .canvas {
+        width: 100vw;
+        height: 100vh;
+        min-width: 680px;
+        min-height: 640px;
+        overflow: hidden;
+        background: #eef4f9;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: clamp(272px, 16.25vw, 312px) minmax(0, 1fr);
+        height: 100%;
+        border: 1px solid rgba(199, 211, 226, 0.9);
+        background: var(--mist);
+      }
+
+      .sidebar {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        padding: 22px 18px;
+        border-right: 1px solid var(--line);
+        background: rgba(248, 250, 252, 0.95);
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        place-items: center;
+        color: #ffffff;
+        font-size: 18px;
+        font-weight: 850;
+        background: linear-gradient(145deg, #5c7ff0 0%, #244dcc 100%);
+        border-radius: 12px;
+        box-shadow: 0 12px 24px rgba(71, 110, 230, 0.22);
+      }
+
+      .brand-copy h1 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 850;
+        line-height: 1.05;
+      }
+
+      .brand-copy p {
+        margin: 3px 0 0;
+        color: var(--ink-3);
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .icon-actions {
+        display: flex;
+        margin-left: auto;
+        gap: 8px;
+      }
+
+      .icon-btn {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        color: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: var(--panel);
+      }
+
+      .primary-action {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 46px;
+        margin-top: 24px;
+        padding: 0 15px;
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 750;
+        border: 1px solid var(--line-2);
+        border-radius: 13px;
+        background: #ffffff;
+        box-shadow: var(--soft-shadow);
+      }
+
+      .section-label {
+        margin: 24px 0 10px;
+        color: var(--ink-3);
+        font-size: 11px;
+        font-weight: 850;
+        letter-spacing: 0.1em;
+      }
+
+      .session-card {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr) 28px;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid #c9d6f4;
+        border-radius: 14px;
+        background: #eef3ff;
+      }
+
+      .doc-icon,
+      .mini-icon {
+        display: grid;
+        place-items: center;
+        color: var(--brand-2);
+        border: 1px solid rgba(71, 110, 230, 0.24);
+        background: #ffffff;
+      }
+
+      .doc-icon {
+        width: 34px;
+        height: 40px;
+        font-size: 11px;
+        font-weight: 850;
+        border-radius: 10px;
+      }
+
+      .session-card strong {
+        display: block;
+        overflow: hidden;
+        font-size: 14px;
+        font-weight: 780;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .session-card span {
+        display: block;
+        margin-top: 4px;
+        color: var(--ink-3);
+        font-size: 12px;
+      }
+
+      .more {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        color: var(--ink-3);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.78);
+      }
+
+      .side-spacer {
+        flex: 1;
+      }
+
+      .index-card {
+        margin-top: 20px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: #f1f6fb;
+      }
+
+      .index-card span {
+        display: block;
+        color: var(--ink-3);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .index-card strong {
+        display: block;
+        margin-top: 5px;
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .user-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 16px;
+        color: var(--ink-2);
+        font-size: 14px;
+      }
+
+      .logout {
+        margin-left: auto;
+        padding: 6px 10px;
+        border: 1px solid var(--line-2);
+        border-radius: 9px;
+        background: #ffffff;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        min-width: 0;
+        padding: clamp(20px, 2.1vw, 28px) clamp(28px, 4.2vw, 64px)
+          clamp(22px, 2.4vw, 32px);
+      }
+
+      .topbar {
+        display: flex;
+        width: min(100%, 1180px);
+        align-items: center;
+        gap: 14px;
+        margin: 0 auto;
+      }
+
+      .back {
+        display: grid;
+        width: 38px;
+        height: 38px;
+        place-items: center;
+        color: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #ffffff;
+      }
+
+      .title h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 850;
+        line-height: 1.1;
+      }
+
+      .title p {
+        margin: 5px 0 0;
+        color: var(--ink-3);
+        font-size: 13px;
+      }
+
+      .status-strip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+        padding: 8px 11px;
+        color: #0f766e;
+        font-size: 12px;
+        font-weight: 760;
+        border: 1px solid rgba(18, 166, 154, 0.24);
+        border-radius: 999px;
+        background: var(--aqua-soft);
+      }
+
+      .conversation {
+        display: flex;
+        min-height: 0;
+        flex-direction: column;
+        justify-content: center;
+        padding: clamp(22px, 3.2vh, 34px) 0 clamp(18px, 2.4vh, 26px);
+      }
+
+      .message-stack {
+        display: flex;
+        width: min(100%, 1180px);
+        margin: 0 auto;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .question {
+        align-self: flex-end;
+        max-width: 360px;
+        padding: 15px 20px;
+        color: var(--ink);
+        font-size: 15px;
+        font-weight: 650;
+        border: 1px solid #d4ddf4;
+        border-radius: 18px 18px 6px 18px;
+        background: #f3f6ff;
+      }
+
+      .assistant-row {
+        display: flex;
+        gap: 14px;
+        max-width: min(900px, calc(100% - 280px));
+      }
+
+      .avatar {
+        display: grid;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 auto;
+        place-items: center;
+        color: #ffffff;
+        font-weight: 850;
+        border-radius: 13px;
+        background: linear-gradient(145deg, #5d80ee, #2d55d1);
+        box-shadow: 0 14px 28px rgba(71, 110, 230, 0.2);
+      }
+
+      .answer-card {
+        padding: 24px 28px;
+        border: 1px solid var(--line-2);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: var(--shadow);
+      }
+
+      .answer-card p {
+        margin: 0;
+        color: #26334a;
+        font-size: 16px;
+        line-height: 1.72;
+      }
+
+      .answer-meta {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 15px;
+        color: var(--ink-3);
+        font-size: 12px;
+        font-weight: 760;
+      }
+
+      .answer-meta b {
+        color: var(--aqua);
+      }
+
+      .contribution-list {
+        display: grid;
+        gap: 11px;
+        margin: 18px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .contribution-list li {
+        display: grid;
+        grid-template-columns: 8px minmax(0, 1fr);
+        gap: 12px;
+        color: #29374f;
+        font-size: 15px;
+        line-height: 1.62;
+      }
+
+      .contribution-list li::before {
+        width: 8px;
+        height: 8px;
+        margin-top: 9px;
+        content: "";
+        border-radius: 999px;
+        background: var(--aqua);
+      }
+
+      .citation {
+        color: #52617c;
+        font-size: 13px;
+      }
+
+      .actions-row {
+        display: flex;
+        gap: 10px;
+        margin: 12px 0 0 54px;
+        color: var(--ink-3);
+        font-size: 13px;
+        font-weight: 720;
+      }
+
+      .composer {
+        width: min(100%, 1020px);
+        margin: 0 auto;
+        padding: 14px;
+        border: 1px solid var(--line-2);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 18px 42px rgba(47, 69, 103, 0.1);
+      }
+
+      .upload-chip {
+        display: inline-grid;
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: 11px;
+        align-items: center;
+        min-width: 315px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: var(--mist-2);
+      }
+
+      .mini-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 10px;
+        font-weight: 850;
+        border-radius: 9px;
+      }
+
+      .upload-chip strong {
+        display: block;
+        font-size: 13px;
+      }
+
+      .upload-chip span {
+        display: block;
+        margin-top: 3px;
+        color: var(--ink-3);
+        font-size: 12px;
+      }
+
+      .input-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-height: 58px;
+        padding-top: 8px;
+      }
+
+      .placeholder {
+        flex: 1;
+        color: #76849b;
+        font-size: 15px;
+      }
+
+      .toolset {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--ink-3);
+      }
+
+      .send {
+        display: grid;
+        width: 40px;
+        height: 40px;
+        place-items: center;
+        color: #ffffff;
+        border-radius: 999px;
+        background: linear-gradient(145deg, #5d80ee, #2d55d1);
+        box-shadow: 0 12px 25px rgba(71, 110, 230, 0.24);
+      }
+
+      .glyph {
+        width: 18px;
+        height: 18px;
+        stroke: currentColor;
+        stroke-width: 2;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      @media (max-width: 1280px) {
+        .app {
+          grid-template-columns: 248px minmax(0, 1fr);
+        }
+
+        .sidebar {
+          padding: 18px 14px;
+        }
+
+        .brand-copy h1 {
+          font-size: 18px;
+        }
+
+        .icon-actions {
+          gap: 6px;
+        }
+
+        .icon-btn {
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+        }
+
+        .workspace {
+          padding-right: 30px;
+          padding-left: 30px;
+        }
+
+        .topbar,
+        .message-stack {
+          width: min(100%, 960px);
+        }
+
+        .assistant-row {
+          max-width: min(850px, calc(100% - 120px));
+        }
+
+        .composer {
+          width: min(100%, 900px);
+        }
+
+        .answer-card {
+          padding: 22px 24px;
+        }
+      }
+
+      @media (max-width: 1100px) {
+        .app {
+          grid-template-columns: 86px minmax(0, 1fr);
+        }
+
+        .sidebar {
+          align-items: center;
+          gap: 14px;
+          padding: 16px 12px;
+        }
+
+        .brand-row {
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .brand-copy,
+        .icon-actions,
+        .primary-action,
+        .section-label,
+        .session-card div:nth-child(2),
+        .session-card .more,
+        .user-row span:first-child,
+        .logout {
+          display: none;
+        }
+
+        .session-card {
+          display: flex;
+          width: 52px;
+          justify-content: center;
+          padding: 8px;
+          border-radius: 14px;
+        }
+
+        .index-card {
+          width: 58px;
+          padding: 10px 8px;
+          text-align: center;
+        }
+
+        .index-card span {
+          font-size: 11px;
+        }
+
+        .index-card strong {
+          font-size: 22px;
+        }
+
+        .user-row {
+          margin-top: 0;
+        }
+
+        .workspace {
+          padding: 18px 22px 22px;
+        }
+
+        .title h2 {
+          max-width: 320px;
+          overflow: hidden;
+          font-size: 21px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .status-strip {
+          padding: 7px 9px;
+        }
+
+        .message-stack {
+          gap: 18px;
+        }
+
+        .question {
+          max-width: 320px;
+        }
+
+        .assistant-row {
+          max-width: 100%;
+        }
+
+        .answer-card p {
+          font-size: 15px;
+        }
+
+        .contribution-list li {
+          font-size: 14px;
+        }
+
+        .composer {
+          padding: 12px;
+        }
+
+        .upload-chip {
+          min-width: 260px;
+        }
+
+        .toolset span {
+          display: none;
+        }
+      }
+
+      @media (max-height: 820px) {
+        .workspace {
+          padding-top: 16px;
+          padding-bottom: 18px;
+        }
+
+        .conversation {
+          padding-top: 14px;
+          padding-bottom: 12px;
+        }
+
+        .message-stack {
+          gap: 14px;
+        }
+
+        .answer-card {
+          padding: 18px 22px;
+        }
+
+        .answer-card p {
+          line-height: 1.58;
+        }
+
+        .contribution-list {
+          gap: 7px;
+          margin-top: 12px;
+        }
+
+        .composer {
+          padding: 11px 12px;
+        }
+
+        .input-row {
+          min-height: 46px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="canvas">
+      <div class="app">
+        <aside class="sidebar">
+          <div class="brand-row">
+            <div class="brand-mark">S</div>
+            <div class="brand-copy">
+              <h1>SciPal</h1>
+              <p>论文智能助手</p>
+            </div>
+            <div class="icon-actions">
+              <div class="icon-btn">
+                <svg class="glyph" viewBox="0 0 24 24">
+                  <path d="M4 6h16M4 12h10M4 18h7" />
+                </svg>
+              </div>
+              <div class="icon-btn">
+                <svg class="glyph" viewBox="0 0 24 24">
+                  <path d="m12 20 7-7-8-8-7 7v8h8z" />
+                  <path d="M14 7l3 3" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="primary-action">
+            <svg class="glyph" viewBox="0 0 24 24">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            新对话 / 上传论文
+          </div>
+
+          <div class="section-label">最近会话</div>
+          <div class="session-card">
+            <div class="doc-icon">PDF</div>
+            <div>
+              <strong>2606.20518v1.pdf</strong>
+              <span>1 篇论文 · 0 条新消息</span>
+            </div>
+            <div class="more">•••</div>
+          </div>
+
+          <div class="section-label">工作区</div>
+          <div class="session-card" style="background:#fff;border-color:var(--line)">
+            <div class="doc-icon" style="color:#0f766e">RAG</div>
+            <div>
+              <strong>检索质量概览</strong>
+              <span>23 个片段已索引</span>
+            </div>
+            <div class="more">›</div>
+          </div>
+
+          <div class="side-spacer"></div>
+          <div class="index-card">
+            <span>已索引片段</span>
+            <strong>23</strong>
+          </div>
+          <div class="user-row">
+            <span>wangjie</span>
+            <span class="logout">退出</span>
+          </div>
+        </aside>
+
+        <section class="workspace">
+          <header class="topbar">
+            <div class="back">
+              <svg class="glyph" viewBox="0 0 24 24">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </div>
+            <div class="title">
+              <h2>2606.20518v1.pdf</h2>
+              <p>当前论文 · 结构化检索已完成</p>
+            </div>
+            <div class="status-strip">
+              <svg class="glyph" viewBox="0 0 24 24">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+              23 个片段可引用
+            </div>
+          </header>
+
+          <div class="conversation">
+            <div class="message-stack">
+              <div class="question">这篇论文提出了什么方法</div>
+
+              <div class="assistant-row">
+                <div class="avatar">S</div>
+                <article class="answer-card">
+                  <div class="answer-meta">
+                    <b>回答基于论文片段</b>
+                    <span>Abstract · Page 1-2 · 3 个引用</span>
+                  </div>
+                  <p>
+                    本文提出了 FlowEdit，一种面向已部署冻结流匹配文本转语音系统的终身自适应发音矫正框架。它不修改模型参数，而是在文本嵌入空间中优化 token 级扰动向量，将修正后的扰动作为“边角料”存入可寻址记忆，并在推理时检索匹配的矫正。
+                  </p>
+                  <ul class="contribution-list">
+                    <li>
+                      <span>
+                        潜在空间优化：用邻接灵敏度方法高效计算梯度，在约 15 秒内完成单 GPU 矫正。
+                        <span class="citation">[Abstract, Page 2, Chunk 8]</span>
+                      </span>
+                    </li>
+                    <li>
+                      <span>
+                        Hopfield Refiner 与门控检索：实现非破坏性、可长期积累的发音记忆。
+                        <span class="citation">[Abstract, Page 2, Chunk 13]</span>
+                      </span>
+                    </li>
+                    <li>
+                      <span>
+                        在 312 个多语种专有名词上，目标词音素错误率相对下降 92.7%，通用语音质量保持稳定。
+                        <span class="citation">[Abstract, Page 1, Chunk 0]</span>
+                      </span>
+                    </li>
+                  </ul>
+                </article>
+              </div>
+              <div class="actions-row">
+                <span>复制回答</span>
+                <span>查看引用</span>
+                <span>追问方法细节</span>
+              </div>
+            </div>
+          </div>
+
+          <footer class="composer">
+            <div class="upload-chip">
+              <div class="mini-icon">PDF</div>
+              <div>
+                <strong>2606.20518v1.pdf</strong>
+                <span>PDF · 1.19MB</span>
+              </div>
+            </div>
+            <div class="input-row">
+              <div class="toolset">
+                <svg class="glyph" viewBox="0 0 24 24">
+                  <path d="m21.4 11.6-8.8 8.8a5 5 0 0 1-7.1-7.1l9.2-9.2a3.3 3.3 0 0 1 4.7 4.7l-9.2 9.2a1.6 1.6 0 0 1-2.3-2.3l8.8-8.8" />
+                </svg>
+                <svg class="glyph" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" />
+                </svg>
+              </div>
+              <div class="placeholder">给 SciPal 发送消息，或继续追问这篇论文</div>
+              <div class="toolset">
+                <span>工具仅提供界面状态</span>
+                <span>•••</span>
+              </div>
+              <div class="send">
+                <svg class="glyph" viewBox="0 0 24 24">
+                  <path d="m22 2-7 20-4-9-9-4 20-7z" />
+                  <path d="M22 2 11 13" />
+                </svg>
+              </div>
+            </div>
+          </footer>
+        </section>
+
+      </div>
+    </main>
+  </body>
+</html>

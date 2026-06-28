@@ -57,20 +57,35 @@ def update_session_title(session_id: str, title: str) -> None:
         )
 
 
-def list_sessions() -> list[dict]:
+def list_sessions(user_id: str | None = None) -> list[dict]:
     with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-              s.*,
-              (SELECT COUNT(*) FROM documents WHERE session_id = s.id) AS document_count,
-              (SELECT COUNT(*) FROM messages WHERE session_id = s.id) AS message_count,
-              (SELECT COUNT(*) FROM chunks WHERE session_id = s.id) AS indexed_chunks
-            FROM sessions s
-            WHERE s.is_archived = 0
-            ORDER BY s.is_pinned DESC, s.updated_at DESC
-            """
-        ).fetchall()
+        if user_id:
+            rows = conn.execute(
+                """
+                SELECT
+                  s.*,
+                  (SELECT COUNT(*) FROM documents WHERE session_id = s.id) AS document_count,
+                  (SELECT COUNT(*) FROM messages WHERE session_id = s.id) AS message_count,
+                  (SELECT COUNT(*) FROM chunks WHERE session_id = s.id) AS indexed_chunks
+                FROM sessions s
+                WHERE s.is_archived = 0 AND s.user_id = ?
+                ORDER BY s.is_pinned DESC, s.updated_at DESC
+                """,
+                (user_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT
+                  s.*,
+                  (SELECT COUNT(*) FROM documents WHERE session_id = s.id) AS document_count,
+                  (SELECT COUNT(*) FROM messages WHERE session_id = s.id) AS message_count,
+                  (SELECT COUNT(*) FROM chunks WHERE session_id = s.id) AS indexed_chunks
+                FROM sessions s
+                WHERE s.is_archived = 0
+                ORDER BY s.is_pinned DESC, s.updated_at DESC
+                """
+            ).fetchall()
         return [dict(row) for row in rows]
 
 
