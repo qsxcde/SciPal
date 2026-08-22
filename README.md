@@ -122,12 +122,15 @@ MINERU_SHOW_DOWNLOAD_PROGRESS=false
 
 ### 3. 安装依赖
 
-后端：
+后端（使用 [uv](https://github.com/astral-sh/uv) 管理依赖，相关配置文件位于 `backend/` 下）：
 
 ```bash
-pip install -r backend/requirements.txt
-pip install -r backend/requirements-evals.txt
+# 安装 uv 后，在仓库根目录执行（--project 指向 backend，自动创建 backend/.venv 并安装依赖）
+uv sync --project backend --extra evals --extra dev
 ```
+
+> 说明：依赖与可选组（evals / dev）已在 `backend/pyproject.toml` 中声明，`backend/uv.lock` 锁定了精确版本。
+> 仅安装运行所需依赖时可省略 `--extra` 参数。
 
 前端：
 
@@ -138,10 +141,10 @@ npm install
 
 ### 4. 启动服务
 
-启动后端：
+启动后端（在仓库根目录下执行，通过 `--project backend` 使用其虚拟环境）：
 
 ```bash
-uvicorn backend.app.main:app --reload
+uv run --project backend uvicorn backend.app.main:app --reload
 ```
 
 启动前端：
@@ -166,10 +169,10 @@ npm run dev
 
 ## 开发与测试
 
-推荐先跑当前后端重构相关的 focused suite：
+推荐先跑当前后端重构相关的 focused suite（在仓库根目录下执行）：
 
 ```bash
-pytest tests/test_backend_state_models.py tests/test_document_intake_flow.py tests/test_index_commit_flow.py tests/test_chat_waiting_flow.py tests/test_job_recovery.py tests/test_backend_state_transitions.py tests/test_vector_store.py tests/test_chat_service.py -v
+uv run --project backend pytest tests/test_backend_state_models.py tests/test_document_intake_flow.py tests/test_index_commit_flow.py tests/test_chat_waiting_flow.py tests/test_job_recovery.py tests/test_backend_state_transitions.py tests/test_vector_store.py tests/test_chat_service.py -v
 ```
 
 ## 离线评测
@@ -179,7 +182,7 @@ pytest tests/test_backend_state_models.py tests/test_document_intake_flow.py tes
 如果你想从现有会话索引导出 bootstrap 评测草稿，可以运行：
 
 ```bash
-python -m backend.evals.cli generate-draft \
+uv run --project backend python -m backend.evals.cli generate-draft \
   --session-id session-example \
   --output data/evaluation/drafts/retrieval-v1-draft.jsonl \
   --max-samples 30
@@ -188,7 +191,7 @@ python -m backend.evals.cli generate-draft \
 运行正式评测：
 
 ```bash
-python -m backend.evals.cli run \
+uv run --project backend python -m backend.evals.cli run \
   --dataset data/evaluation/reviewed/retrieval-v1.jsonl \
   --session-id session-example \
   --config-set retrieval-v1 \
@@ -199,7 +202,7 @@ python -m backend.evals.cli run \
 上述命令默认只执行离线检索评测，不会触发实时 DeepSeek 生成或 RAGAS 调用。需要显式开启时使用：
 
 ```bash
-python -m backend.evals.cli run \
+uv run --project backend python -m backend.evals.cli run \
   --dataset data/evaluation/reviewed/retrieval-v1.jsonl \
   --session-id session-example \
   --config-set retrieval-v1 \

@@ -1,6 +1,8 @@
 .DS_Store
 __pycache__/
 *.pyc
+.venv/
+.uv/
 .env
 data/
 backend/data/

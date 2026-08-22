@@ -1,0 +1,50 @@
+[project]
+name = "scipal-backend"
+version = "0.1.0"
+description = "SciPal：面向学术论文阅读场景的 RAG 问答系统（后端）"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "fastapi>=0.115.0,<1.0.0",
+    "uvicorn[standard]>=0.32.0,<1.0.0",
+    "pymupdf4llm>=0.1.0,<1.0.0",
+    "faiss-cpu>=1.9.0,<2.0.0",
+    "numpy>=1.26.0,<2.0.0",
+    "openai>=1.55.0,<2.0.0",
+    "httpx>=0.27.0,<1.0.0",
+    "python-multipart>=0.0.18,<1.0.0",
+    "pydantic>=2.10.0,<3.0.0",
+    "pydantic-settings>=2.6.0,<3.0.0",
+    "sentence-transformers>=3.3.0,<4.0.0",
+    "modelscope>=1.20.0,<2.0.0",
+    "transformers>=4.45.0",
+    "pypdf>=5.1.0,<6.0.0",
+    "mineru>=2.0.0",
+    "python-jose[cryptography]>=3.3.0,<4.0.0",
+    "bcrypt>=4.0.0,<6.0.0",
+]
+
+[project.optional-dependencies]
+# 离线评测相关依赖（ragas / langchain）
+evals = [
+    "ragas>=0.2.0,<1.0.0",
+    "langchain>=0.3.0,<1.0.0",
+    "langchain-openai>=0.2.0,<1.0.0",
+]
+# 开发 / 测试相关依赖
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.6.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.pytest.ini_options]
+# backend 包位于项目根（SciPal/），从仓库根以 --project backend 运行时可直接 import backend.*
+testpaths = ["tests"]
+asyncio_mode = "auto"
