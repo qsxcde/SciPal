@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from backend.evals.models import EvalSample, EvalSampleResult, RunMetadata
+from scipal_eval.models import EvalSample, EvalSampleResult, RunMetadata
 
 
 def write_run_outputs(

@@ -1,8 +1,8 @@
 from collections.abc import Callable
 from typing import Protocol
 
-from backend.evals.metrics import calculate_retrieval_metrics
-from backend.evals.models import EvalSample, EvalSampleResult, RetrievalConfig
+from scipal_eval.metrics import calculate_retrieval_metrics
+from scipal_eval.models import EvalSample, EvalSampleResult, RetrievalConfig
 
 
 class ChunkMetadataLike(Protocol):

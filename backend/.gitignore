@@ -1,0 +1,19 @@
+# 后端子项目专属忽略规则（叠加根 .gitignore）
+
+# 放行位于 src 布局下的测试目录（根 .gitignore 的 tests/ 会误伤 src/backend/tests/）
+!src/backend/tests/
+!src/backend/tests/**
+
+# Python 工具缓存（类型检查 / 格式化 / 覆盖率）
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+.pyre/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+
+# uv 本地缓存兜底
+.uv/
+uv.cache/

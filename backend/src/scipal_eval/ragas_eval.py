@@ -1,4 +1,4 @@
-from backend.evals.models import EvalSample, EvalSampleResult
+from scipal_eval.models import EvalSample, EvalSampleResult
 
 
 def build_single_turn_samples(

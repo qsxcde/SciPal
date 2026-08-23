@@ -4,9 +4,9 @@ import os
 from langchain_openai import ChatOpenAI
 
 from backend.domain.config import settings
-from backend.evals.models import EvalSample
-from backend.evals.models import EvalSampleResult
-from backend.evals.models import JudgeMetricBundle
+from scipal_eval.models import EvalSample
+from scipal_eval.models import EvalSampleResult
+from scipal_eval.models import JudgeMetricBundle
 
 
 def build_judge_client(judge_model: str = "deepseek-v4-pro") -> ChatOpenAI:

@@ -5,13 +5,13 @@ from typing import TypeVar
 from langchain_openai import ChatOpenAI
 
 from backend.domain.config import settings
-from backend.evals.models import (
+from scipal_eval.models import (
   EvalSample,
   EvalSampleResult,
   RagasMetricBundle,
   RetrievalMetricBundle,
 )
-from backend.evals.ragas_eval import build_single_turn_samples
+from scipal_eval.ragas_eval import build_single_turn_samples
 
 
 T = TypeVar("T")

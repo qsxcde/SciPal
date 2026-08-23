@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import importlib.resources
 import json
 from collections.abc import Coroutine
 from datetime import datetime, timezone
@@ -8,12 +9,12 @@ from typing import TYPE_CHECKING, TypeVar
 
 _T = TypeVar("_T")
 
-from backend.evals.configs import get_config_set
-from backend.evals.dataset import dataset_fingerprint, load_dataset
-from backend.evals.metrics import score_ragas_metrics
-from backend.evals.models import EvalSample, RetrievalConfig, RunMetadata
-from backend.evals.pipeline import run_pipeline
-from backend.evals.reporting import compare_baseline, save_baseline, write_run_outputs
+from scipal_eval.configs import get_config_set
+from scipal_eval.dataset import dataset_fingerprint, load_dataset
+from scipal_eval.metrics import score_ragas_metrics
+from scipal_eval.models import EvalSample, RetrievalConfig, RunMetadata
+from scipal_eval.pipeline import run_pipeline
+from scipal_eval.reporting import compare_baseline, save_baseline, write_run_outputs
 
 if TYPE_CHECKING:
   from backend.rag.pipeline.online_pipeline import ChatEvaluationResult
@@ -73,8 +74,8 @@ def main(argv: list[str] | None = None) -> None:
   elif args.command == "baseline-save":
     save_baseline(args.run_dir, args.output)
   elif args.command == "generate-draft":
-    from backend.evals.draft_generator import generate_draft_dataset
-    from backend.evals.draft_generator import parse_question_types
+    from scipal_eval.draft_generator import generate_draft_dataset
+    from scipal_eval.draft_generator import parse_question_types
 
     count = generate_draft_dataset(
       args.session_id,
@@ -145,10 +146,12 @@ def _run_command(args: argparse.Namespace) -> None:
     results=scored_results,
   )
   if args.fail_on_regression:
-    from backend.evals.thresholds import evaluate_thresholds
-    from backend.evals.thresholds import load_thresholds
+    from scipal_eval.thresholds import evaluate_thresholds
+    from scipal_eval.thresholds import load_thresholds
 
-    threshold_path = args.thresholds or Path("backend/configs/eval_thresholds.yaml")
+    threshold_path = args.thresholds or (
+        importlib.resources.files("scipal_eval") / "configs" / "eval_thresholds.yaml"
+    )
     summary_path = run_dir / "summary.json"
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     violations = evaluate_thresholds(summary, load_thresholds(threshold_path))
@@ -189,7 +192,7 @@ def score_judge_metrics(
   *,
   judge_model: str,
 ) -> list[object]:
-  from backend.evals.judge import score_judge_metrics as score_with_judge
+  from scipal_eval.judge import score_judge_metrics as score_with_judge
 
   return score_with_judge(samples, results, judge_model=judge_model)
 

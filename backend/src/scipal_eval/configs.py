@@ -1,4 +1,4 @@
-from backend.evals.models import RetrievalConfig
+from scipal_eval.models import RetrievalConfig
 
 
 def get_config_set(name: str) -> list[RetrievalConfig]:
