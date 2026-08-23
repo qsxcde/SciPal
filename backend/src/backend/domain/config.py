@@ -5,11 +5,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def backend_root() -> Path:
+    """Root of the installed ``backend`` package (src/backend)."""
     return Path(__file__).resolve().parents[1]
 
 
 def project_root() -> Path:
-    return backend_root().parent
+    """Repository root (parent of the ``src`` layout)."""
+    return backend_root().parent.parent
 
 
 class RuntimeSettings(BaseSettings):
@@ -98,7 +100,7 @@ class RuntimeSettings(BaseSettings):
     msg_no_valid_citations: str = "模型生成的回答中未引用有效论文来源，请核实。"
     msg_default_session_title: str = "新论文会话"
 
-    model_config = SettingsConfigDict(env_file=backend_root() / ".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=project_root() / ".env", extra="ignore")
 
 
 class Settings(RuntimeSettings):

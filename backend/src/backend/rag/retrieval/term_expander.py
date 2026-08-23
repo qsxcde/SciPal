@@ -11,6 +11,7 @@ import logging
 import re
 from collections.abc import Callable
 from functools import lru_cache
+import importlib.resources
 from pathlib import Path
 import tomllib
 
@@ -90,7 +91,7 @@ def _needs_llm_expansion(query: str, glossary: dict[str, list[str]]) -> bool:
 @lru_cache(maxsize=1)
 def _load_term_expand_prompt() -> str:
     """Load term expand prompt from prompts.toml."""
-    path = Path(__file__).resolve().parents[2] / "prompts" / "prompts.toml"
+    path = importlib.resources.files("backend.prompts") / "prompts.toml"
     try:
         with open(path, "rb") as f:
             return tomllib.load(f)["term_expand"]["system"]

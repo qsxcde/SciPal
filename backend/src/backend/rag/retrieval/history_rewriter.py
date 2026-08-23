@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from functools import lru_cache
-from pathlib import Path
+import importlib.resources
 import tomllib
 
 from backend.domain.config import settings
@@ -24,7 +24,7 @@ _ANAPHORA_MARKERS_EN = {"it", "its", "they", "them", "their", "this", "that", "t
 @lru_cache(maxsize=1)
 def _load_history_rewrite_prompt() -> str:
     """Load history rewrite prompt from prompts.toml."""
-    path = Path(__file__).resolve().parents[2] / "prompts" / "prompts.toml"
+    path = importlib.resources.files("backend.prompts") / "prompts.toml"
     try:
         with open(path, "rb") as f:
             return tomllib.load(f)["history_rewrite"]["system"]

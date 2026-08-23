@@ -3,6 +3,7 @@ import logging
 import re
 from collections.abc import Callable
 from functools import cache
+import importlib.resources
 from pathlib import Path
 import tomllib
 
@@ -38,7 +39,7 @@ def fallback_query_pack(query: str) -> QueryPack:
 
 @cache
 def _load_query_rewrite_prompt() -> str:
-    path = Path(__file__).resolve().parents[2] / "prompts" / "prompts.toml"
+    path = importlib.resources.files("backend.prompts") / "prompts.toml"
     with open(path, "rb") as f:
         return tomllib.load(f)["query_rewrite"]["system"]
 

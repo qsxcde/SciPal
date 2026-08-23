@@ -1,16 +1,14 @@
 from functools import cache
-from pathlib import Path
+import importlib.resources
 import tomllib
 
 from backend.rag.ingestion.metadata import Chunk
 
-_PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
-
 
 @cache
 def _load_prompts() -> dict:
-    path = _PROMPTS_DIR / "prompts.toml"
-    with open(path, "rb") as f:
+    path = importlib.resources.files("backend.prompts") / "prompts.toml"
+    with path.open("rb") as f:
         return tomllib.load(f)
 
 

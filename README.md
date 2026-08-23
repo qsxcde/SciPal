@@ -115,7 +115,7 @@ MINERU_SHOW_DOWNLOAD_PROGRESS=false
 
 - 当前系统只支持可复制文本 PDF，不处理扫描版或纯图片型 PDF。
 - 后端运行数据默认写入 `backend/data/`；部署时可通过 `SCIPAL_DATA_DIR` 覆盖。
-- 模型缓存默认写入根级 `data/model_cache/`；部署时可通过 `SCIPAL_MODEL_DIR` 覆盖。
+- 模型缓存默认写入 `backend/data/model_cache/`；部署时可通过 `SCIPAL_MODEL_DIR` 覆盖。
 - 通过 `EMBEDDING_MODEL` 指定模型仓库 ID，并用 `EMBEDDING_MODEL_SOURCE` 选择下载源。模型目录从仓库 ID 自动推导；切换模型后请重新建立文档索引，避免 FAISS 中混用不同向量空间。
 - 默认按 CPU 配置运行；如果你的本地环境验证通过，也可以自行切换设备配置。
 - 如果 MinerU 无法解析当前 PDF，文档状态会持久化为 `failed` 并保留错误信息。
