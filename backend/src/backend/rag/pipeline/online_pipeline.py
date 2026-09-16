@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from backend.rag.generation.answer_generator import build_sources
 from backend.rag.generation.answer_generator import generate_answer
 from backend.rag.generation.answer_generator import stream_answer as stream_answer_for_chunks
-from backend.rag.ingestion.metadata import Chunk, SourceRef
+from backend.domain.models import Chunk, SourceRef
 from backend.rag.indexing.vector_store import AbstractVectorStore
 from backend.rag.retrieval.context_builder import expand_context
 from backend.rag.retrieval.hybrid_retriever import HybridRetrievalOptions

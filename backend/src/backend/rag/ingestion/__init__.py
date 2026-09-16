@@ -6,7 +6,6 @@ __all__ = [
     "document_ir",
     "exporters",
     "linker",
-    "metadata",
     "mineru_api_backend",
     "mineru_backend",
     "normalizer",

@@ -12,7 +12,7 @@ from typing import Callable
 
 from backend.domain import config
 from backend.rag.embedding import create_embed_fn
-from backend.rag.ingestion.metadata import Chunk
+from backend.domain.models import Chunk
 
 logger = logging.getLogger(__name__)
 

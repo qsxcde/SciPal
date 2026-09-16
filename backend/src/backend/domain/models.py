@@ -1,5 +1,11 @@
-from pydantic import BaseModel
+"""Cross-layer domain models shared by storage, RAG, and the HTTP layer.
+
+Data contracts only — behavior belongs to the layer that owns it.
+"""
+
 from typing import Literal
+
+from pydantic import BaseModel
 
 
 class ChunkMetadata(BaseModel):

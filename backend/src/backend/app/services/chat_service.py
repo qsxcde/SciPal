@@ -14,7 +14,7 @@ from backend.app.contracts import ChatStreamSourcesEvent
 from backend.app.contracts import ChatStreamStatusEvent
 from backend.app.contracts import ChatStreamTokenEvent
 from backend.app.contracts import ChatStreamWarningEvent
-from backend.rag.ingestion.metadata import SourceRef
+from backend.domain.models import SourceRef
 from backend.rag.pipeline.online_pipeline import ChatEvaluationResult
 from backend.rag.pipeline.online_pipeline import RetrievalOptions
 from backend.storage.sqlite import index_snapshots as snapshot_repo

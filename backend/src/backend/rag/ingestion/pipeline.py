@@ -8,7 +8,7 @@ from backend.rag.ingestion.chunking import build_chunks
 from backend.rag.ingestion.document_ir import DocumentIR
 from backend.rag.ingestion.document_ir import QualityReport
 from backend.rag.ingestion.exporters import export_markdown
-from backend.rag.ingestion.metadata import Chunk, ChunkMetadata
+from backend.domain.models import Chunk, ChunkMetadata
 from backend.rag.ingestion.mineru_api_backend import MinerUApiBackend
 from backend.rag.ingestion.mineru_backend import MinerUBackend
 from backend.rag.ingestion.normalizer import normalize_parser_output

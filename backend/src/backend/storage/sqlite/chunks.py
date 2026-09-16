@@ -1,7 +1,7 @@
 import json
 import uuid
 
-from backend.rag.ingestion.metadata import Chunk, ChunkMetadata
+from backend.domain.models import Chunk, ChunkMetadata
 from backend.storage.sqlite.connection import connect, transaction
 from backend.storage.sqlite.sessions import now_iso
 

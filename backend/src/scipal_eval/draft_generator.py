@@ -5,7 +5,7 @@ from pathlib import Path
 from langchain_openai import ChatOpenAI
 
 from backend.domain.config import settings
-from backend.rag.ingestion.metadata import Chunk
+from backend.domain.models import Chunk
 from backend.storage.sqlite import chunks as chunk_repo
 
 DEFAULT_QUESTION_TYPES: tuple[str, ...] = (

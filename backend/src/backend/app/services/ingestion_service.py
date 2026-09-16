@@ -10,7 +10,7 @@ from backend.domain.exceptions import PaperParseError
 from backend.domain.exceptions import SnapshotCommitError
 from backend.domain.states import DocumentStage
 from backend.rag.ingestion.artifacts import save_ingestion_artifacts
-from backend.rag.ingestion.metadata import Chunk
+from backend.domain.models import Chunk
 from backend.rag.ingestion.pipeline import process_pdf_document
 from backend.storage.paths import raw_session_dir
 from backend.storage.sqlite import chunks as chunk_repo

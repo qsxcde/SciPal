@@ -2,7 +2,7 @@ from functools import cache
 import importlib.resources
 import tomllib
 
-from backend.rag.ingestion.metadata import Chunk
+from backend.domain.models import Chunk
 
 
 @cache

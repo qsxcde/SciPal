@@ -3,7 +3,7 @@ from collections.abc import Generator
 from backend.domain.config import settings
 from backend.rag.generation.llm import stream_completion_tokens
 from backend.rag.generation.prompt_template import build_prompt
-from backend.rag.ingestion.metadata import Chunk, SourceRef
+from backend.domain.models import Chunk, SourceRef
 
 
 def stream_answer(

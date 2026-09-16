@@ -9,7 +9,7 @@ from modelscope import snapshot_download
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from backend.domain.config import settings
-from backend.rag.ingestion.metadata import Chunk
+from backend.domain.models import Chunk
 
 logger = logging.getLogger(__name__)
 

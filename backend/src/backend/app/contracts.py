@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Literal
 
-from backend.rag.ingestion.metadata import SourceRef
+from backend.domain.models import SourceRef
 from backend.domain.states import DocumentStage
 from backend.domain.states import IndexSnapshotStatus
 from backend.domain.states import JobStatus

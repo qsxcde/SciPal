@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from backend.rag.ingestion.metadata import Chunk
+from backend.domain.models import Chunk
 
 
 @dataclass(frozen=True)

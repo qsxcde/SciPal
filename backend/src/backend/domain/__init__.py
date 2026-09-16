@@ -2,6 +2,7 @@
 __all__ = [
     "config",
     "exceptions",
+    "models",
     "states",
 ]
 

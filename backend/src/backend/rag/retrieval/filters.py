@@ -1,4 +1,4 @@
-from backend.rag.ingestion.metadata import Chunk
+from backend.domain.models import Chunk
 
 
 REFERENCE_SECTION_NAMES = {

@@ -2,7 +2,7 @@ import json
 import uuid
 from typing import Literal
 
-from backend.rag.ingestion.metadata import SourceRef
+from backend.domain.models import SourceRef
 from backend.storage.sqlite.connection import connect, transaction
 from backend.storage.sqlite.sessions import now_iso
 

@@ -4,7 +4,7 @@ from collections.abc import Iterable
 import re
 
 from backend.rag.ingestion.document_ir import BBox, BlockIR, DocumentIR
-from backend.rag.ingestion.metadata import Chunk, ChunkMetadata
+from backend.domain.models import Chunk, ChunkMetadata
 
 
 DEFAULT_CHUNK_SIZE = 2000

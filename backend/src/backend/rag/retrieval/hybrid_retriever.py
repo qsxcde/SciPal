@@ -7,7 +7,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from backend.rag.ingestion.metadata import Chunk
+from backend.domain.models import Chunk
 from backend.rag.indexing.vector_store import AbstractVectorStore
 from backend.rag.retrieval.bm25 import BM25Retriever
 from backend.rag.retrieval.context_builder import expand_context_with_debug
