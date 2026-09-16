@@ -171,14 +171,6 @@ def _as_string_list(value: object) -> list[str]:
     return [str(value)]
 
 
-def _build_row(session_id: str, chunk: Chunk) -> dict[str, object]:
-    return _build_template_row(
-        session_id=session_id,
-        chunk=chunk,
-        question_type=_infer_question_type(chunk.metadata.section or "Document"),
-    )
-
-
 def _build_template_row(
     session_id: str,
     chunk: Chunk,
@@ -270,16 +262,3 @@ def _template_difficulty(question_type: str) -> str:
     if question_type in {"method", "result", "evidence"}:
         return "medium"
     return "easy"
-
-
-def _infer_question_type(section: str) -> str:
-    normalized = section.lower()
-    if "method" in normalized:
-        return "method"
-    if "experiment" in normalized:
-        return "experiment"
-    if "result" in normalized:
-        return "result"
-    if "limitation" in normalized:
-        return "limitation"
-    return "background"

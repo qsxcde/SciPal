@@ -1,5 +1,4 @@
 import logging
-import re
 
 from pydantic import BaseModel
 
@@ -80,10 +79,22 @@ def _process_parsed_result(
         )
 
     normalized_markdown = export_markdown(document_ir)
-    chunks = build_chunks(document_ir=document_ir, markdown=normalized_markdown, paper_id=paper_id)
+    chunks = build_chunks(
+        document_ir=document_ir,
+        markdown=normalized_markdown,
+        paper_id=paper_id,
+        chunk_size=settings.max_chunk_tokens,
+        chunk_overlap=settings.chunk_overlap_tokens,
+    )
     if not chunks and raw.markdown.strip():
         normalized_markdown = raw.markdown.strip() + "\n"
-        chunks = build_chunks(document_ir=document_ir, markdown=normalized_markdown, paper_id=paper_id)
+        chunks = build_chunks(
+            document_ir=document_ir,
+            markdown=normalized_markdown,
+            paper_id=paper_id,
+            chunk_size=settings.max_chunk_tokens,
+            chunk_overlap=settings.chunk_overlap_tokens,
+        )
     if not chunks:
         headings = [b.text.strip() for b in document_ir.blocks if b.type in {"heading", "title"}]
         if headings:
@@ -127,17 +138,3 @@ def process_pdf_document(
 
     raw, backend = _try_parsers(backends, pdf_bytes, filename)
     return _process_parsed_result(raw, backend, paper_id, filename)
-
-
-def process_pdf(pdf_bytes: bytes, paper_id: str) -> list[Chunk]:
-    return process_pdf_document(
-        pdf_bytes=pdf_bytes,
-        paper_id=paper_id,
-        filename=f"{paper_id}.pdf",
-    ).chunks
-
-
-def _safe_paper_id(paper_id: str) -> str:
-    """Sanitize paper_id to avoid filesystem issues (Windows reserved chars, etc.)."""
-    cleaned = re.sub(r'[<>:"/\\|?*]', "_", paper_id)
-    return cleaned or "_"

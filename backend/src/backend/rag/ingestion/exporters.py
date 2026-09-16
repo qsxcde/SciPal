@@ -1,4 +1,4 @@
-from backend.rag.ingestion.document_ir import BBox, BlockIR, DocumentIR
+from backend.rag.ingestion.document_ir import BlockIR, DocumentIR
 
 
 def export_markdown(document: DocumentIR) -> str:
@@ -40,12 +40,3 @@ def _render_block(block: BlockIR) -> str:
         section = " > ".join(block.section_path) if block.section_path else "Document"
         return f"[Formula on page {block.page_number} near {section}]"
     return text
-
-
-def _merge_bboxes(bboxes: list[BBox]) -> BBox:
-    return BBox(
-        x0=min(bbox.x0 for bbox in bboxes),
-        y0=min(bbox.y0 for bbox in bboxes),
-        x1=max(bbox.x1 for bbox in bboxes),
-        y1=max(bbox.y1 for bbox in bboxes),
-    )

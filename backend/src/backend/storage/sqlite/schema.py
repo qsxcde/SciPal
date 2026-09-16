@@ -14,9 +14,11 @@ def init_db() -> None:
         try:
             current_version = conn.execute("PRAGMA user_version").fetchone()[0]
             if current_version < 1:
+                # Fresh database: the initial schema already matches the current
+                # version, so no incremental migration must run on top of it.
                 _create_initial_schema(conn)
-                current_version = 1
-            if current_version < CURRENT_SCHEMA_VERSION:
+                conn.execute(f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}")
+            elif current_version < CURRENT_SCHEMA_VERSION:
                 _migrate_schema(conn, current_version)
                 conn.execute(f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}")
             conn.commit()
@@ -35,8 +37,10 @@ def _migrate_schema(conn, from_version: int) -> None:
             "ON chunks(document_id, chunk_index)"
         )
     if from_version < 3:
-        conn.execute("ALTER TABLE retrieval_indexes ADD COLUMN created_at TEXT NOT NULL DEFAULT ''")
-        conn.execute("UPDATE retrieval_indexes SET created_at = updated_at WHERE created_at = ''")
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(retrieval_indexes)")}
+        if "created_at" not in columns:
+            conn.execute("ALTER TABLE retrieval_indexes ADD COLUMN created_at TEXT NOT NULL DEFAULT ''")
+            conn.execute("UPDATE retrieval_indexes SET created_at = updated_at WHERE created_at = ''")
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_sessions_list "
             "ON sessions(is_archived, is_pinned, updated_at DESC) WHERE is_archived = 0"
@@ -196,7 +200,7 @@ def _create_initial_schema(conn) -> None:
 
         CREATE TABLE IF NOT EXISTS documents (
           id TEXT PRIMARY KEY,
-          session_id TEXT NOT NULL REFERENCES sessions(id),
+          session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
           filename TEXT NOT NULL,
           file_path TEXT NOT NULL,
           mime_type TEXT NOT NULL,
@@ -216,7 +220,7 @@ def _create_initial_schema(conn) -> None:
 
         CREATE TABLE IF NOT EXISTS messages (
           id TEXT PRIMARY KEY,
-          session_id TEXT NOT NULL REFERENCES sessions(id),
+          session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
           role TEXT NOT NULL,
           content TEXT NOT NULL,
           sources_json TEXT NULL,
@@ -226,8 +230,8 @@ def _create_initial_schema(conn) -> None:
 
         CREATE TABLE IF NOT EXISTS chunks (
           id TEXT PRIMARY KEY,
-          session_id TEXT NOT NULL REFERENCES sessions(id),
-          document_id TEXT NOT NULL REFERENCES documents(id),
+          session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+          document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
           section TEXT NOT NULL,
           chunk_index INTEGER NOT NULL,
           text_excerpt TEXT NOT NULL,
@@ -246,7 +250,7 @@ def _create_initial_schema(conn) -> None:
 
         CREATE TABLE IF NOT EXISTS retrieval_indexes (
           id TEXT PRIMARY KEY,
-          session_id TEXT NOT NULL REFERENCES sessions(id),
+          session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
           index_path TEXT NOT NULL,
           chunks_path TEXT NOT NULL,
           status TEXT NOT NULL,
@@ -256,8 +260,8 @@ def _create_initial_schema(conn) -> None:
 
         CREATE TABLE IF NOT EXISTS jobs (
           id TEXT PRIMARY KEY,
-          session_id TEXT NOT NULL REFERENCES sessions(id),
-          document_id TEXT NULL REFERENCES documents(id),
+          session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+          document_id TEXT NULL REFERENCES documents(id) ON DELETE SET NULL,
           type TEXT NOT NULL,
           status TEXT NOT NULL,
           stage TEXT NOT NULL,
@@ -271,7 +275,7 @@ def _create_initial_schema(conn) -> None:
 
         CREATE TABLE IF NOT EXISTS index_snapshots (
           id TEXT PRIMARY KEY,
-          session_id TEXT NOT NULL REFERENCES sessions(id),
+          session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
           status TEXT NOT NULL,
           index_path TEXT NOT NULL,
           chunks_path TEXT NOT NULL,

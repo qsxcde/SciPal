@@ -9,5 +9,6 @@ __all__ = [
     "messages",
     "schema",
     "sessions",
+    "users",
 ]
 

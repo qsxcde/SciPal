@@ -2,7 +2,7 @@ import threading
 from collections import OrderedDict
 from pathlib import Path
 
-from backend.domain.states import DocumentStage
+from backend.domain.states import PROCESSING_DOCUMENT_STAGES
 from backend.rag.indexing.vector_store import FAISSVectorStore
 from backend.rag.retrieval.filters import filter_indexable_chunks
 from backend.storage.paths import session_indexes_dir
@@ -50,16 +50,8 @@ def get_store(session_id: str) -> FAISSVectorStore:
 
         existing_chunks = chunk_repo.list_chunks(session_id)
         session_documents = document_repo.list_documents(session_id)
-        processing_statuses = {
-            "processing",
-            DocumentStage.uploaded,
-            DocumentStage.parsing,
-            DocumentStage.parsed,
-            DocumentStage.chunked,
-            DocumentStage.indexing,
-        }
         has_processing_documents = any(
-            document["status"] in processing_statuses
+            document["status"] in PROCESSING_DOCUMENT_STAGES
             for document in session_documents
         )
         if existing_chunks and not has_processing_documents:
@@ -70,11 +62,6 @@ def get_store(session_id: str) -> FAISSVectorStore:
         store = FAISSVectorStore()
         _cache_store(session_id, "empty", store)
         return store
-
-
-def clear_cache() -> None:
-    with _store_lock:
-        _stores.clear()
 
 
 def discard_store(session_id: str) -> None:

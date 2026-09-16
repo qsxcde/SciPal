@@ -85,10 +85,10 @@ cd 01-SciPal
 
 ### 2. 配置环境变量
 
-复制并填写 `backend/.env`：
+复制并填写仓库根目录的 `.env`：
 
 ```bash
-cp backend/.env.example backend/.env
+cp backend/.env.example .env
 ```
 
 示例配置：
@@ -126,11 +126,12 @@ MINERU_SHOW_DOWNLOAD_PROGRESS=false
 
 ```bash
 # 安装 uv 后，在仓库根目录执行（--project 指向 backend，自动创建 backend/.venv 并安装依赖）
-uv sync --project backend --extra evals --extra dev
+uv sync --project backend --extra dev --group eval
 ```
 
-> 说明：依赖与可选组（evals / dev）已在 `backend/pyproject.toml` 中声明，`backend/uv.lock` 锁定了精确版本。
-> 仅安装运行所需依赖时可省略 `--extra` 参数。
+> 说明：运行时依赖与 `dev` 可选组在 `backend/pyproject.toml` 的 `[project.optional-dependencies]` 中声明，
+> 评测依赖位于 `[dependency-groups] eval`；`backend/uv.lock` 锁定了精确版本。
+> 仅安装运行所需依赖时可省略 `--extra` 与 `--group` 参数。
 
 前端：
 
@@ -169,7 +170,9 @@ npm run dev
 
 ## 开发与测试
 
-推荐先跑当前后端重构相关的 focused suite（在仓库根目录下执行）：
+> 注意：下列 focused suite 文件尚未纳入仓库，补测时请沿用这些文件名。
+
+计划覆盖后端状态重构的 focused suite（在仓库根目录下执行）：
 
 ```bash
 uv run --project backend pytest tests/test_backend_state_models.py tests/test_document_intake_flow.py tests/test_index_commit_flow.py tests/test_chat_waiting_flow.py tests/test_job_recovery.py tests/test_backend_state_transitions.py tests/test_vector_store.py tests/test_chat_service.py -v
@@ -182,7 +185,7 @@ uv run --project backend pytest tests/test_backend_state_models.py tests/test_do
 如果你想从现有会话索引导出 bootstrap 评测草稿，可以运行：
 
 ```bash
-uv run --project backend python -m backend.evals.cli generate-draft \
+uv run --project backend python -m scipal_eval.cli generate-draft \
   --session-id session-example \
   --output data/evaluation/drafts/retrieval-v1-draft.jsonl \
   --max-samples 30
@@ -191,7 +194,7 @@ uv run --project backend python -m backend.evals.cli generate-draft \
 运行正式评测：
 
 ```bash
-uv run --project backend python -m backend.evals.cli run \
+uv run --project backend python -m scipal_eval.cli run \
   --dataset data/evaluation/reviewed/retrieval-v1.jsonl \
   --session-id session-example \
   --config-set retrieval-v1 \
@@ -202,7 +205,7 @@ uv run --project backend python -m backend.evals.cli run \
 上述命令默认只执行离线检索评测，不会触发实时 DeepSeek 生成或 RAGAS 调用。需要显式开启时使用：
 
 ```bash
-uv run --project backend python -m backend.evals.cli run \
+uv run --project backend python -m scipal_eval.cli run \
   --dataset data/evaluation/reviewed/retrieval-v1.jsonl \
   --session-id session-example \
   --config-set retrieval-v1 \

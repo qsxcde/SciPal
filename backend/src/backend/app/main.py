@@ -65,3 +65,10 @@ def health():
         "status": "ok",
         "job_runner": runner.health_status() if runner is not None else {},
     }
+
+
+def main() -> None:
+    """Entry point for the ``scipal-backend`` console script."""
+    import uvicorn
+
+    uvicorn.run("backend.app.main:app", host="127.0.0.1", port=8000)

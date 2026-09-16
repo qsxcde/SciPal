@@ -164,12 +164,3 @@ class RunMetadata(BaseModel):
   fail_on_regression: bool = False
   warnings: list[str] = Field(default_factory=list)
   reproducibility_manifest: dict[str, object] = Field(default_factory=dict)
-
-
-class RunSummary(BaseModel):
-  model_config = ConfigDict(extra="forbid")
-
-  run_metadata: RunMetadata
-  overall_by_config: dict[str, dict[str, dict[str, float | int | None]]]
-  grouped_by_config: dict[str, dict[str, dict[str, dict[str, float | int | None]]]]
-  failure_summary: dict[str, int]

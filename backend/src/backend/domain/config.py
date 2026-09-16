@@ -37,8 +37,6 @@ class RuntimeSettings(BaseSettings):
     mineru_table_enable: bool = True
     mineru_formula_enable: bool = True
     mineru_show_download_progress: bool = False
-    scipal_eval_output_dir: str = "eval_outputs"
-    scipal_eval_document_map_path: str = "docs/eval_document_map.json"
     # Index poll parameters
     index_poll_interval: float = 0.05
     index_poll_max_interval: float = 1.0
@@ -120,25 +118,20 @@ def require_generation_settings() -> Settings:
 
 
 def default_data_dir() -> Path:
-    return backend_root() / "data"
+    """Default runtime data root: ``backend/data`` (see .gitignore)."""
+    return backend_root().parent / "data"
 
 
 def data_dir() -> Path:
-    """Get data directory, creating it if needed. Use get_data_dir() for read-only access."""
+    """Get data directory, creating it if needed."""
     configured = settings.scipal_data_dir
     path = Path(configured).expanduser() if configured else default_data_dir()
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def get_data_dir() -> Path:
-    """Read-only access to data directory, no mkdir side effect."""
-    configured = settings.scipal_data_dir
-    return Path(configured).expanduser() if configured else default_data_dir()
-
-
 def default_model_dir() -> Path:
-    return project_root() / "data" / "model_cache"
+    return default_data_dir() / "model_cache"
 
 
 def model_dir() -> Path:

@@ -11,9 +11,7 @@ from pathlib import Path
 from typing import Callable
 
 from backend.domain import config
-from backend.domain.exceptions import EmbeddingModelUnavailableError
 from backend.rag.embedding import create_embed_fn
-from backend.rag.embedding.local_embedder import _get_model, _embedding_unavailable_message
 from backend.rag.ingestion.metadata import Chunk
 
 logger = logging.getLogger(__name__)
@@ -112,11 +110,6 @@ class FAISSVectorStore(AbstractVectorStore):
         with self._lock:
             return list(self._chunks)
 
-    @property
-    def chunks(self) -> list[Chunk]:
-        with self._lock:
-            return list(self._chunks)
-
     def save(self, index_path: Path, chunks_path: Path) -> None:
         with self._lock:
             start = time.monotonic()
@@ -144,10 +137,6 @@ class FAISSVectorStore(AbstractVectorStore):
                 index_path.stat().st_size,
                 time.monotonic() - start,
             )
-
-    def ensure_ready(self) -> None:
-        if _get_model() is None:
-            raise EmbeddingModelUnavailableError(_embedding_unavailable_message())
 
     @classmethod
     def load(

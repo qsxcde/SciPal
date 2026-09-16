@@ -6,7 +6,6 @@ from pathlib import Path
 from backend.domain.config import data_dir
 
 
-
 def raw_session_dir(session_id: str) -> Path:
     path = data_dir() / "raw" / session_id
     path.mkdir(parents=True, exist_ok=True)
@@ -22,25 +21,15 @@ def remove_session_dir(session_id: str) -> None:
         shutil.rmtree(target, ignore_errors=True)
 
 
-def session_documents_dir(session_id: str) -> Path:
-    return raw_session_dir(session_id)
-
-
 def session_document_file_path(
     session_id: str,
     document_id: str,
     suffix: str = ".pdf",
 ) -> Path:
-    return session_documents_dir(session_id) / f"{document_id}{suffix}"
+    return raw_session_dir(session_id) / f"{document_id}{suffix}"
 
 
 def session_indexes_dir(session_id: str) -> Path:
     path = data_dir() / "index" / session_id
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def session_parsed_document_dir(session_id: str, document_id: str) -> Path:
-    path = data_dir() / "parsed" / session_id / document_id
     path.mkdir(parents=True, exist_ok=True)
     return path

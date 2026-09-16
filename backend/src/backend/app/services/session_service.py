@@ -1,7 +1,7 @@
 from backend.domain.config import settings
 from backend.rag.indexing.vector_store import AbstractVectorStore
 from backend.domain.exceptions import SessionNotFoundError
-from backend.domain.states import DocumentStage, SessionStatus
+from backend.domain.states import DocumentStage, PROCESSING_DOCUMENT_STAGES, SessionStatus
 from backend.storage.sqlite import chunks
 from backend.storage.sqlite import documents
 from backend.storage.sqlite import index_snapshots
@@ -42,15 +42,7 @@ def _derive_session_status(session_documents: list[dict]) -> str:
     if not session_documents:
         return SessionStatus.empty
     statuses = {document["status"] for document in session_documents}
-    processing_statuses = {
-        "processing",
-        DocumentStage.uploaded,
-        DocumentStage.parsing,
-        DocumentStage.parsed,
-        DocumentStage.chunked,
-        DocumentStage.indexing,
-    }
-    if any(status in processing_statuses for status in statuses):
+    if any(status in PROCESSING_DOCUMENT_STAGES for status in statuses):
         return SessionStatus.processing
     if statuses == {DocumentStage.ready}:
         return SessionStatus.ready

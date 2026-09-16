@@ -16,14 +16,8 @@ _root = _load_prompts()["rag_answer"]
 SYSTEM_PROMPT = _root["system"]
 
 
-def build_prompt(
-    chunks: list[Chunk],
-    question: str,
-    *,
-    context_token_budget: int | None = None,
-) -> str:
-    selected_chunks = _select_chunks_within_budget(chunks, context_token_budget)
-    context = "\n\n---\n\n".join(_format_chunk_for_prompt(chunk) for chunk in selected_chunks)
+def build_prompt(chunks: list[Chunk], question: str) -> str:
+    context = "\n\n---\n\n".join(_format_chunk_for_prompt(chunk) for chunk in chunks)
     return (
         f"{SYSTEM_PROMPT}\n\n"
         f"论文片段:\n{context}\n\n"
@@ -51,59 +45,6 @@ def _format_chunk_header(chunk: Chunk) -> str:
 
 def _format_chunk_for_prompt(chunk: Chunk) -> str:
     return f"{_format_chunk_header(chunk)}\n{chunk.text}"
-
-
-def _select_chunks_within_budget(
-    chunks: list[Chunk],
-    context_token_budget: int | None = None,
-) -> list[Chunk]:
-    if context_token_budget is None:
-        return chunks
-
-    selected_chunks: list[Chunk] = []
-    remaining_budget = max(context_token_budget, 0)
-
-    for chunk in chunks:
-        header = _format_chunk_header(chunk)
-        header_cost = _estimate_tokens(header) + _estimate_tokens("\n")
-        if remaining_budget <= 0 and selected_chunks:
-            break
-
-        if header_cost >= remaining_budget:
-            if not selected_chunks:
-                selected_chunks.append(
-                    chunk.model_copy(
-                        update={"text": _truncate_text_to_token_budget(chunk.text, 1)}
-                    )
-                )
-            break
-
-        available_text_budget = remaining_budget - header_cost
-        truncated_text = _truncate_text_to_token_budget(chunk.text, available_text_budget)
-        text_cost = _estimate_tokens(truncated_text)
-        selected_chunks.append(chunk.model_copy(update={"text": truncated_text}))
-        remaining_budget -= header_cost + text_cost
-
-        if text_cost < _estimate_tokens(chunk.text):
-            break
-
-    return selected_chunks
-
-
-def _truncate_text_to_token_budget(text: str, token_budget: int) -> str:
-    if token_budget <= 0:
-        return ""
-
-    max_chars = token_budget * 4
-    if len(text) <= max_chars:
-        return text
-    return text[:max_chars]
-
-
-def _estimate_tokens(text: str) -> int:
-    if not text:
-        return 0
-    return (len(text) + 1) // 2
 
 
 def _format_page_range(chunk: Chunk) -> str | None:

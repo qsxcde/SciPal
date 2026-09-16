@@ -119,12 +119,6 @@ def normalize_parser_output(
     )
 
 
-def _bbox_tuple(value: object) -> tuple[float, float, float, float]:
-    if isinstance(value, (list, tuple)) and len(value) >= 4:
-        return (float(value[0]), float(value[1]), float(value[2]), float(value[3]))
-    return (0.0, 0.0, 0.0, 0.0)
-
-
 def _bbox_model(value: object) -> BBox:
     x0, y0, x1, y1 = bbox_tuple(value)
     return BBox(x0=x0, y0=y0, x1=x1, y1=y1)

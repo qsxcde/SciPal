@@ -44,3 +44,16 @@ TERMINAL_JOB_STATUSES: Final[frozenset[JobStatus]] = frozenset(
         JobStatus.interrupted,
     }
 )
+
+# Document stages that mean ingestion is still in flight. The legacy "processing"
+# literal is kept for rows written before DocumentStage existed.
+PROCESSING_DOCUMENT_STAGES: Final[frozenset[str]] = frozenset(
+    {
+        "processing",
+        DocumentStage.uploaded,
+        DocumentStage.parsing,
+        DocumentStage.parsed,
+        DocumentStage.chunked,
+        DocumentStage.indexing,
+    }
+)

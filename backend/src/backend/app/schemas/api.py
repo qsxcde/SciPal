@@ -113,11 +113,6 @@ class SessionUpdateRequest(BaseModel):
     is_pinned: bool | None = None
 
 
-class DocumentUploadResponse(BaseModel):
-    doc_id: str
-    chunk_count: int
-
-
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"] = "user"
     content: str
