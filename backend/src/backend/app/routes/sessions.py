@@ -1,15 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
-from backend.app.core.auth import get_current_user
+from backend.app.security import get_current_user
 from backend.app.services import session_service
-from backend.app.schemas.api import SessionCreateResponse, SessionSnapshot, SessionSummary, SessionUpdateRequest
-from backend.storage.sqlite import sessions
+from backend.app.contracts import SessionCreateResponse, SessionSnapshot, SessionSummary, SessionUpdateRequest
 
 router = APIRouter()
 
 
 @router.get("/sessions", response_model=list[SessionSummary])
 def list_sessions(user: dict = Depends(get_current_user)) -> list[dict]:
-    return sessions.list_sessions(user_id=user.get("id") or None)
+    return session_service.list_sessions(user_id=user.get("id") or None)
 
 
 @router.post("/sessions", response_model=SessionCreateResponse)
@@ -27,7 +26,7 @@ def get_session(session_id: str, user: dict = Depends(get_current_user)) -> dict
 
 @router.patch("/sessions/{session_id}", response_model=SessionSummary)
 def update_session(session_id: str, payload: SessionUpdateRequest, user: dict = Depends(get_current_user)) -> dict:
-    summary = sessions.update_session(
+    summary = session_service.update_session(
         session_id=session_id,
         title=payload.title,
         is_pinned=payload.is_pinned,

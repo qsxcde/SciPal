@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.app.core.auth import (
+from backend.app.security import (
     create_access_token,
     get_current_user,
     hash_password,

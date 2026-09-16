@@ -18,6 +18,18 @@ def create_session(user_id: str | None = None) -> str:
     return session["id"]
 
 
+def list_sessions(user_id: str | None = None) -> list[dict]:
+    return sessions.list_sessions(user_id=user_id)
+
+
+def update_session(
+    session_id: str,
+    title: str | None = None,
+    is_pinned: bool | None = None,
+) -> dict | None:
+    return sessions.update_session(session_id=session_id, title=title, is_pinned=is_pinned)
+
+
 def get_session_snapshot(session_id: str) -> dict | None:
     session = sessions.get_session(session_id)
     if session is None or session["is_archived"]:

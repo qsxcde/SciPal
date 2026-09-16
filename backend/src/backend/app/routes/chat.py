@@ -3,9 +3,9 @@ import logging
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from backend.app.core.auth import get_current_user
+from backend.app.security import get_current_user
 from backend.app.services.chat_service import stream_session_chat
-from backend.app.schemas.api import (
+from backend.app.contracts import (
     ChatMessage,
     ChatStreamDoneEvent,
     ChatStreamErrorEvent,

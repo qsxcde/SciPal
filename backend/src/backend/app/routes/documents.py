@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, UploadFile, File
-from backend.app.core.auth import get_current_user
+from backend.app.security import get_current_user
 from backend.app.services.document_service import intake_document_upload
 
 router = APIRouter()

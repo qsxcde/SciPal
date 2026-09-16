@@ -5,10 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.routes import auth
-from backend.app.api.routes import chat
-from backend.app.api.routes import documents
-from backend.app.api.routes import sessions
+from backend.app.routes import auth
+from backend.app.routes import chat
+from backend.app.routes import documents
+from backend.app.routes import sessions
 from backend.domain.config import settings
 import logging
 
@@ -19,7 +19,7 @@ logging.basicConfig(
 )
 
 from backend.app.services.document_service import recover_orphaned_documents
-from backend.app.services.job_runner import InProcessJobRunner
+from backend.app.runner import InProcessJobRunner
 from backend.storage.sqlite.schema import init_db
 
 logger = logging.getLogger(__name__)
