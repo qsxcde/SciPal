@@ -27,4 +27,4 @@
 
 - [x] 5.1 确认 `rag/ingestion/metadata.py` 已不存在，且 `domain/models.py` 中存在 `ChunkMetadata` / `Chunk` / `SourceRef` 三个模型
 - [x] 5.2 清理 `__pycache__`，确认工作树无临时验证产物
-- [ ] 5.3 以单个提交完成交付（纯位移，拆分只会产生不可验证的中间态；提交动作需用户确认）
+- [x] 5.3 以单个提交完成交付（代码变更为单提交 `f1793a5`；规划与实施记录为 `185b74c`）
