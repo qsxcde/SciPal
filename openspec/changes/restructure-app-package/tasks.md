@@ -36,4 +36,4 @@
 
 - [x] 6.1 复核 README 与 `pyproject.toml`：确认入口点 `backend.app.main:main` 与启动命令 `uvicorn backend.app.main:app` 无需变更
 - [x] 6.2 清理 `__pycache__`，确认工作树无临时验证产物
-- [ ] 6.3 以单个提交完成交付（design.md 要求单提交，避免产生不可验证的中间态；提交动作需用户确认）
+- [x] 6.3 以单个提交完成交付（代码变更为单提交 `0e70bdb`；工作流引入与任务清单为独立的 `chore(openspec)` 提交）
