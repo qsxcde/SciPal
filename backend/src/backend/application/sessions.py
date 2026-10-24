@@ -1,5 +1,5 @@
 from backend.domain.access import session_is_accessible
-from backend.domain.config import settings
+from backend.config import settings
 from backend.rag.indexing.vector_store import AbstractVectorStore
 from backend.domain.exceptions import SessionNotFoundError
 from backend.domain.states import DocumentStage, PROCESSING_DOCUMENT_STAGES, SessionStatus
@@ -10,7 +10,7 @@ from backend.storage.sqlite import indexes
 from backend.storage.sqlite import jobs
 from backend.storage.sqlite import messages
 from backend.storage.sqlite import sessions
-from backend.storage.vector_db import registry as index_registry
+from backend.application import store_cache
 from backend.storage.paths import remove_session_dir
 
 
@@ -103,10 +103,10 @@ def get_store(session_id: str) -> AbstractVectorStore:
     session = sessions.get_session(session_id)
     if session is None or session["is_archived"]:
         raise SessionNotFoundError(f"Session not found: {session_id}")
-    return index_registry.get_store(session_id)
+    return store_cache.get_store(session_id)
 
 
 def destroy_session(session_id: str) -> None:
     sessions.archive_session(session_id)
-    index_registry.discard_store(session_id)
+    store_cache.discard_store(session_id)
     remove_session_dir(session_id)

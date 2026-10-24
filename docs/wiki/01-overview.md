@@ -59,7 +59,7 @@ InProcessJobRunner.tick (每 runner_idle_poll_interval=0.05s 轮询)
   └── 取 1 条 status=queued 的 job（created_at 升序）
         ├── mark_job_running (CAS, attempt+1)
         ├── 加会话级锁，串行执行
-        └── ingestion_service.run_document_ingestion_job
+        └── worker.handlers.ingest_document → application.ingestion.run_document_ingestion_job
               parsing → rag.ingestion.pipeline.process_pdf_document
               parsed   → 写 4 个产物文件 + 回写文档元数据
               chunked  → 覆盖 chunks 表
@@ -89,10 +89,14 @@ SciPal/
 │   ├── pyproject.toml            # 包名 scipal-backend，含 dev / eval 依赖组
 │   └── src/
 │       ├── backend/
-│       │   ├── app/              # HTTP 层：路由、契约、服务、runner、鉴权
-│       │   ├── domain/           # 领域模型、状态枚举、配置、异常
-│       │   ├── rag/              # ingestion / indexing / retrieval / generation / embedding
-│       │   ├── storage/          # paths + sqlite 仓储 + 向量库注册表
+│       │   ├── main.py           # 装配根：CORS、异常映射、router、job runner
+│       │   ├── config.py         # RuntimeSettings + 路径函数 + settings 单例
+│       │   ├── api/              # 传输层：routes / schemas / deps / errors / streaming / security
+│       │   ├── application/      # 用例层：sessions / documents / ingestion / indexing / chat / evaluation
+│       │   ├── domain/           # 领域模型、状态枚举、授权规则、异常
+│       │   ├── rag/              # ingestion / indexing / retrieval / generation / embedding / answer
+│       │   ├── storage/          # paths + sqlite 仓储
+│       │   ├── worker/           # runner（handler 注册表）+ handlers（job → 用例）
 │       │   ├── prompts/          # prompts.toml（回答/改写/术语扩展）
 │       │   └── scripts/          # 旧数据目录迁移脚本
 │       └── scipal_eval/          # 离线评测 CLI（检索/生成/RAGAS/Judge）

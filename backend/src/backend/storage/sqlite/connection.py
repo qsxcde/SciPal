@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from backend.domain import config
+from backend import config
 
 
 def get_db_path() -> Path:

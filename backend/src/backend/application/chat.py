@@ -1,0 +1,215 @@
+"""Chat use case: one question in, a stream of transport-agnostic events out."""
+
+import asyncio
+import logging
+from collections.abc import AsyncIterator
+from typing import Any
+
+from backend.application import policies
+from backend.application.events import (
+    ChatEvent,
+    DoneEvent,
+    ErrorEvent,
+    SourcesEvent,
+    StatusEvent,
+    TokenEvent,
+    WarningEvent,
+)
+from backend.application.session_index import resolve_session_store
+from backend.config import settings
+from backend.domain.access import session_is_accessible
+from backend.domain.exceptions import ActiveIndexNotReadyError, SessionNotFoundError
+from backend.domain.models import SourceRef
+from backend.rag import answer as chat_pipeline
+from backend.storage.sqlite import messages as message_repo
+from backend.storage.sqlite import sessions as session_repo
+from backend.storage.sqlite.sessions import touch_session
+
+logger = logging.getLogger(__name__)
+
+MISSING_SOURCES_EVENT_ERROR = "Stream protocol error: missing sources event from stream_answer()."
+
+
+def _to_thread(fn, *args, **kwargs):
+    """Wrap a sync call in asyncio.to_thread for non-blocking execution."""
+    return asyncio.to_thread(fn, *args, **kwargs)
+
+
+def _advance_stream_gen(gen):
+    """Advance a generator on a thread, returning (done, value)."""
+    try:
+        return (False, next(gen))
+    except StopIteration as e:
+        return (True, e.value)
+
+
+class StreamCollector:
+    """Consume the RAG token stream, accumulating text and sources for persistence."""
+
+    def __init__(self) -> None:
+        self.tokens: list[str] = []
+        self.sources: list[SourceRef] = []
+        self.used_explicit_protocol = False
+        self.received_sources = False
+        self._warning: str = ""
+
+    @property
+    def warning(self) -> str:
+        return self._warning
+
+    @property
+    def full_content(self) -> str:
+        return "".join(self.tokens)
+
+    def feed_token(self, token: str) -> TokenEvent:
+        self.tokens.append(token)
+        return TokenEvent(value=token)
+
+    def feed_sources(self, value: Any) -> None:
+        self.sources = _coerce_sources(value)
+        self.received_sources = True
+
+    async def consume_stream(self, stream) -> AsyncIterator[TokenEvent]:
+        loop = asyncio.get_running_loop()
+        gen = iter(stream)
+        while True:
+            done, event = await loop.run_in_executor(None, _advance_stream_gen, gen)
+            if done:
+                if event is not None:
+                    event = {"type": "_retval", "value": event}
+                else:
+                    break
+            if isinstance(event, str):
+                if self.used_explicit_protocol:
+                    raise RuntimeError("Stream protocol error: mixed legacy and explicit stream events.")
+                yield self.feed_token(event)
+                continue
+
+            if not isinstance(event, dict) or "type" not in event:
+                raise RuntimeError("Stream protocol error: unsupported stream event payload.")
+
+            if event["type"] == "_retval":
+                if not self.used_explicit_protocol:
+                    val = event.get("value")
+                    if val is not None:
+                        self.sources = _coerce_sources(val)
+                continue
+            self.used_explicit_protocol = True
+            if event["type"] == "token":
+                yield self.feed_token(event["value"])
+                continue
+            if event["type"] == "sources":
+                self.feed_sources(event["value"])
+                continue
+            if event["type"] == "warning":
+                self._warning = event["value"]
+                continue
+            raise RuntimeError(f"Stream protocol error: unexpected event type {event['type']!r}.")
+
+        if self.used_explicit_protocol and not self.received_sources:
+            raise RuntimeError(MISSING_SOURCES_EVENT_ERROR)
+
+
+async def stream_session_chat(
+    session_id: str,
+    content: str,
+    wait_timeout_seconds: float | None = None,
+    user_id: str | None = None,
+) -> AsyncIterator[ChatEvent]:
+    session = await _to_thread(session_repo.get_session, session_id)
+    if not session_is_accessible(session, user_id):
+        raise SessionNotFoundError(f"Session not found: {session_id}", session_id=session_id)
+
+    state = StreamCollector()
+    pending_status_events: list[StatusEvent] = []
+    try:
+        store, _ = await resolve_session_store(
+            session_id,
+            wait_timeout_seconds=wait_timeout_seconds,
+            on_wait_for_index=lambda: pending_status_events.append(
+                StatusEvent(value="waiting_for_index")
+            ),
+        )
+        for status_event in pending_status_events:
+            yield status_event
+
+        # Load message history before persisting current message
+        history = await _to_thread(message_repo.list_messages, session_id)
+        await _persist_and_touch(session_id, "user", content)
+
+        yield StatusEvent(value="retrieving")
+        yield StatusEvent(value="generating")
+        stream = chat_pipeline.stream_answer(
+            store,
+            content,
+            options=policies.retrieval_options(),
+            policy=policies.answer_policy(),
+            history=history,
+        )
+
+        async for token_event in state.consume_stream(stream):
+            yield token_event
+
+    except ActiveIndexNotReadyError as exc:
+        async for event in _handle_active_index_not_ready(session_id, exc, pending_status_events):
+            yield event
+        return
+    except Exception:
+        logger.exception("Chat stream failed for session %s", session_id)
+        async for event in _handle_stream_failure(session_id, state):
+            yield event
+        return
+
+    await _persist_and_touch(session_id, "assistant", state.full_content, sources=state.sources)
+    if state.warning:
+        yield WarningEvent(value=state.warning)
+    yield SourcesEvent(value=state.sources)
+    yield DoneEvent()
+
+
+async def _persist_and_touch(
+    session_id: str,
+    role: str,
+    content: str,
+    sources: list | None = None,
+    status: str = "complete",
+) -> None:
+    await _to_thread(
+        message_repo.create_message,
+        session_id=session_id, role=role, content=content,
+        sources=sources, status=status,
+    )
+    await _to_thread(touch_session, session_id)
+
+
+async def _handle_active_index_not_ready(
+    session_id: str,
+    exc: ActiveIndexNotReadyError,
+    pending_status_events: list[StatusEvent],
+) -> AsyncIterator[ChatEvent]:
+    """Yield events when no index snapshot is ready within timeout."""
+    for status_event in pending_status_events:
+        yield status_event
+    error_message = str(exc) or settings.msg_index_not_ready
+    await _persist_and_touch(session_id, "assistant", error_message, status="failed")
+    yield TokenEvent(value=error_message)
+    yield SourcesEvent(value=[])
+    yield DoneEvent()
+
+
+async def _handle_stream_failure(
+    session_id: str,
+    state: StreamCollector,
+) -> AsyncIterator[ChatEvent]:
+    """Yield events when an unexpected error occurs during streaming."""
+    partial_content = state.full_content or ""
+    await _persist_and_touch(session_id, "assistant", partial_content, status="failed")
+    yield ErrorEvent(value="生成失败，请重试。")
+    yield DoneEvent()
+
+
+def _coerce_sources(value: Any) -> list[SourceRef]:
+    return [
+        source if isinstance(source, SourceRef) else SourceRef.model_validate(source)
+        for source in value
+    ]

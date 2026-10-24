@@ -2,14 +2,14 @@
 
 覆盖从"用户提问"到"SSE 返回带引用回答"的完整链路。相关代码：
 
-- 编排：`backend/src/backend/app/services/chat_service.py`、`backend/src/backend/rag/pipeline/online_pipeline.py`
+- 编排：`backend/src/backend/application/chat.py`、`backend/src/backend/rag/answer.py`
 - 检索：`backend/src/backend/rag/retrieval/`
 - 生成：`backend/src/backend/rag/generation/`
 - 提示词：`backend/src/backend/prompts/prompts.toml`
 
 ## 1. 整体链路
 
-生产路径由 `chat_service.production_retrieval_options()` 固定为 `strategy="hybrid"`。
+生产路径由 `policies.retrieval_options()` 固定为 `strategy="hybrid"`。
 
 ```
 用户 query
@@ -120,7 +120,7 @@ score(chunk) = Σ_over_routes 1 / (rrf_k + rank_route(chunk))
 | `strategy` | — | **dense** | hybrid |
 | `retrieval_top_k` | — | 5 | 5 |
 
-线上对话永远走 `production_retrieval_options()`，因此以最右列为准；评测可直接构造 `RetrievalOptions` 覆盖。纯 dense 分支（`strategy="dense"`）走 `retrieve_seed_chunks` + `expand_context`，无 RRF、无重排。
+线上对话永远走 `policies.retrieval_options()`，因此以最右列为准；评测可直接构造 `RetrievalOptions` 覆盖。纯 dense 分支（`strategy="dense"`）走 `retrieve_seed_chunks` + `expand_context`，无 RRF、无重排。
 
 ## 4. 生成
 
@@ -209,7 +209,7 @@ done
 
 ## 6. 索引等待
 
-`chat_service._wait_for_ready_index`：
+`session_index.wait_for_ready_index`：
 
 - 轮询 `get_active_ready_snapshot`，间隔从 `index_poll_interval(0.05s)` 指数退避到 `index_poll_max_interval(1.0s)`。
 - 总预算 `index_max_wait(10s)`，超时抛 `ActiveIndexNotReadyError`。

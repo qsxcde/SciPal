@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.domain.config import data_dir
+from backend.config import data_dir
 from backend.scripts.gc_index_snapshots import collect_snapshots
 from backend.storage.sqlite import index_snapshots
 from backend.storage.sqlite import sessions

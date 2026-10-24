@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from backend.domain.config import settings
+from backend.config import settings
 from backend.rag.ingestion.parser_backend import RawParserResult
 
 logger = logging.getLogger(__name__)

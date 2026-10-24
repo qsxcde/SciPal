@@ -147,7 +147,7 @@ npm install
 启动后端（在仓库根目录下执行，通过 `--project backend` 使用其虚拟环境）：
 
 ```bash
-uv run --project backend uvicorn backend.app.main:app --reload
+uv run --project backend uvicorn backend.main:app --reload
 ```
 
 启动前端：
@@ -175,7 +175,7 @@ npm run dev
 测试位于仓库根目录 `tests/`，在仓库根执行：
 
 ```bash
-# 全部用例（当前 22 个，不需要 torch / faiss）
+# 全部用例（当前 28 个，不需要 torch / faiss）
 uv run --project backend pytest
 
 # 按标记过滤
@@ -183,7 +183,7 @@ uv run --project backend pytest -m unit -v
 uv run --project backend pytest -m integration -v
 ```
 
-当前覆盖：SQLite 仓储的状态流转与 CAS、索引快照提升与回滚、上传入口校验、会话归属与开发旁路、索引快照回收。
+当前覆盖：SQLite 仓储的状态流转与 CAS、索引快照提升与回滚、上传入口校验、会话归属与开发旁路、索引快照回收、分层依赖边界（AST 静态校验）。
 索引构建（`FAISSVectorStore`）与 SSE 状态机的用例需要完整 RAG 依赖，尚未纳入。
 
 CI 见 `.github/workflows/ci.yml`（后端测试 + 前端 lint/build）。

@@ -14,7 +14,7 @@ from typing import Any
 
 from openai import OpenAI
 
-from backend.domain.config import settings
+from backend.config import settings
 
 logger = logging.getLogger(__name__)
 

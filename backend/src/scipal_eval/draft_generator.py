@@ -4,7 +4,7 @@ from pathlib import Path
 
 from langchain_openai import ChatOpenAI
 
-from backend.domain.config import settings
+from backend.config import settings
 from backend.domain.models import Chunk
 from backend.storage.sqlite import chunks as chunk_repo
 

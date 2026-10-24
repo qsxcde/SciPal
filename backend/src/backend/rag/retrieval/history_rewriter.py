@@ -11,7 +11,7 @@ from functools import lru_cache
 import importlib.resources
 import tomllib
 
-from backend.domain.config import settings
+from backend.config import settings
 from backend.rag.generation.llm import complete_text
 
 logger = logging.getLogger(__name__)

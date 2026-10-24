@@ -2,7 +2,7 @@ import logging
 
 from pydantic import BaseModel
 
-from backend.domain.config import settings
+from backend.config import settings
 from backend.domain.exceptions import PaperParseError
 from backend.rag.ingestion.chunking import build_chunks
 from backend.rag.ingestion.document_ir import DocumentIR

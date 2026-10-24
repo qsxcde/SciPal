@@ -9,6 +9,18 @@ class EmbeddingModelUnavailableError(RuntimeError):
     pass
 
 
+class UploadValidationError(ValueError):
+    """Raised when an upload cannot be accepted (size, magic bytes, metadata)."""
+
+
+class UploadTooLargeError(UploadValidationError):
+    """Raised when the upload exceeds the configured maximum size."""
+
+
+class InvalidUploadError(UploadValidationError):
+    """Raised when the upload payload is not a supported document."""
+
+
 class SessionNotFoundError(KeyError):
     def __init__(self, message: str = "", session_id: str | None = None):
         self.session_id = session_id

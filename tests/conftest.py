@@ -2,7 +2,7 @@
 
 import pytest
 
-from backend.domain import config
+from backend import config
 from backend.storage.sqlite.schema import init_db
 
 

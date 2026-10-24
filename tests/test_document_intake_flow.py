@@ -4,11 +4,15 @@ import json
 from pathlib import Path
 
 import pytest
-from fastapi import HTTPException
 
-from backend.app.services.document_service import intake_document_upload
-from backend.domain.config import data_dir
-from backend.domain.config import settings
+from backend.application.documents import intake_document_upload
+from backend.config import data_dir
+from backend.config import settings
+from backend.domain.exceptions import (
+    InvalidUploadError,
+    SessionNotFoundError,
+    UploadTooLargeError,
+)
 from backend.storage.sqlite import jobs
 from backend.storage.sqlite import sessions
 
@@ -52,10 +56,9 @@ def test_upload_persists_file_document_and_queued_job():
 
 @pytest.mark.integration
 def test_unknown_session_is_rejected_and_writes_nothing():
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(SessionNotFoundError):
         _intake("missing-session")
 
-    assert exc_info.value.status_code == 404
     assert not (data_dir() / "raw").exists()
 
 
@@ -63,10 +66,9 @@ def test_unknown_session_is_rejected_and_writes_nothing():
 def test_oversized_upload_is_rejected_before_persisting():
     session = _create_session()
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(UploadTooLargeError):
         _intake(session["id"], file_size=settings.upload_max_bytes + 1)
 
-    assert exc_info.value.status_code == 413
     assert jobs.list_jobs_for_session(session["id"]) == []
 
 
@@ -74,8 +76,7 @@ def test_oversized_upload_is_rejected_before_persisting():
 def test_non_pdf_payload_is_rejected():
     session = _create_session()
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(InvalidUploadError):
         _intake(session["id"], pdf_bytes=b"not a pdf", file_size=9)
 
-    assert exc_info.value.status_code == 400
     assert jobs.list_jobs_for_session(session["id"]) == []

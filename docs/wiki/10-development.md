@@ -12,7 +12,7 @@ cp backend/.env.example .env          # 若 example 不存在则手工创建，�
 uv sync --project backend --extra dev --group eval
 
 # 3. 启动后端
-uv run --project backend uvicorn backend.app.main:app --reload
+uv run --project backend uvicorn backend.main:app --reload
 
 # 4. 启动前端（另一个终端）
 cd frontend && npm install && npm run dev
@@ -30,7 +30,7 @@ cd frontend && npm install && npm run dev
 
 `eval` 是 dependency-group，**必须** `--group eval`；漏加会导致 `scipal_eval` 导入 `langchain_openai` 失败。
 
-控制台入口：`scipal-backend = backend.app.main:main`、`scipal-eval = scipal_eval.cli:main`。
+控制台入口：`scipal-backend = backend.main:main`、`scipal-eval = scipal_eval.cli:main`。
 
 ## 2. 测试
 
@@ -47,7 +47,9 @@ cd frontend && npm install && npm run dev
 | `test_access_control.py` | 会话归属规则、开发旁路、生产环境 fail closed |
 | `test_gc_index_snapshots.py` | 只回收 `failed`/旧 `stale`、dry-run、越界路径跳过 |
 
-尚未覆盖（导入需要 torch/faiss 全套依赖）：`FAISSVectorStore`、`chat_service` 的 SSE 状态机、`online_pipeline` 检索/生成链路。
+`test_package_boundaries.py` 用 AST 静态校验分层依赖（application 不依赖 fastapi、storage 不依赖 rag、rag/answer 不读 settings、仅 api 与 main 依赖 fastapi），不加载任何重依赖。
+
+尚未覆盖（导入需要 torch/faiss 全套依赖）：`FAISSVectorStore`、`application.chat.StreamCollector` 的 SSE 状态机、`rag.answer` 检索/生成链路。
 
 ### 2.2 约定
 
@@ -75,7 +77,7 @@ CI（`.github/workflows/ci.yml`）只安装轻量测试依赖（pytest / pydanti
 | 主题 | 建议方式 |
 |---|---|
 | `FAISSVectorStore` | 临时目录 + monkeypatch `_default_embed`，避免加载真实模型 |
-| SSE 协议 | 用 `_SSEStreamState` 或假生成器驱动 `consume_stream`，覆盖 token/dict 混用报错 |
+| SSE 协议 | 用 `application.chat.StreamCollector` 或假生成器驱动 `consume_stream`，覆盖 token/dict 混用报错 |
 | 检索链路 | 用 `AbstractVectorStore` 的假实现 + monkeypatch LLM/reranker，断言 RRF 与上下文顺序 |
 | 索引提交的失败路径 | 构造两条快照，monkeypatch 发布步骤抛错，断言回滚到上一 ready |
 
@@ -83,10 +85,12 @@ CI（`.github/workflows/ci.yml`）只安装轻量测试依赖（pytest / pydanti
 
 ### 3.1 分层
 
-- 路由层只做参数绑定、状态码、异常转 `HTTPException`；业务编排放 `app/services/`。
-- 服务层是**模块级函数**，不定义类，不通过 `Depends` 注入；路由直接 `from ... import service` 调用。
+- 路由层（`api/routes`）只做参数绑定、状态码、调用用例；不写业务判断、不直接读仓储。
+- 用例层（`application/`）是**模块级函数**，不定义类，不通过 `Depends` 注入；不 import `fastapi`，失败抛领域异常。
+- 授权只有一个调用入口：`api/deps.get_accessible_session`；策略本体在 `domain/access.py`。
+- 领域异常到 HTTP 的映射只在 `api/errors.py`；SSE 分帧只在 `api/streaming.py`。
 - 仓储层只写 SQL，不写业务判断；返回 `dict`（`sqlite3.Row` 转换）。
-- `rag/*` 不依赖 `app/*`，保持可被 CLI/测试直接调用。
+- `rag/*` 不依赖 `api` / `application`，也不 import `settings`（参数由 `application/policies.py` 注入），保持可被 CLI/测试直接调用。
 
 ### 3.2 数据库
 
@@ -102,16 +106,16 @@ CI（`.github/workflows/ci.yml`）只安装轻量测试依赖（pytest / pydanti
 
 ### 3.4 日志
 
-- `logging.basicConfig(INFO)` 在 `app/main.py` 导入期配置。
+- `logging.basicConfig(INFO)` 在 `main.py` 导入期配置。
 - 后台异常一律 `logger.exception`，不向前端泄露堆栈；对用户只返回泛化文案。
 
 ## 4. 常见改动 how-to
 
 ### 4.1 新增一个 HTTP 端点
 
-1. 在 `app/contracts.py` 定义请求/响应模型。
-2. 在 `app/services/` 加编排函数（不写 SQL）。
-3. 在对应 `app/routes/*.py` 加 `@router.<method>`，绑定 `Depends(get_current_user)`。
+1. 在 `api/schemas/` 定义请求/响应模型。
+2. 在 `application/` 加编排函数（不写 SQL）。
+3. 在对应 `api/routes/*.py` 加 `@router.<method>`，绑定 `Depends(get_current_user)`。
 4. 新 router 才需要在 `main.py` `include_router`。
 5. 更新 [04 API 参考](04-api.md) 与前端 `api.ts`。
 
@@ -194,7 +198,7 @@ uv run --project backend python -m backend.scripts.migrate_storage \
 
 ## 8. 已知缺口（按影响排序）
 
-1. **重依赖模块无测试**：`FAISSVectorStore`、`chat_service` SSE 状态机、检索/生成链路仍靠人工验证。
+1. **重依赖模块无测试**：`FAISSVectorStore`、`application.chat.StreamCollector` SSE 状态机、检索/生成链路仍靠人工验证。
 2. **多副本不可用**：任务队列、会话锁与向量库缓存均为进程内状态。
 3. **前端路由表是死代码**：`main.ts` 未注册 router。
 4. **`status` 事件未消费**：前端无细粒度进度。

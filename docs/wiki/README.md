@@ -35,7 +35,7 @@
 浏览器 (Vue 3 + Element Plus)
    │  REST + SSE (fetch, Bearer JWT)
    ▼
-FastAPI (backend.app.main)
+FastAPI (backend.main)
    │  路由 → 服务层（模块级函数直调，无 DI 容器）
    ├── SQLite（8 表，WAL，backend/data/scipal.db 或 SCIPAL_DB_PATH）
    ├── 本地文件（raw/ 解析产物 / index/ FAISS 快照）
@@ -63,6 +63,6 @@ FastAPI (backend.app.main)
 
 ## 文档约定
 
-- 路径均相对仓库根目录书写（如 `backend/src/backend/app/main.py`）。
+- 路径均相对仓库根目录书写（如 `backend/src/backend/main.py`）。
 - 「默认值」指 `RuntimeSettings` 的字段默认值，可通过同名大写环境变量或仓库根 `.env` 覆盖（详见 08 章）。
 - 「已知限制」只描述代码当前行为，不代表计划。

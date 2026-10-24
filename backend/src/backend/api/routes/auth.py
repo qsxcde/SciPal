@@ -1,31 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.app.security import (
+from backend.api.schemas import AuthRequest, AuthResponse, UserResponse
+from backend.api.security import (
     create_access_token,
     get_current_user,
     hash_password,
     verify_password,
 )
-from backend.domain.config import settings
+from backend.config import settings
 from backend.storage.sqlite import users as user_repo
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth")
-
-
-class AuthRequest(BaseModel):
-    username: str
-    password: str
-
-
-class AuthResponse(BaseModel):
-    token: str
-    user: dict
-
-
-class UserResponse(BaseModel):
-    id: str
-    username: str
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)

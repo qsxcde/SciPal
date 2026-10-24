@@ -1,8 +1,8 @@
 # 04 API 参考
 
-服务入口：`backend/src/backend/app/main.py` → `app = FastAPI(title="SciPal API")`
+服务入口：`backend/src/backend/main.py` → `app = FastAPI(title="SciPal API")`
 本地地址：`http://127.0.0.1:8000`，OpenAPI 文档 `http://127.0.0.1:8000/docs`
-契约定义：`backend/src/backend/app/contracts.py`（全部 snake_case，无 alias）
+契约定义：`backend/src/backend/api/schemas/`（全部 snake_case，无 alias）
 
 ## 1. 通用约定
 
@@ -246,7 +246,7 @@ while (true) {
 
 ## 5. 未暴露 HTTP 的能力
 
-`chat_service.evaluate_session_chat` / `evaluate_session_retrieval` **没有对应路由**，仅供 `scipal_eval` CLI 在进程内调用（见 [09 离线评测](09-evaluation.md)）。
+`evaluation.evaluate_session_chat` / `evaluation.evaluate_session_retrieval` **没有对应路由**，仅供 `scipal_eval` CLI 在进程内调用（见 [09 离线评测](09-evaluation.md)）。
 
 ## 6. 联调注意点
 

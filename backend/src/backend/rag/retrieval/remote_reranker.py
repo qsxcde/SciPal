@@ -5,7 +5,7 @@ import time
 
 import httpx
 
-from backend.domain.config import settings
+from backend.config import settings
 from backend.domain.models import Chunk
 
 logger = logging.getLogger(__name__)

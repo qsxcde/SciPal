@@ -3,7 +3,7 @@
 import shutil
 from pathlib import Path
 
-from backend.domain.config import data_dir
+from backend.config import data_dir
 
 
 def raw_session_dir(session_id: str) -> Path:

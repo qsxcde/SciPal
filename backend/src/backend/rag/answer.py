@@ -1,4 +1,10 @@
-from dataclasses import asdict, is_dataclass
+"""Single-turn RAG answer capability: retrieve, generate, validate citations.
+
+This module is configuration-free: callers pass retrieval options and answer
+policy explicitly, so the capability can be reused outside the HTTP app.
+"""
+
+from dataclasses import asdict, dataclass, is_dataclass
 import re
 from typing import Generator, Literal, TypedDict
 
@@ -14,9 +20,16 @@ from backend.rag.retrieval.hybrid_retriever import HybridRetrievalOptions
 from backend.rag.retrieval.hybrid_retriever import retrieve_hybrid_context
 from backend.rag.retrieval.retriever import retrieve_seed_chunks
 
-from backend.domain.config import settings
-
 CITATION_PATTERN = re.compile(r"\[Section:\s*(.+?)\]")
+
+
+@dataclass(frozen=True, slots=True)
+class AnswerPolicy:
+    """Product-level choices that the RAG capability must not hardcode."""
+
+    empty_retrieval_message: str
+    invalid_citation_message: str
+    source_excerpt_max_chars: int = 220
 
 
 class StreamTokenEvent(TypedDict):
@@ -81,6 +94,7 @@ def retrieve_context(
     options: RetrievalOptions | None = None,
     include_diagnostics: bool = False,
     history: list[dict] | None = None,
+    source_excerpt_max_chars: int = 220,
 ) -> tuple[list[Chunk], list[SourceRef]] | tuple[list[Chunk], list[SourceRef], RetrievalDiagnostics]:
     # Backward compatibility: k is deprecated, prefer dense_top_k
     effective_top_k = dense_top_k if dense_top_k is not None else k
@@ -105,7 +119,9 @@ def retrieve_context(
             hybrid_result = retrieve_hybrid_context(store, query, options=hybrid_opts, history=history)
         except TypeError:
             hybrid_result = retrieve_hybrid_context(store, query, options=hybrid_opts)
-        sources = build_sources(hybrid_result.prompt_chunks)
+        sources = build_sources(
+            hybrid_result.prompt_chunks, excerpt_max_chars=source_excerpt_max_chars
+        )
         diagnostics = RetrievalDiagnostics(
             ranked_chunks=hybrid_result.ranked_chunks,
             route=_serialize_route(hybrid_result.route),
@@ -125,7 +141,7 @@ def retrieve_context(
         adjacent_window=retrieval_options.adjacent_window,
         include_linked_blocks=retrieval_options.include_linked_blocks,
     )
-    sources = build_sources(chunks)
+    sources = build_sources(chunks, excerpt_max_chars=source_excerpt_max_chars)
     diagnostics = RetrievalDiagnostics(ranked_chunks=seed_chunks)
     if include_diagnostics:
         return chunks, sources, diagnostics
@@ -135,12 +151,20 @@ def retrieve_context(
 def stream_answer(
     store: AbstractVectorStore,
     query: str,
+    *,
+    policy: AnswerPolicy,
     options: RetrievalOptions | None = None,
     history: list[dict] | None = None,
 ) -> Generator[StreamAnswerEvent, None, None]:
-    chunks, sources = retrieve_context(store, query, options=options, history=history)
+    chunks, sources = retrieve_context(
+        store,
+        query,
+        options=options,
+        history=history,
+        source_excerpt_max_chars=policy.source_excerpt_max_chars,
+    )
     if not chunks:
-        yield {"type": "token", "value": settings.msg_empty_retrieval}
+        yield {"type": "token", "value": policy.empty_retrieval_message}
         yield {"type": "sources", "value": []}
         return
     token_stream = stream_answer_for_chunks(chunks, query)
@@ -158,12 +182,14 @@ def stream_answer(
 
     yield {"type": "sources", "value": streamed_sources}
     if not has_valid_citations:
-        yield {"type": "warning", "value": settings.msg_no_valid_citations}
+        yield {"type": "warning", "value": policy.invalid_citation_message}
 
 
 def evaluate_answer(
     store: AbstractVectorStore,
     query: str,
+    *,
+    policy: AnswerPolicy,
     k: int | None = None,
     options: RetrievalOptions | None = None,
 ) -> ChatEvaluationResult:
@@ -173,15 +199,16 @@ def evaluate_answer(
         k=k,
         options=options,
         include_diagnostics=True,
+        source_excerpt_max_chars=policy.source_excerpt_max_chars,
     )
     if not chunks:
-        answer = settings.msg_empty_retrieval
+        answer = policy.empty_retrieval_message
     else:
         generated_answer = generate_answer(chunks, query)
         answer = (
             generated_answer
             if _answer_has_valid_chunk_citations(generated_answer, chunks)
-            else settings.msg_empty_retrieval
+            else policy.empty_retrieval_message
         )
     return ChatEvaluationResult(
         answer=answer,
@@ -222,6 +249,7 @@ def evaluate_retrieval(
             "expansion_debug": diagnostics.expansion_debug,
         },
     )
+
 
 def _serialize_route(route: object) -> dict[str, object]:
     if is_dataclass(route):

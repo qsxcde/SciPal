@@ -3,9 +3,9 @@ import shutil
 import time
 from pathlib import Path
 
-from backend.app.services.index_service import build_candidate_snapshot
-from backend.app.services.index_service import cleanup_snapshot_files
-from backend.app.services.index_service import commit_ready_snapshot
+from backend.application.indexing import build_candidate_snapshot
+from backend.application.indexing import cleanup_snapshot_files
+from backend.application.indexing import commit_ready_snapshot
 from backend.domain.exceptions import PaperParseError
 from backend.domain.exceptions import SnapshotCommitError
 from backend.domain.states import DocumentStage
@@ -16,7 +16,7 @@ from backend.storage.paths import raw_session_dir
 from backend.storage.sqlite import chunks as chunk_repo
 from backend.storage.sqlite import documents as document_repo
 from backend.storage.sqlite import index_snapshots as snapshot_repo
-from backend.storage.vector_db.registry import discard_store
+from backend.application.store_cache import discard_store
 
 logger = logging.getLogger(__name__)
 

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from backend.domain import config
+from backend import config
 from backend.rag.embedding import create_embed_fn
 from backend.domain.models import Chunk
 

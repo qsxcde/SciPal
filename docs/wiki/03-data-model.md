@@ -196,7 +196,7 @@ documents 1 ── N jobs         (document_id 可空, SET NULL)
                      └─────────────┴─────────────┴──────────────┴──────────▶ failed
 ```
 
-- 触发点：`document_service` 建行 → `uploaded`；`ingestion_service` 各阶段；`index_service` 提交成功后由 `update_document_status(ready)` 收尾。
+- 触发点：`documents` 建行 → `uploaded`；`ingestion` 各阶段；`indexing` 提交成功后由 `update_document_status(ready)` 收尾。
 - 无 `failed → *` 恢复路径；重试等价于重新上传一份新文档。
 - `PROCESSING_DOCUMENT_STAGES = {processing, uploaded, parsing, parsed, chunked, indexing}`，其中 `processing` 仅为历史行保留。
 
@@ -275,7 +275,7 @@ backend/data/                              # 默认数据根 = backend_root().pa
 
 ## 6. 向量库注册表与缓存
 
-`backend/src/backend/storage/vector_db/registry.py`
+`backend/src/backend/application/store_cache.py`
 
 进程内 LRU：`OrderedDict[session_id] = (cache_key, store)`，容量 16，`threading.RLock` 保护。
 

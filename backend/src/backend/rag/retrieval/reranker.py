@@ -8,7 +8,7 @@ import torch
 from modelscope import snapshot_download
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-from backend.domain.config import settings
+from backend.config import settings
 from backend.domain.models import Chunk
 
 logger = logging.getLogger(__name__)
@@ -107,7 +107,7 @@ def _load_reranker() -> CrossEncoderReranker | None:
 
 
 def _reranker_model_dir() -> Path:
-    from backend.domain.config import model_dir
+    from backend.config import model_dir
     model_name = settings.reranker_model_id.rsplit("/", 1)[-1]
     return model_dir() / "reranker" / model_name
 

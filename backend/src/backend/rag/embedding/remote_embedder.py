@@ -5,7 +5,7 @@ import time
 
 from openai import OpenAI
 
-from backend.domain.config import settings
+from backend.config import settings
 from backend.rag.embedding.local_embedder import truncate_for_embedding
 
 logger = logging.getLogger(__name__)

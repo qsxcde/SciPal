@@ -15,7 +15,7 @@ import importlib.resources
 from pathlib import Path
 import tomllib
 
-from backend.domain.config import settings
+from backend.config import settings
 from backend.rag.generation.llm import complete_text
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ _UPPER_ABBREV_RE = re.compile(r"\b[A-Z]{2,6}\b")
 
 def load_glossary() -> dict[str, list[str]]:
     """Load term glossary from JSON file. Returns empty dict on failure."""
-    from backend.domain.config import project_root
+    from backend.config import project_root
     raw_path = settings.term_expand_glossary_path
     path = Path(raw_path)
     if not path.is_absolute():

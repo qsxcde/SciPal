@@ -3,8 +3,8 @@
 import pytest
 from fastapi import HTTPException
 
-from backend.app import security
-from backend.domain import config
+from backend.api import security
+from backend import config
 from backend.domain.access import session_is_accessible
 
 

@@ -1,20 +1,39 @@
-import json
+"""In-process worker: FIFO job consumption with a pluggable handler registry."""
+
 import logging
 import threading
-from pathlib import Path
+from collections.abc import Callable
 
-from backend.domain.config import settings
-from backend.domain.states import DocumentStage
+from backend.config import settings
 from backend.domain.states import JobStatus
-from backend.storage.sqlite import documents as document_repo
 from backend.storage.sqlite import jobs as job_repo
-from backend.app.services.ingestion_service import run_document_ingestion_job
 
 logger = logging.getLogger(__name__)
 
+JobHandler = Callable[[dict], None]
+
+_handlers: dict[str, JobHandler] = {}
+_handlers_lock = threading.Lock()
+
+
+def register_handler(job_type: str, handler: JobHandler) -> None:
+    """Register the handler responsible for one ``jobs.type`` value."""
+    with _handlers_lock:
+        _handlers[job_type] = handler
+
+
+def get_handler(job_type: str) -> JobHandler | None:
+    with _handlers_lock:
+        return _handlers.get(job_type)
+
 
 class InProcessJobRunner:
-    """Lightweight in-process worker for queued ingestion jobs."""
+    """Lightweight in-process worker for queued jobs.
+
+    The runner only knows about the job queue; what a job *does* comes from the
+    handler registered for its type, so new job types never require touching
+    this module.
+    """
 
     def __init__(self) -> None:
         self._session_locks: dict[str, threading.Lock] = {}
@@ -58,11 +77,10 @@ class InProcessJobRunner:
             if job_repo.requeue_interrupted_job(job["id"]):
                 recovered += 1
                 logger.warning(
-                    "Requeued interrupted ingestion job %s for session %s",
-                    job["id"],
-                    job["session_id"],
+                    "Requeued interrupted job %s (type=%s) for session %s",
+                    job["id"], job.get("type"), job["session_id"],
                 )
-        logger.info("Recovered %s interrupted ingestion jobs", recovered)
+        logger.info("Recovered %s interrupted jobs", recovered)
         return recovered
 
     def tick(self) -> int:
@@ -71,13 +89,11 @@ class InProcessJobRunner:
             return 0
         job = jobs[0]
         if not job_repo.mark_job_running(job["id"]):
-            logger.info("Skipped ingestion job %s because it was no longer queued", job["id"])
+            logger.info("Skipped job %s because it was no longer queued", job["id"])
             return 0
         logger.info(
-            "Starting ingestion job %s for session %s document %s",
-            job["id"],
-            job["session_id"],
-            job.get("document_id"),
+            "Starting job %s type=%s for session %s document %s",
+            job["id"], job.get("type"), job["session_id"], job.get("document_id"),
         )
         self._run_job(job)
         return 1
@@ -86,52 +102,25 @@ class InProcessJobRunner:
         session_lock = self._session_locks.setdefault(job["session_id"], threading.Lock())
         with session_lock:
             try:
-                self._execute_ingestion_job(job)
+                self._execute_job(job)
             except Exception as exc:
                 logger.exception(
-                    "Failed ingestion job %s for session %s document %s",
-                    job["id"],
-                    job["session_id"],
-                    job.get("document_id"),
+                    "Failed job %s type=%s for session %s document %s",
+                    job["id"], job.get("type"), job["session_id"], job.get("document_id"),
                 )
                 job_repo.mark_job_finished(job["id"], JobStatus.failed, str(exc))
             else:
                 logger.info(
-                    "Finished ingestion job %s for session %s document %s",
-                    job["id"],
-                    job["session_id"],
-                    job.get("document_id"),
+                    "Finished job %s type=%s for session %s document %s",
+                    job["id"], job.get("type"), job["session_id"], job.get("document_id"),
                 )
 
-    def _execute_ingestion_job(self, job: dict) -> None:
-        if job["type"] != "document_ingestion":
-            raise RuntimeError(f"Unsupported job type: {job['type']}")
-        if job["stage"] != DocumentStage.uploaded:
-            raise RuntimeError(f"Unsupported job stage: {job['stage']}")
-        payload = json.loads(job["payload_json"] or "{}")
-        document_id = payload.get("document_id") or job["document_id"]
-        if document_id is None:
-            raise RuntimeError("Missing document id in job payload")
-        document = document_repo.get_document(document_id)
-        if document is None:
-            raise RuntimeError("Document not found for ingestion job")
-        file_path = payload.get("file_path") or document["file_path"]
-        try:
-            pdf_bytes = Path(file_path).read_bytes()
-        except Exception as exc:
-            document_repo.update_document_status(
-                document_id,
-                DocumentStage.failed,
-                chunk_count=0,
-                error_message=str(exc),
-            )
-            raise
-        run_document_ingestion_job(
-            session_id=job["session_id"],
-            document=document,
-            pdf_bytes=pdf_bytes,
-        )
-        job_repo.mark_job_finished(job["id"], JobStatus.succeeded)
+    def _execute_job(self, job: dict) -> None:
+        job_type = job.get("type")
+        handler = get_handler(job_type) if job_type else None
+        if handler is None:
+            raise RuntimeError(f"Unsupported job type: {job_type}")
+        handler(job)
 
     def _run_forever(self) -> None:
         logger.info("Job runner loop started")

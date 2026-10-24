@@ -6,11 +6,11 @@ import shutil
 from tempfile import TemporaryDirectory
 from typing import Any, Callable
 
-from backend.domain.config import data_dir
-from backend.domain.config import settings
+from backend.config import data_dir
+from backend.config import settings
 from backend.rag.ingestion.parser_backend import RawParserResult
-from backend.domain.config import mineru_model_dir
-from backend.domain.config import mineru_modelscope_cache_dir
+from backend.config import mineru_model_dir
+from backend.config import mineru_modelscope_cache_dir
 
 
 class MinerUBackend:

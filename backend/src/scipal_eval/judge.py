@@ -3,7 +3,7 @@ import os
 
 from langchain_openai import ChatOpenAI
 
-from backend.domain.config import settings
+from backend.config import settings
 from scipal_eval.models import EvalSample
 from scipal_eval.models import EvalSampleResult
 from scipal_eval.models import JudgeMetricBundle

@@ -1,9 +1,10 @@
 from collections.abc import Generator
 
-from backend.domain.config import settings
 from backend.rag.generation.llm import stream_completion_tokens
 from backend.rag.generation.prompt_template import build_prompt
 from backend.domain.models import Chunk, SourceRef
+
+DEFAULT_SOURCE_EXCERPT_MAX_CHARS = 220
 
 
 def stream_answer(
@@ -20,13 +21,16 @@ def generate_answer(chunks: list[Chunk], question: str) -> str:
     return "".join(stream_completion_tokens(build_prompt(chunks, question)))
 
 
-def build_sources(chunks: list[Chunk]) -> list[SourceRef]:
+def build_sources(
+    chunks: list[Chunk],
+    excerpt_max_chars: int = DEFAULT_SOURCE_EXCERPT_MAX_CHARS,
+) -> list[SourceRef]:
     return [
         SourceRef(
             paper_id=chunk.metadata.paper_id,
             section=chunk.metadata.section,
             chunk_index=chunk.metadata.chunk_index,
-            text_excerpt=chunk.text[:settings.source_excerpt_max_chars],
+            text_excerpt=chunk.text[:excerpt_max_chars],
             page_start=chunk.metadata.page_start,
             page_end=chunk.metadata.page_end,
             block_ids=chunk.metadata.block_ids,

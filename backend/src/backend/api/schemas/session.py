@@ -1,6 +1,10 @@
-from pydantic import BaseModel, Field
+"""Session transfer models, including the aggregated session snapshot."""
+
 from typing import Literal
 
+from pydantic import BaseModel, Field
+
+from backend.api.schemas.document import DocumentSummary
 from backend.domain.models import SourceRef
 from backend.domain.states import DocumentStage
 from backend.domain.states import IndexSnapshotStatus
@@ -10,26 +14,6 @@ from backend.domain.states import SessionStatus
 
 class SessionCreateResponse(BaseModel):
     session_id: str
-
-
-class DocumentSummary(BaseModel):
-    id: str
-    session_id: str
-    filename: str
-    file_path: str
-    mime_type: str
-    file_size: int
-    chunk_count: int
-    status: str
-    error_message: str | None = None
-    parsed_ir_path: str | None = None
-    parsed_markdown_path: str | None = None
-    quality_report_path: str | None = None
-    parser_name: str | None = None
-    parser_version: str | None = None
-    parse_quality_status: str | None = None
-    created_at: str
-    updated_at: str
 
 
 class PersistedMessage(BaseModel):
@@ -111,40 +95,3 @@ class SessionSnapshot(BaseModel):
 class SessionUpdateRequest(BaseModel):
     title: str | None = None
     is_pinned: bool | None = None
-
-
-class ChatMessage(BaseModel):
-    role: Literal["user", "assistant"] = "user"
-    content: str
-
-
-class ChatStreamTokenEvent(BaseModel):
-    type: Literal["token"]
-    value: str
-
-
-class ChatStreamStatusEvent(BaseModel):
-    type: Literal["status"]
-    value: Literal["waiting_for_index", "retrieving", "generating"]
-
-
-class ChatStreamSourcesEvent(BaseModel):
-    type: Literal["sources"]
-    value: list[SourceRef]
-
-
-class ChatStreamErrorEvent(BaseModel):
-    type: Literal["error"]
-    value: str
-
-
-class ChatStreamWarningEvent(BaseModel):
-    type: Literal["warning"]
-    value: str
-
-
-class ChatStreamDoneEvent(BaseModel):
-    type: Literal["done"]
-
-
-ChatStreamEvent = ChatStreamStatusEvent | ChatStreamTokenEvent | ChatStreamSourcesEvent | ChatStreamErrorEvent | ChatStreamWarningEvent | ChatStreamDoneEvent

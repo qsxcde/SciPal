@@ -3,7 +3,7 @@
 代码：`backend/src/scipal_eval/`
 入口：`scipal-eval` 控制台脚本 / `python -m scipal_eval.cli`（`prog="ragas-evals"`）
 
-评测在**当前进程内**直接调用应用服务层（`chat_service.evaluate_session_retrieval` / `evaluate_session_chat`），不经过 HTTP，因此需要能读到同一份 SQLite 与会话索引文件。
+评测在**当前进程内**直接调用应用服务层（`evaluation.evaluate_session_retrieval` / `evaluation.evaluate_session_chat`），不经过 HTTP，因此需要能读到同一份 SQLite 与会话索引文件。
 
 ## 1. 前置条件
 

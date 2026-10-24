@@ -24,7 +24,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from backend.domain.config import data_dir
+from backend.config import data_dir
 from backend.storage.sqlite import index_snapshots as snapshot_repo
 from backend.storage.sqlite.schema import init_db
 

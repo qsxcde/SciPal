@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Generator
 
-from backend.domain.config import require_generation_settings
+from backend.config import require_generation_settings
 from backend.rag.generation.model_client import ModelClient, build_providers
 
 logger = logging.getLogger(__name__)

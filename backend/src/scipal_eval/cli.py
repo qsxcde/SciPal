@@ -17,7 +17,7 @@ from scipal_eval.pipeline import run_pipeline
 from scipal_eval.reporting import compare_baseline, save_baseline, write_run_outputs
 
 if TYPE_CHECKING:
-  from backend.rag.pipeline.online_pipeline import ChatEvaluationResult
+  from backend.rag.answer import ChatEvaluationResult
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -203,8 +203,8 @@ def _evaluate_with_scipal(
   config: RetrievalConfig,
 ) -> "ChatEvaluationResult":
   """Evaluate one question against a live SciPal session with retrieval overrides."""
-  from backend.rag.pipeline.online_pipeline import RetrievalOptions
-  from backend.app.services.chat_service import evaluate_session_chat
+  from backend.rag.answer import RetrievalOptions
+  from backend.application.evaluation import evaluate_session_chat
 
   retrieval_options = RetrievalOptions(
     strategy=config.strategy,
@@ -245,8 +245,8 @@ def _evaluate_retrieval_only(
   config: RetrievalConfig,
 ) -> "ChatEvaluationResult":
   """Evaluate one question against a SciPal session without live generation."""
-  from backend.rag.pipeline.online_pipeline import RetrievalOptions
-  from backend.app.services.chat_service import evaluate_session_retrieval
+  from backend.rag.answer import RetrievalOptions
+  from backend.application.evaluation import evaluate_session_retrieval
 
   retrieval_options = RetrievalOptions(
     strategy=config.strategy,
@@ -292,7 +292,7 @@ def _build_reproducibility_manifest(
   default_session_id: str | None,
 ) -> dict[str, object]:
   """Capture the ready index snapshot used by each resolved evaluation session."""
-  from backend.domain.config import settings
+  from backend.config import settings
   from backend.storage.sqlite.index_snapshots import get_active_ready_snapshot
   from backend.storage.sqlite.sessions import get_session
 

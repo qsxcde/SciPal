@@ -2,11 +2,11 @@
 
 覆盖"上传 PDF → 可检索"的完整链路。相关代码：
 
-- 落盘与建行：`backend/src/backend/app/services/document_service.py`
-- 调度：`backend/src/backend/app/runner.py`
-- 状态机与产物：`backend/src/backend/app/services/ingestion_service.py`
+- 落盘与建行：`backend/src/backend/application/documents.py`
+- 调度：`backend/src/backend/worker/runner.py`
+- 状态机与产物：`backend/src/backend/application/ingestion.py`
 - 解析与切块：`backend/src/backend/rag/ingestion/`
-- 索引提交：`backend/src/backend/app/services/index_service.py`、`backend/src/backend/rag/indexing/vector_store.py`
+- 索引提交：`backend/src/backend/application/indexing.py`、`backend/src/backend/rag/indexing/vector_store.py`
 
 ## 1. 阶段总览
 
@@ -37,7 +37,7 @@
 
 ## 2. 上传落地
 
-`document_service.intake_document_upload`：
+`documents.intake_document_upload`：
 
 1. `_validate_upload`：`file_size` 为 `None` → 400；超过 `upload_max_bytes`（默认 50 MiB）→ 413；前 4 字节不是 `%PDF` → 400。路由传入的是 `file.size`，为空时退化为 `len(pdf_bytes)`。
 2. `paths.session_document_file_path` → `<data>/raw/<session_id>/<document_id>.pdf`。
@@ -46,11 +46,11 @@
 5. `sessions.touch_session`。
 6. 若会话标题仍是 `settings.msg_default_session_title`，改为文件名。
 
-写盘与建行不在同一事务中，但有显式补偿：`create_document` 或 `create_job` 抛错时，`delete_document` + `unlink` 已写文件后再抛出（`document_service.py:68-73`）。`touch_session` 与"标题自动改名"在 `try` 之外，且用 `suppress` 包裹，失败只影响排序/标题，不影响上传结果。
+写盘与建行不在同一事务中，但有显式补偿：`create_document` 或 `create_job` 抛错时，`delete_document` + `unlink` 已写文件后再抛出（`documents.py:68-73`）。`touch_session` 与"标题自动改名"在 `try` 之外，且用 `suppress` 包裹，失败只影响排序/标题，不影响上传结果。
 
 ## 3. 任务调度
 
-`InProcessJobRunner`（`app/runner.py`）：
+`InProcessJobRunner`（`worker/runner.py`）：
 
 | 行为 | 实现 |
 |---|---|
@@ -58,7 +58,8 @@
 | 取任务 | `list_runnable_jobs(limit=1)`：`status='queued' ORDER BY created_at ASC` |
 | 领取 | `mark_job_running` CAS：`WHERE id=? AND status='queued'`，`attempt+1`，清 `error_message`，置 `started_at` |
 | 串行 | 每 `session_id` 一把 `threading.Lock`，同会话任务不并发 |
-| 执行 | 只接受 `type=document_ingestion` 且 `stage=uploaded`；读 `payload_json` → 读 PDF 字节 → `ingestion_service.run_document_ingestion_job` |
+| 分发 | `worker/runner.py` 按 `jobs.type` 查 handler 注册表；未注册的类型直接失败，新增任务类型不需要改 runner |
+| 执行 | `worker/handlers.ingest_document`：要求 `stage=uploaded`；读 `payload_json` → 读 PDF 字节 → `application.ingestion.run_document_ingestion_job` |
 | 收尾 | 成功 `mark_job_finished("succeeded")`；异常 `mark_job_finished("failed", str(exc))` |
 | 恢复 | 启动时 `recover_interrupted_jobs`：`running` / `interrupted` → `queued`，清时间戳与错误 |
 
@@ -199,7 +200,7 @@ warning 例：`NO_HEADINGS_DETECTED`、`LOW_TEXT_DENSITY`。
 
 ### 9.1 候选快照
 
-`index_service.build_candidate_snapshot`：
+`indexing.build_candidate_snapshot`：
 
 1. `uuid4()` 生成 token，`create_building_snapshot` 写 `index_snapshots(status=building, document_ids_json=[...])`。
 2. 取目标 chunks（当前会话全部可索引块），`filter_indexable_chunks` 剔除参考文献块。
@@ -210,7 +211,7 @@ warning 例：`NO_HEADINGS_DETECTED`、`LOW_TEXT_DENSITY`。
 
 ### 9.2 提交
 
-`index_service.commit_ready_snapshot`：
+`indexing.commit_ready_snapshot`：
 
 ```
 校验：快照存在、session 匹配、document_id ∈ snapshot.document_ids
@@ -237,7 +238,7 @@ warning 例：`NO_HEADINGS_DETECTED`、`LOW_TEXT_DENSITY`。
 
 ## 10. 失败清理
 
-`ingestion_service._mark_failed` 统一处理：
+`ingestion._mark_failed` 统一处理：
 
 1. 若存在候选快照 → `mark_snapshot_failed`，按 `preserve_candidate_snapshot_files` 决定是否删文件。
 2. `delete_chunks_for_document`（`chunk_count` 归零）。
@@ -252,10 +253,10 @@ warning 例：`NO_HEADINGS_DETECTED`、`LOW_TEXT_DENSITY`。
 
 | 参数 | 默认 | 位置 |
 |---|---|---|
-| `upload_max_bytes` | 52428800（50 MiB） | `domain/config.py` |
-| `max_chunk_tokens` | 800 | `domain/config.py` → `ingestion/pipeline.py` |
+| `upload_max_bytes` | 52428800（50 MiB） | `config.py` |
+| `max_chunk_tokens` | 800 | `config.py` → `ingestion/pipeline.py` |
 | `chunk_overlap_tokens` | 100 | 同上 |
-| `mineru_torch_device` | `cpu` | `domain/config.py` |
+| `mineru_torch_device` | `cpu` | `config.py` |
 | `mineru_disable_ocr` | `True` | 同上 |
 | `mineru_table_enable` / `mineru_formula_enable` | `True` / `True` | 同上 |
 | `mineru_api_key` | `None`（为空则不启用云解析） | 同上 |

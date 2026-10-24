@@ -32,7 +32,7 @@ dev = [
 ]
 
 [project.scripts]
-scipal-backend = "backend.app.main:main"
+scipal-backend = "backend.main:main"
 scipal-eval = "scipal_eval.cli:main"
 
 [dependency-groups]

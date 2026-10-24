@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from backend.domain.config import settings
+from backend.config import settings
 from backend.rag.ingestion.parser_backend import RawParserResult
 
 FALLBACK_BLOCK_WORDS = 180

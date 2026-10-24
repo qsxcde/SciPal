@@ -1,8 +1,8 @@
 """Shared backend domain definitions."""
+
 __all__ = [
-    "config",
+    "access",
     "exceptions",
     "models",
     "states",
 ]
-

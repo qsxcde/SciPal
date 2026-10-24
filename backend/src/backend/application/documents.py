@@ -4,9 +4,12 @@ import uuid
 from contextlib import suppress
 from pathlib import Path
 
-from fastapi import HTTPException
-
-from backend.domain.config import settings
+from backend.config import settings
+from backend.domain.exceptions import (
+    InvalidUploadError,
+    SessionNotFoundError,
+    UploadTooLargeError,
+)
 from backend.domain.states import DocumentStage
 from backend.storage.sqlite import documents as document_repo
 from backend.storage.sqlite import jobs as job_repo
@@ -18,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 def _validate_upload(file_size: int | None, pdf_bytes: bytes) -> None:
     if file_size is None:
-        raise HTTPException(status_code=400, detail="Cannot determine file size")
+        raise InvalidUploadError("Cannot determine file size")
     if file_size > settings.upload_max_bytes:
-        raise HTTPException(status_code=413, detail="File too large (max 50MB)")
+        raise UploadTooLargeError(f"File too large (max {settings.upload_max_bytes} bytes)")
     if not pdf_bytes.startswith(b"%PDF"):
-        raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF")
+        raise InvalidUploadError("Uploaded file is not a valid PDF")
 
 
 def intake_document_upload(
@@ -36,7 +39,9 @@ def intake_document_upload(
     _validate_upload(file_size or len(pdf_bytes), pdf_bytes)
     session = session_repo.get_session(session_id)
     if session is None:
-        raise HTTPException(status_code=404, detail="Session not found. Please create a session first.")
+        raise SessionNotFoundError(
+            f"Session not found: {session_id}", session_id=session_id
+        )
     document_id = str(uuid.uuid4())
     file_path = session_document_file_path(session_id, document_id)
     document = None

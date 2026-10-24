@@ -1,4 +1,4 @@
-from backend.domain.config import settings
+from backend.config import settings
 from backend.domain.models import Chunk
 from backend.rag.indexing.vector_store import AbstractVectorStore
 from backend.rag.retrieval.filters import filter_indexable_chunks

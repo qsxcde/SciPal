@@ -1,1 +1,0 @@
-"""SciPal online application package."""

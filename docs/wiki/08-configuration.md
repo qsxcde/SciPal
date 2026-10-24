@@ -1,6 +1,6 @@
 # 08 配置参考
 
-定义：`backend/src/backend/domain/config.py`（`RuntimeSettings`，pydantic-settings `BaseSettings`）
+定义：`backend/src/backend/config.py`（`RuntimeSettings`，pydantic-settings `BaseSettings`）
 加载：`SettingsConfigDict(env_file=project_root() / ".env", extra="ignore")`
 即：读取**仓库根目录**的 `.env`，未设置 `env_prefix`，环境变量名 = 字段名大写。
 

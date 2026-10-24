@@ -9,7 +9,7 @@ import torch
 from modelscope import snapshot_download
 from sentence_transformers import SentenceTransformer
 
-from backend.domain import config
+from backend import config
 from backend.domain.exceptions import EmbeddingModelUnavailableError
 
 logger = logging.getLogger(__name__)

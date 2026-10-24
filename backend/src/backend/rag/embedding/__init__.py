@@ -10,7 +10,7 @@ Usage:
 import logging
 from typing import Callable
 
-from backend.domain.config import settings
+from backend.config import settings
 from backend.rag.embedding import local_embedder
 from backend.rag.embedding import remote_embedder
 
