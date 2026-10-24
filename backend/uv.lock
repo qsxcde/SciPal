@@ -3756,6 +3756,7 @@ dependencies = [
     { name = "mineru" },
     { name = "modelscope" },
     { name = "numpy" },
+    { name = "openai" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pypdf" },
@@ -3787,12 +3788,13 @@ eval = [
 [package.metadata]
 requires-dist = [
     { name = "bcrypt", specifier = ">=4.0" },
-    { name = "faiss-cpu", specifier = ">=1.8" },
+    { name = "faiss-cpu", specifier = ">=1.8,<2" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mineru", specifier = ">=1.1" },
     { name = "modelscope", specifier = ">=1.20" },
     { name = "numpy", specifier = ">=1.26" },
+    { name = "openai", specifier = ">=1.40,<2" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pydantic-settings", specifier = ">=2.5" },
     { name = "pypdf", specifier = ">=5.0" },
@@ -3803,8 +3805,8 @@ requires-dist = [
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.3" },
     { name = "python-multipart", specifier = ">=0.0.12" },
     { name = "sentence-transformers", specifier = ">=3.1" },
-    { name = "torch", specifier = ">=2.4" },
-    { name = "transformers", specifier = ">=4.45" },
+    { name = "torch", specifier = ">=2.4,<3" },
+    { name = "transformers", specifier = ">=4.45,<5" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
 ]
 provides-extras = ["dev"]
@@ -3814,7 +3816,7 @@ eval = [
     { name = "langchain-openai", specifier = ">=0.2" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "ragas" },
+    { name = "ragas", specifier = ">=0.4,<0.5" },
 ]
 
 [[package]]

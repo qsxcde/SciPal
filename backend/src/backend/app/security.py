@@ -10,6 +10,9 @@ from backend.storage.sqlite import users as user_repo
 
 _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
+# 未配置 JWT_SECRET_KEY 时允许匿名访问的环境；生产环境必须显式配置鉴权。
+_ANONYMOUS_ALLOWED_ENVS = frozenset({"development", "dev", "local", "test", "testing"})
+
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -35,6 +38,11 @@ def decode_access_token(token: str) -> dict | None:
 
 async def get_current_user(token: str | None = Depends(_oauth2_scheme)) -> dict:
     if not settings.jwt_secret_key:
+        if settings.app_env.strip().lower() not in _ANONYMOUS_ALLOWED_ENVS:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication is not configured",
+            )
         return {"id": "", "username": "dev"}
     if token is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")

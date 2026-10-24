@@ -116,6 +116,4 @@ SciPal/
 
 仓库根 `README.md` 是面向使用者的入口文档，存在少量与当前代码不一致之处，阅读时以本 Wiki 为准：
 
-- README「开发与测试」列出的 focused suite 文件目前不在仓库中，且根 `.gitignore` 忽略了 `tests/`。
-- README 引用的 `docs/evaluation/README.md` 不存在（`.gitignore` 忽略了 `docs/`，见 [10 开发与运维](10-development.md) 的仓库约定）。
 - README 示例配置中的 `EMBEDDING_MODEL=Qwen/Qwen3-Embedding-0.6B` 与代码默认值 `BAAI/bge-small-en-v1.5` 不同，默认值以 [08 配置参考](08-configuration.md) 为准。

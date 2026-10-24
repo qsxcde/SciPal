@@ -1,3 +1,4 @@
+from backend.domain.access import session_is_accessible
 from backend.domain.config import settings
 from backend.rag.indexing.vector_store import AbstractVectorStore
 from backend.domain.exceptions import SessionNotFoundError
@@ -30,9 +31,21 @@ def update_session(
     return sessions.update_session(session_id=session_id, title=title, is_pinned=is_pinned)
 
 
-def get_session_snapshot(session_id: str) -> dict | None:
+def get_accessible_session(session_id: str, user_id: str | None) -> dict | None:
+    """Return the session row only when it exists, is not archived and is owned by ``user_id``.
+
+    ``sessions.user_id`` may be NULL for sessions created while authentication was
+    disabled (development bypass); such legacy rows stay readable by any caller.
+    """
     session = sessions.get_session(session_id)
-    if session is None or session["is_archived"]:
+    if not session_is_accessible(session, user_id):
+        return None
+    return session
+
+
+def get_session_snapshot(session_id: str, user_id: str | None = None) -> dict | None:
+    session = get_accessible_session(session_id, user_id)
+    if session is None:
         return None
     session_documents = documents.list_documents(session_id)
     session_messages = messages.list_messages(session_id)

@@ -36,24 +36,22 @@ cd frontend && npm install && npm run dev
 
 ### 2.1 现状
 
-- 仓库中**没有任何 `test_*.py` / `*_test.py`**。
-- 根 `.gitignore` 忽略 `tests/`，因此测试目录即使存在也不入库。
-- `README.md` 列出了 8 个"计划纳入"的 focused suite 文件名，补测时沿用：
+`tests/` 已纳入版本库，22 个用例覆盖"不需要 torch/faiss 的"核心不变量：
 
-```
-tests/test_backend_state_models.py
-tests/test_document_intake_flow.py
-tests/test_index_commit_flow.py
-tests/test_chat_waiting_flow.py
-tests/test_job_recovery.py
-tests/test_backend_state_transitions.py
-tests/test_vector_store.py
-tests/test_chat_service.py
-```
+| 文件 | 覆盖内容 |
+|---|---|
+| `test_backend_state_transitions.py` | job CAS（`mark_job_running` 幂等）、终态校验、文档状态更新清错误 |
+| `test_job_recovery.py` | `running → queued` 重排、`attempt` 保留、queued 不可重排 |
+| `test_index_commit_flow.py` | 快照提升把旧 `ready` 打 `stale`、重复提升返回 False、回滚恢复、`failed` 不可见 |
+| `test_document_intake_flow.py` | 上传落盘 + job 入队、404/413/400 分支无副作用 |
+| `test_access_control.py` | 会话归属规则、开发旁路、生产环境 fail closed |
+| `test_gc_index_snapshots.py` | 只回收 `failed`/旧 `stale`、dry-run、越界路径跳过 |
+
+尚未覆盖（导入需要 torch/faiss 全套依赖）：`FAISSVectorStore`、`chat_service` 的 SSE 状态机、`online_pipeline` 检索/生成链路。
 
 ### 2.2 约定
 
-`pytest.ini`（仓库根）：
+`pytest.ini`（仓库根，`pythonpath = backend/src`，因此直接 `pytest` 即可）:
 
 | 标记 | 语义 |
 |---|---|
@@ -62,22 +60,24 @@ tests/test_chat_service.py
 | `import_isolation` | 验证导入副作用与导入期依赖边界 |
 | `slow` | 慢测试 |
 
-`backend/pyproject.toml` 的 `[tool.pytest.ini_options]`：`asyncio_mode = "auto"`（async 测试无需 `@pytest.mark.asyncio`）、`addopts = "-q"`。
+`asyncio_mode = auto` 写在 `pytest.ini`（`pyproject.toml` 里的同名配置在存在 `pytest.ini` 时不会生效）。async 测试无需 `@pytest.mark.asyncio`。
 
 ```bash
 uv run --project backend pytest -m unit -v
 uv run --project backend pytest -m integration -v
+uv run --project backend pytest            # 全部
 ```
+
+CI（`.github/workflows/ci.yml`）只安装轻量测试依赖（pytest / pydantic / fastapi / jose / bcrypt）并跑 `pytest -m "unit or integration"`，另外用 `compileall` 兜住重依赖模块的语法错误；前端 job 跑 `npm ci && npm run lint && npm run build`。
 
 ### 2.3 补测时的入手点
 
 | 主题 | 建议方式 |
 |---|---|
 | `FAISSVectorStore` | 临时目录 + monkeypatch `_default_embed`，避免加载真实模型 |
-| 状态流转 | 直接调仓储函数，断言 CAS 行为（重复 `mark_job_running` 应失败） |
-| 快照提交/回滚 | 构造两条快照，模拟 `mark_snapshot_ready` 后抛错，断言 `stale → ready` 恢复 |
 | SSE 协议 | 用 `_SSEStreamState` 或假生成器驱动 `consume_stream`，覆盖 token/dict 混用报错 |
-| 上传 | 直接调 `intake_document_upload`，覆盖 400/413/404 分支 |
+| 检索链路 | 用 `AbstractVectorStore` 的假实现 + monkeypatch LLM/reranker，断言 RRF 与上下文顺序 |
+| 索引提交的失败路径 | 构造两条快照，monkeypatch 发布步骤抛错，断言回滚到上一 ready |
 
 ## 3. 代码约定
 
@@ -155,7 +155,9 @@ uv run --project backend python -m backend.scripts.migrate_storage \
 | 现象 | 原因 | 处理 |
 |---|---|---|
 | 登录返回 400 `Auth not configured` | `JWT_SECRET_KEY` 为空 | 设置 `JWT_SECRET_KEY` 后重启；或本地用 `localStorage.setItem("scipal_token","dev")` 绕过前端登录页 |
+| 所有请求 503 `Authentication is not configured` | `APP_ENV=production` 但没配 `JWT_SECRET_KEY` | 配置密钥；本地开发把 `APP_ENV` 设为 `development` |
 | 所有请求 401 `Not authenticated` | 已启用鉴权但没带 token | 前端重新登录；`api.ts` 从 `localStorage["scipal_token"]` 取 |
+| 会话读写返回 404 但数据明明存在 | 会话归属其他用户 | 用创建该会话的账号访问；`user_id IS NULL` 的历史会话不受限 |
 | 上传 413 | 超过 `UPLOAD_MAX_BYTES`（50 MiB） | 调大配置或压缩 PDF |
 | 上传 400 `not a valid PDF` | 前 4 字节不是 `%PDF` | 确认文件确为 PDF |
 | 上传 404 `Please create a session first` | `session_id` 不存在 | 先 `POST /sessions` |
@@ -173,25 +175,30 @@ uv run --project backend python -m backend.scripts.migrate_storage \
 
 - **单实例假设**：`InProcessJobRunner` 是进程内线程，多副本部署会导致同一 job 被并发领取（CAS 能防重复领取，但索引文件与会话锁只在进程内有效）。需要横向扩展时应先把任务层外置。
 - **备份**：需同时备份 SQLite 文件（含 `-wal` / `-shm`）与 `<data>/raw`、`<data>/index`。只备份 DB 会丢索引文件，需重建。
-- **磁盘增长**：每次重建索引都会产生新快照文件，旧 `stale` 快照**不会自动清理**（保留用于回滚），长期运行需人工清理或补 GC。
+- **磁盘增长**：每次重建索引都会产生新快照文件，旧 `stale` 快照不会自动清理（保留用于回滚），需定期运行回收脚本：
+
+  ```bash
+  uv run --project backend python -m backend.scripts.gc_index_snapshots            # dry-run
+  uv run --project backend python -m backend.scripts.gc_index_snapshots --apply    # 默认保留 7 天内的 stale
+  ```
 - **启动恢复**：进程被杀后重启会把 `running` / `interrupted` job 重新排队；`uploaded` 但无 job 的孤儿文档会被清理。
 - **日志**：默认 INFO 输出到 stdout；异常堆栈只在服务端日志，前端只看到泛化文案。
 
 ## 7. 仓库与工程约定
 
 - `openspec/`：spec-driven change 归档，命名 `archive/<YYYY-MM-DD>-<kebab-name>/`，每个 change 含 `.openspec.yaml` + `proposal.md` + `design.md` + `tasks.md`。当前**没有 `openspec/specs/`**，两个已归档 change 都设置了 `skip_specs: true`。
-- `.gitignore` 关键项：`data/`、`backend/data/`、`.env`、`tests/`、`eval_outputs/`、`docs/`、`*.db` 及 `-wal`/`-shm`。
-  - 即：**测试、评测产物、数据集、文档默认都不入库**。若要让本 Wiki 进版本库，需要把 `docs/` 改为 `docs/*` + `!docs/wiki/`（或删除该行）。
+- `.gitignore` 关键项：`data/`、`backend/data/`、`.env`、`eval_outputs/`、`*.db` 及 `-wal`/`-shm`；`docs/` 通过 `docs/*` + `!docs/wiki/` 只放行 Wiki，其它文档不入库。
+- `tests/` 已解除忽略，测试与源码一起提交；CI 定义在 `.github/workflows/ci.yml`。
 - `frontend/README.md` 是未清理的 React 模板，不要参考。
 - 没有 `CLAUDE.md` / `AGENTS.md`。
 
 ## 8. 已知缺口（按影响排序）
 
-1. **无任何自动化测试**，且 `tests/` 被 gitignore，回归风险高。
-2. **资源归属未校验**：知道 `session_id` 即可跨用户读写（`routes/*` 只取 `user` 不比较 `session.user_id`）。
-3. **多副本不可用**：任务队列与向量库缓存均为进程内状态。
-4. **旧快照不回收**：索引文件随重建次数线性增长。
-5. **前端路由表是死代码**：`main.ts` 未注册 router。
-6. **`status` 事件未消费**：前端无细粒度进度。
-7. **`cancelled` 状态无写入路径**：任务取消能力缺失。
-8. **无 token 预算**：上下文只按块数限制。
+1. **重依赖模块无测试**：`FAISSVectorStore`、`chat_service` SSE 状态机、检索/生成链路仍靠人工验证。
+2. **多副本不可用**：任务队列、会话锁与向量库缓存均为进程内状态。
+3. **前端路由表是死代码**：`main.ts` 未注册 router。
+4. **`status` 事件未消费**：前端无细粒度进度。
+5. **`cancelled` 状态无写入路径**：任务取消能力缺失。
+6. **无 token 预算**：上下文只按块数限制。
+7. **无可观测性**：没有 `/metrics` 或 tracing，只有 stdout 日志。
+8. **无容器化交付**：仓库无 Dockerfile / 部署脚本。

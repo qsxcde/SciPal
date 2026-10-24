@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v5
+
+      # The current test suite covers the SQLite repositories, upload intake,
+      # authorization rules and the snapshot GC. It does not need torch / faiss,
+      # so installing the full RAG stack here would only slow CI down.
+      - name: Install test dependencies
+        run: |
+          uv venv .venv-ci
+          uv pip install --python .venv-ci/bin/python \
+            pytest pytest-asyncio fastapi pydantic pydantic-settings \
+            python-jose bcrypt
+
+      - name: Byte-compile all sources
+        run: .venv-ci/bin/python -m compileall -q backend/src
+
+      - name: Run tests
+        run: .venv-ci/bin/python -m pytest -m "unit or integration"
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

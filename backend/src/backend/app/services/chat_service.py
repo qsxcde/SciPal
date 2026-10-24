@@ -4,6 +4,7 @@ import time
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
+from backend.domain.access import session_is_accessible
 from backend.domain.config import settings
 from backend.domain.exceptions import ActiveIndexNotReadyError
 from backend.domain.exceptions import SessionNotFoundError
@@ -135,11 +136,12 @@ async def stream_session_chat(
     session_id: str,
     content: str,
     wait_timeout_seconds: float | None = None,
+    user_id: str | None = None,
 ) -> AsyncIterator[ChatStreamEvent]:
     if wait_timeout_seconds is None:
         wait_timeout_seconds = settings.index_max_wait
     session = await _to_thread(session_repo.get_session, session_id)
-    if session is None or session["is_archived"]:
+    if not session_is_accessible(session, user_id):
         raise SessionNotFoundError(f"Session not found: {session_id}")
 
     state = _SSEStreamState()

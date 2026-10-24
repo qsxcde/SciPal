@@ -1,8 +1,9 @@
 from typing import Literal
 
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from backend.app.security import get_current_user
+from backend.app.services import session_service
 from backend.app.services.document_service import intake_document_upload
 
 router = APIRouter()
@@ -22,6 +23,11 @@ def upload_document(
     file: UploadFile = File(...),
     user: dict = Depends(get_current_user),
 ) -> DocumentIntakeResponse:
+    if session_service.get_accessible_session(session_id, user.get("id")) is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Session not found. Please create a session first.",
+        )
     pdf_bytes = file.file.read()
     intake = intake_document_upload(
         session_id=session_id,

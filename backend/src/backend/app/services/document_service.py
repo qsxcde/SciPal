@@ -34,11 +34,11 @@ def intake_document_upload(
 ) -> dict:
     """Persist upload intake state and enqueue an ingestion job."""
     _validate_upload(file_size or len(pdf_bytes), pdf_bytes)
-    document_id = str(uuid.uuid4())
-    file_path = session_document_file_path(session_id, document_id)
     session = session_repo.get_session(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found. Please create a session first.")
+    document_id = str(uuid.uuid4())
+    file_path = session_document_file_path(session_id, document_id)
     document = None
     job = None
     try:

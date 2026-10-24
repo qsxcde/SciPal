@@ -13,7 +13,6 @@ backend/storage/sqlite/scipal.db
 .claude/
 .pytest_cache/
 .vscode/
-tests/
 eval_outputs/
 docs/*
 !docs/wiki/

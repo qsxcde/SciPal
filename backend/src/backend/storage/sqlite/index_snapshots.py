@@ -179,6 +179,46 @@ def get_snapshot(snapshot_id: str) -> dict | None:
         return _row_to_snapshot(row)
 
 
+def list_snapshots_pending_cleanup(stale_before: str) -> list[dict]:
+    """Return ``failed`` snapshots plus ``stale`` snapshots older than ``stale_before``.
+
+    ``ready`` / ``building`` snapshots are never returned, so a GC pass cannot
+    remove an index that is still serving or still being built.
+    """
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM index_snapshots
+            WHERE status = ?
+               OR (status = ? AND updated_at < ?)
+            ORDER BY updated_at ASC
+            """,
+            (
+                IndexSnapshotStatus.failed,
+                IndexSnapshotStatus.stale,
+                stale_before,
+            ),
+        ).fetchall()
+        return [_row_to_snapshot(row) for row in rows]
+
+
+def delete_snapshot(snapshot_id: str) -> bool:
+    """Delete a ``failed`` / ``stale`` snapshot row; readiness states are protected."""
+    with transaction() as conn:
+        cursor = conn.execute(
+            """
+            DELETE FROM index_snapshots
+            WHERE id = ? AND status IN (?, ?)
+            """,
+            (
+                snapshot_id,
+                IndexSnapshotStatus.failed,
+                IndexSnapshotStatus.stale,
+            ),
+        )
+    return cursor.rowcount > 0
+
+
 def _row_to_snapshot(row) -> dict | None:
     snapshot = row_to_dict(row)
     if snapshot is None:

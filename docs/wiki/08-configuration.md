@@ -136,7 +136,7 @@ frontend/.env        ← 仅 VITE_* 变量
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `JWT_SECRET_KEY` | `""` | 为空 = 开发旁路（数据接口免鉴权，auth 接口 400） |
+| `JWT_SECRET_KEY` | `""` | 为空且 `APP_ENV` 为开发类取值 = 匿名旁路（数据接口免鉴权、auth 接口 400）；生产环境必须设置 |
 | `JWT_ALGORITHM` | `HS256` | |
 | `JWT_EXPIRE_MINUTES` | `10080` | 7 天 |
 
@@ -144,7 +144,7 @@ frontend/.env        ← 仅 VITE_* 变量
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `APP_ENV` | `development` | 当前未参与分支判断 |
+| `APP_ENV` | `development` | 决定是否允许匿名旁路：`development/dev/local/test/testing` 允许；其它值（如 `production`）在缺 `JWT_SECRET_KEY` 时对数据接口返回 503 |
 | `CORS_ORIGIN_REGEX` | `http://(localhost\|127\.0\.0\.1):\d+` | 前端跨域 |
 | `MSG_INDEX_NOT_READY` | `论文仍在处理中，请稍后重试。` | 索引超时提示 |
 | `MSG_EMPTY_RETRIEVAL` | `未在当前检索结果中找到可支持该问题的论文依据。` | 检索为空提示 |

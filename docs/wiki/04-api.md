@@ -17,9 +17,10 @@
 
 鉴权行为：
 
-- `JWT_SECRET_KEY` 为空（默认）→ 开发旁路，`get_current_user` 直接返回 `{"id": "", "username": "dev"}`，数据接口免鉴权，`sessions.user_id` 写 `NULL`。
+- `JWT_SECRET_KEY` 为空**且** `APP_ENV` ∈ `{development, dev, local, test, testing}`（默认 `development`）→ 开发旁路，`get_current_user` 返回 `{"id": "", "username": "dev"}`，数据接口免鉴权，新建会话的 `sessions.user_id` 写 `NULL`。
 - 同一模式下 `/auth/register`、`/auth/login` 返回 `400 Auth not configured`。
-- 资源归属**未校验**：知道 `session_id` 即可读/改/删/上传/对话，仅 `GET /sessions` 按 `user_id` 过滤。多用户部署前必须补归属校验。
+- `JWT_SECRET_KEY` 为空但 `APP_ENV` 为其它值（如 `production`）→ 数据接口返回 `503 Authentication is not configured`（fail closed）。
+- **资源归属已校验**：`GET/PATCH/DELETE /sessions/{id}`、上传、对话都会比对 `sessions.user_id`；不属于当前用户时统一返回 404（不暴露会话是否存在）。`user_id IS NULL` 的历史会话对所有人可读。`GET /sessions` 仍按 `user_id` 过滤列表。
 
 ## 2. 端点总览
 
@@ -35,7 +36,7 @@
 | PATCH | `/sessions/{id}` | 改标题 / 置顶 | 200 | 401 / 404 |
 | DELETE | `/sessions/{id}` | 归档会话并删磁盘目录 | 200 | 401 |
 | POST | `/sessions/{id}/documents` | 上传 PDF（异步摄取） | **202** | 400 / 401 / 404 / 413 |
-| POST | `/sessions/{id}/messages` | 流式对话 | 200（SSE） | 401 |
+| POST | `/sessions/{id}/messages` | 流式对话 | 200（SSE） | 401 / 404 |
 
 ## 3. 端点详情
 
@@ -107,7 +108,7 @@ JWT 载荷 `{sub: user_id, username, exp}`，算法 `HS256`，有效期 `jwt_exp
 | `active_index` | `IndexSnapshotSummary \| null` | 当前 active ready 快照 |
 | `retrieval_index` | `RetrievalIndexSummary \| null` | legacy 兼容的已发布索引行 |
 
-会话不存在或已归档 → `404 {"detail": "Session not found"}`。
+会话不存在、已归档或不属于当前用户 → `404 {"detail": "Session not found"}`。
 
 `DocumentSummary` 关键字段：`id, session_id, filename, file_path, mime_type, file_size, chunk_count, status, error_message, parsed_ir_path, parsed_markdown_path, quality_report_path, parser_name, parser_version, parse_quality_status, created_at, updated_at`。
 
@@ -125,7 +126,7 @@ JWT 载荷 `{sub: user_id, username, exp}`，算法 `HS256`，有效期 `jwt_exp
 
 ### 3.7 `DELETE /sessions/{id}`
 
-`{"status": "deleted"}`。行为：`archive_session`（`is_archived=1`）+ 清理进程内向量库缓存 + 递归删除 `<data>/{raw,parsed,chunks,index}/<session_id>`。**幂等**：会话不存在也返回 200。
+`{"status": "deleted"}`。行为：`archive_session`（`is_archived=1`）+ 清理进程内向量库缓存 + 递归删除 `<data>/{raw,parsed,chunks,index}/<session_id>`。**幂等且不泄露**：会话不存在或无权访问时同样返回 200，但不会删除任何数据。
 
 ### 3.8 `POST /sessions/{id}/documents`
 
@@ -170,7 +171,7 @@ curl -X POST "http://127.0.0.1:8000/sessions/$SID/documents" \
 
 `role` 默认 `"user"`，当前服务端**只使用 `content`**，不校验也不落库传入的 `role`。
 
-响应头 `Content-Type: text/event-stream`，HTTP 状态恒为 200（业务错误也通过事件表达）。
+响应头 `Content-Type: text/event-stream`。会话不存在或无权访问时在建流之前返回 `404 Session not found`；建流成功后的业务错误通过事件表达，HTTP 状态恒为 200。
 
 ## 4. SSE 协议
 

@@ -295,7 +295,26 @@ FAISS 落盘格式（`rag/indexing/vector_store.py`）：
 - 写入用 `.tmp` + `os.replace`，近似原子。
 - 加载时 `index.ntotal != len(chunks)` 只告警不报错；向量与 chunk 的对应完全依赖插入顺序下标。
 
-## 7. 迁移历史
+## 7. 快照回收
+
+每次摄取成功都会把上一份 `ready` 快照打成 `stale`（用于回滚），应用不会自动删除，索引文件会随重建次数线性增长。回收由脚本完成：
+
+```bash
+# dry-run：只统计，不删除
+uv run --project backend python -m backend.scripts.gc_index_snapshots
+# 实际删除 failed 快照与 7 天前的 stale 快照
+uv run --project backend python -m backend.scripts.gc_index_snapshots --apply --stale-days 7
+```
+
+规则（`backend/src/backend/scripts/gc_index_snapshots.py`）：
+
+- 候选集合 = 全部 `failed` + `updated_at` 早于 `--stale-days`（默认 7）的 `stale`；`ready` / `building` **永不被选中**。
+- 文件路径必须位于 `<data>/index` 内，否则跳过并告警（防误删）。
+- `--apply` 时先删文件、再删行；不加 `--apply` 仅统计。
+- 仓储支撑：`index_snapshots.list_snapshots_pending_cleanup` / `delete_snapshot`。
+- 建议在没有摄取任务运行时执行——提交失败的回滚依赖上一份 `stale` 文件。
+
+## 8. 迁移历史
 
 `init_db()` 用 `PRAGMA user_version` 判断：
 

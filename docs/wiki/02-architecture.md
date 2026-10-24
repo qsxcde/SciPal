@@ -197,5 +197,6 @@ POST /sessions/{id}/messages
 - **SSE 分帧**：只写 `data:` 行，空行分帧，不使用 `event:` / `id:` / `retry:`；业务类型由 JSON 内 `type` 字段区分。
 - **状态派生**：`SessionStatus` 不落库，任何时刻由文档状态集合推导；前端不要缓存该值。
 - **索引可见性**：对外可用索引 = `index_snapshots` 中 active `ready` 快照；`retrieval_indexes` 为 legacy 兼容读取路径。
+- **资源归属**：会话级读写都要经过 `domain/access.session_is_accessible`；`user_id IS NULL` 的历史会话对所有调用方开放，其余必须与当前用户一致，否则按 404 处理。
 
 细节见 [04 API 参考](04-api.md) 与 [03 数据模型与存储](03-data-model.md)。

@@ -18,7 +18,7 @@ def create_session(user: dict = Depends(get_current_user)) -> SessionCreateRespo
 
 @router.get("/sessions/{session_id}", response_model=SessionSnapshot)
 def get_session(session_id: str, user: dict = Depends(get_current_user)) -> dict:
-    snapshot = session_service.get_session_snapshot(session_id)
+    snapshot = session_service.get_session_snapshot(session_id, user_id=user.get("id"))
     if snapshot is None:
         raise HTTPException(status_code=404, detail="Session not found")
     return snapshot
@@ -26,6 +26,8 @@ def get_session(session_id: str, user: dict = Depends(get_current_user)) -> dict
 
 @router.patch("/sessions/{session_id}", response_model=SessionSummary)
 def update_session(session_id: str, payload: SessionUpdateRequest, user: dict = Depends(get_current_user)) -> dict:
+    if session_service.get_accessible_session(session_id, user.get("id")) is None:
+        raise HTTPException(status_code=404, detail="Session not found")
     summary = session_service.update_session(
         session_id=session_id,
         title=payload.title,
@@ -38,5 +40,7 @@ def update_session(session_id: str, payload: SessionUpdateRequest, user: dict = 
 
 @router.delete("/sessions/{session_id}")
 def delete_session(session_id: str, user: dict = Depends(get_current_user)) -> dict:
-    session_service.destroy_session(session_id)
+    # 幂等：不存在或无权访问时都不做任何删除，也不暴露会话是否存在。
+    if session_service.get_accessible_session(session_id, user.get("id")) is not None:
+        session_service.destroy_session(session_id)
     return {"status": "deleted"}

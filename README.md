@@ -172,17 +172,25 @@ npm run dev
 
 ## 开发与测试
 
-> 注意：下列 focused suite 文件尚未纳入仓库，补测时请沿用这些文件名。
-
-计划覆盖后端状态重构的 focused suite（在仓库根目录下执行）：
+测试位于仓库根目录 `tests/`，在仓库根执行：
 
 ```bash
-uv run --project backend pytest tests/test_backend_state_models.py tests/test_document_intake_flow.py tests/test_index_commit_flow.py tests/test_chat_waiting_flow.py tests/test_job_recovery.py tests/test_backend_state_transitions.py tests/test_vector_store.py tests/test_chat_service.py -v
+# 全部用例（当前 22 个，不需要 torch / faiss）
+uv run --project backend pytest
+
+# 按标记过滤
+uv run --project backend pytest -m unit -v
+uv run --project backend pytest -m integration -v
 ```
+
+当前覆盖：SQLite 仓储的状态流转与 CAS、索引快照提升与回滚、上传入口校验、会话归属与开发旁路、索引快照回收。
+索引构建（`FAISSVectorStore`）与 SSE 状态机的用例需要完整 RAG 依赖，尚未纳入。
+
+CI 见 `.github/workflows/ci.yml`（后端测试 + 前端 lint/build）。
 
 ## 离线评测
 
-评测说明见 [docs/evaluation/README.md](docs/evaluation/README.md)。
+评测说明见 [docs/wiki/09-evaluation.md](docs/wiki/09-evaluation.md)。
 
 如果你想从现有会话索引导出 bootstrap 评测草稿，可以运行：
 
