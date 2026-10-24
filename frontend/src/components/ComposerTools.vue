@@ -8,8 +8,8 @@ const props = defineProps<{
   state: ComposerToolState;
 }>();
 
-const emit = defineEmits<{
-  openUpload: [];
+defineEmits<{
+  requestUpload: [];
   toggleMore: [];
   toggleSearch: [];
 }>();
@@ -33,7 +33,7 @@ const moreButtonClass = computed(() => ({
         circle
         text
         aria-label="上传论文"
-        @click="$emit('openUpload')"
+        @click="$emit('requestUpload')"
       />
       <el-button
         class="composer-tools__button"
@@ -56,9 +56,7 @@ const moreButtonClass = computed(() => ({
         @click="$emit('toggleMore')"
       />
     </div>
-    <span class="composer-tools__hint">
-      {{ state.isSearchSelected ? "检索增强已选中" : "工具仅提供界面状态" }}
-    </span>
+    <span v-if="state.isSearchSelected" class="composer-tools__hint">检索增强已开启</span>
   </div>
 </template>
 

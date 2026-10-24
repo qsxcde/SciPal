@@ -6,17 +6,22 @@ import SessionList from "./SessionList.vue";
 import SidebarHeader from "./SidebarHeader.vue";
 import type { SessionActionTarget, SidebarSessionItem } from "../types";
 
-const props = defineProps<{
-  collapsed: boolean;
-  indexedChunks: number;
-  isUploading: boolean;
-  recentSessions: SidebarSessionItem[];
-  username?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    collapsed: boolean;
+    indexedChunks: number;
+    isUploading: boolean;
+    recentSessions: SidebarSessionItem[];
+    username?: string;
+  }>(),
+  {
+    username: "",
+  },
+);
 
 const emit = defineEmits<{
   deleteSession: [sessionId: string];
-  newPaper: [];
+  createSession: [];
   pinSession: [sessionId: string];
   renameSession: [sessionId: string, title: string];
   selectSession: [sessionId: string];
@@ -60,12 +65,7 @@ function handlePin(sessionId: string): void {
     aria-label="最近论文会话"
   >
     <template v-if="collapsed">
-      <div
-        class="app-sidebar__collapsed-brand"
-        aria-label="SciPal"
-      >
-        S
-      </div>
+      <div class="app-sidebar__collapsed-brand" aria-label="SciPal">S</div>
       <el-button
         class="app-sidebar__collapsed-button"
         :icon="Expand"
@@ -82,7 +82,7 @@ function handlePin(sessionId: string): void {
         circle
         text
         aria-label="新对话 / 上传论文"
-        @click="$emit('newPaper')"
+        @click="$emit('createSession')"
       />
     </template>
 
@@ -90,7 +90,7 @@ function handlePin(sessionId: string): void {
       <SidebarHeader
         :collapsed="collapsed"
         :is-busy="isUploading"
-        @create-session="$emit('newPaper')"
+        @create-session="$emit('createSession')"
         @toggle-collapse="$emit('toggleCollapse')"
       />
 
@@ -101,17 +101,12 @@ function handlePin(sessionId: string): void {
         :loading="isUploading"
         :disabled="isUploading"
         :aria-label="collapsed ? '新对话' : undefined"
-        @click="$emit('newPaper')"
+        @click="$emit('createSession')"
       >
         <span v-if="!collapsed">新对话 / 上传论文</span>
       </el-button>
 
-      <div
-        v-if="!collapsed"
-        class="app-sidebar__label"
-      >
-        最近会话
-      </div>
+      <div v-if="!collapsed" class="app-sidebar__label">最近会话</div>
       <SessionList
         :collapsed="collapsed"
         :items="recentSessions"
@@ -125,17 +120,9 @@ function handlePin(sessionId: string): void {
         <span>{{ collapsed ? "索引" : "已索引片段" }}</span>
         <strong>{{ indexedChunks }}</strong>
       </div>
-      <div
-        v-if="!collapsed && username"
-        class="app-sidebar__user"
-      >
+      <div v-if="!collapsed && username" class="app-sidebar__user">
         <span class="app-sidebar__user-name">{{ username }}</span>
-        <button
-          class="app-sidebar__logout"
-          @click="$emit('logout')"
-        >
-          退出
-        </button>
+        <button class="app-sidebar__logout" @click="$emit('logout')">退出</button>
       </div>
     </template>
   </aside>
@@ -189,10 +176,10 @@ function handlePin(sessionId: string): void {
 }
 
 .app-sidebar__collapsed-brand {
-  color: #ffffff;
+  color: var(--color-white);
   font-size: 16px;
   font-weight: 850;
-  background: linear-gradient(145deg, #5c7ff0 0%, #244dcc 100%);
+  background: var(--gradient-brand);
   box-shadow: 0 10px 22px rgba(71, 110, 230, 0.2);
 }
 
@@ -210,8 +197,8 @@ function handlePin(sessionId: string): void {
 
 .app-sidebar__collapsed-button--primary.el-button,
 .app-sidebar__collapsed-button--primary.el-button:hover {
-  color: #ffffff;
-  background: linear-gradient(145deg, #5d80ee 0%, #2d55d1 100%);
+  color: var(--color-white);
+  background: var(--gradient-accent);
   border-color: transparent;
 }
 

@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { useAuth } from "../composables/useAuth";
+import { toErrorMessage } from "../utils/error";
 
+const router = useRouter();
 const { loginUser, registerUser } = useAuth();
 
 const username = ref("");
@@ -10,7 +13,7 @@ const password = ref("");
 const isRegister = ref(false);
 const submitting = ref(false);
 
-async function submit() {
+async function submit(): Promise<void> {
   if (!username.value.trim() || !password.value) {
     ElMessage.warning("请输入用户名和密码");
     return;
@@ -22,25 +25,29 @@ async function submit() {
     } else {
       await loginUser(username.value.trim(), password.value);
     }
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "操作失败";
-    ElMessage.error(msg);
+    await router.push({ name: "chat" });
+  } catch (error: unknown) {
+    ElMessage.error(toErrorMessage(error, "操作失败"));
   } finally {
     submitting.value = false;
   }
 }
 
-function toggleMode() {
+function toggleMode(): void {
   isRegister.value = !isRegister.value;
 }
 </script>
 
 <template>
-  <div class="login-container">
-    <div class="login-card">
-      <h1 class="login-title">SciPal</h1>
-      <p class="login-subtitle">学术论文阅读助手</p>
-      <el-form @submit.prevent="submit">
+  <div class="login-view">
+    <section class="login-view__card">
+      <header class="login-view__header">
+        <span class="login-view__mark" aria-hidden="true">SP</span>
+        <h1 class="login-view__title">SciPal</h1>
+        <p class="login-view__subtitle">学术论文阅读助手 · 让引用可追溯</p>
+      </header>
+
+      <el-form class="login-view__form" @submit.prevent="submit">
         <el-form-item>
           <el-input
             v-model="username"
@@ -63,57 +70,90 @@ function toggleMode() {
           <el-button
             type="primary"
             :loading="submitting"
-            class="submit-btn"
+            class="login-view__submit"
             @click="submit"
           >
-            {{ isRegister ? "注册" : "登录" }}
+            {{ isRegister ? "注册并进入" : "登录" }}
           </el-button>
         </el-form-item>
       </el-form>
-      <p class="toggle-text">
+
+      <p class="login-view__toggle">
         {{ isRegister ? "已有账号？" : "没有账号？" }}
         <a href="#" @click.prevent="toggleMode">
           {{ isRegister ? "去登录" : "去注册" }}
         </a>
       </p>
-    </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.login-container {
+.login-view {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background: #f5f7fa;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(71, 110, 230, 0.12), transparent 42%),
+    radial-gradient(circle at 82% 78%, rgba(18, 166, 154, 0.1), transparent 46%), var(--color-page);
 }
-.login-card {
-  width: 360px;
+
+.login-view__card {
+  width: 380px;
   padding: 40px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-card);
 }
-.login-title {
+
+.login-view__header {
+  margin-bottom: 28px;
   text-align: center;
-  margin: 0 0 4px;
-  font-size: 28px;
-  color: #303133;
 }
-.login-subtitle {
-  text-align: center;
-  margin: 0 0 28px;
+
+.login-view__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 14px;
+  font-family: var(--font-mono);
   font-size: 14px;
-  color: #909399;
+  letter-spacing: 0.06em;
+  color: var(--color-white);
+  background: var(--gradient-accent);
+  border-radius: 12px;
 }
-.submit-btn {
+
+.login-view__title {
+  margin: 0 0 6px;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+.login-view__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.login-view__submit {
   width: 100%;
 }
-.toggle-text {
-  text-align: center;
-  font-size: 13px;
-  color: #909399;
+
+.login-view__toggle {
   margin: 0;
+  font-size: 13px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.login-view__toggle a {
+  color: var(--color-accent);
+  text-decoration: none;
 }
 </style>

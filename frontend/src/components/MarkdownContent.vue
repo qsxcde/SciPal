@@ -16,10 +16,6 @@ const blocks = computed(() => parseMarkdown(props.text));
 
 <template>
   <div class="markdown-content">
-    <MarkdownNodeRenderer
-      v-for="block in blocks"
-      :key="block.id"
-      :node="block"
-    />
+    <MarkdownNodeRenderer v-for="block in blocks" :key="block.id" :node="block" />
   </div>
 </template>

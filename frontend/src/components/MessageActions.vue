@@ -32,12 +32,7 @@ async function handleCopy(): Promise<void> {
 
 <template>
   <div class="message-actions">
-    <el-button
-      :icon="CopyDocument"
-      class="message-actions__button"
-      text
-      @click="handleCopy"
-    >
+    <el-button :icon="CopyDocument" class="message-actions__button" text @click="handleCopy">
       复制回答
     </el-button>
   </div>

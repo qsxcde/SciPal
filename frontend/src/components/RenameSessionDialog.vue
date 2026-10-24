@@ -77,12 +77,7 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <el-dialog
-    :model-value="visible"
-    title="重命名会话"
-    width="420px"
-    @close="closeDialog"
-  >
+  <el-dialog :model-value="visible" title="重命名会话" width="420px" @close="closeDialog">
     <el-form
       ref="formRef"
       :model="formModel"
@@ -91,10 +86,7 @@ async function submit(): Promise<void> {
       label-position="top"
       @submit.prevent
     >
-      <el-form-item
-        label="会话名称"
-        prop="title"
-      >
+      <el-form-item label="会话名称" prop="title">
         <el-input
           v-model="formModel.title"
           maxlength="80"
@@ -105,15 +97,8 @@ async function submit(): Promise<void> {
     </el-form>
     <template #footer>
       <div class="rename-dialog__footer">
-        <el-button @click="closeDialog">
-          取消
-        </el-button>
-        <el-button
-          type="primary"
-          @click="submit"
-        >
-          确认
-        </el-button>
+        <el-button @click="closeDialog"> 取消 </el-button>
+        <el-button type="primary" @click="submit"> 确认 </el-button>
       </div>
     </template>
   </el-dialog>

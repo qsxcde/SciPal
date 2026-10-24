@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import AppSidebar from "./components/AppSidebar.vue";
-import ChatWorkspace from "./components/ChatWorkspace.vue";
-import { usePaperChat } from "./composables/usePaperChat";
-import { useAuth } from "./composables/useAuth";
-import type { SidebarSessionItem, SuggestedPrompt } from "./types";
+import { useRouter } from "vue-router";
+import AppSidebar from "../components/AppSidebar.vue";
+import ChatWorkspace from "../components/ChatWorkspace.vue";
+import { usePaperChat } from "../composables/usePaperChat";
+import { useAuth } from "../composables/useAuth";
+import type { SidebarSessionItem, SuggestedPrompt } from "../types";
 
+const router = useRouter();
 const { logout, user } = useAuth();
 
 const {
@@ -60,6 +62,11 @@ function toggleSidebarCollapse(): void {
   isSidebarCollapsed.value = !isSidebarCollapsed.value;
 }
 
+function handleLogout(): void {
+  logout();
+  void router.push({ name: "login" });
+}
+
 onMounted(() => {
   void initializeSessions();
 });
@@ -75,12 +82,12 @@ onMounted(() => {
         :recent-sessions="recentSessions"
         :username="user?.username"
         @delete-session="deleteSession"
-        @new-paper="createEmptySession"
+        @create-session="createEmptySession"
         @pin-session="togglePinSession"
         @rename-session="renameSession"
         @select-session="openSession"
         @toggle-collapse="toggleSidebarCollapse"
-        @logout="logout"
+        @logout="handleLogout"
       />
       <ChatWorkspace
         v-model:draft="draft"

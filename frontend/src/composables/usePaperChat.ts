@@ -1,6 +1,10 @@
 import { computed, ref } from "vue";
+import type { SessionSnapshot } from "../api";
+import { DEFAULT_PAPER_NAME, DEMO_SESSION_ID } from "../constants/app";
 import { useChatStream } from "./useChatStream";
-import { useSessionState, DEMO_SESSION_ID } from "./useSessionState";
+import { useSessionState } from "./useSessionState";
+
+type SessionLoadResult = { messages: SessionSnapshot["messages"] } | null;
 
 /**
  * Composes session state and chat streaming into a single app-facing API
@@ -19,39 +23,31 @@ export function usePaperChat() {
     setErrorMessage,
   });
 
-  async function initializeSessions(): Promise<void> {
-    const result = await sessionState.initializeSessions();
+  /** 会话用例统一返回快照消息，成功时刷新聊天区。 */
+  function applySessionResult(result: SessionLoadResult): void {
     if (result) {
       chatStream.replaceMessages(result.messages);
     }
+  }
+
+  async function initializeSessions(): Promise<void> {
+    applySessionResult(await sessionState.initializeSessions());
   }
 
   async function openSession(sessionId: string): Promise<void> {
-    const result = await sessionState.openSession(sessionId);
-    if (result) {
-      chatStream.replaceMessages(result.messages);
-    }
+    applySessionResult(await sessionState.openSession(sessionId));
   }
 
   async function handleUpload(file: File): Promise<void> {
-    const result = await sessionState.handleUpload(file);
-    if (result) {
-      chatStream.replaceMessages(result.messages);
-    }
+    applySessionResult(await sessionState.handleUpload(file));
   }
 
   async function createEmptySession(): Promise<void> {
-    const result = await sessionState.createEmptySession();
-    if (result) {
-      chatStream.replaceMessages(result.messages);
-    }
+    applySessionResult(await sessionState.createEmptySession());
   }
 
   async function renameSession(sessionId: string, title: string): Promise<void> {
-    const result = await sessionState.renameSession(sessionId, title);
-    if (result) {
-      chatStream.replaceMessages(result.messages);
-    }
+    applySessionResult(await sessionState.renameSession(sessionId, title));
   }
 
   async function deleteSession(sessionId: string): Promise<void> {
@@ -76,10 +72,7 @@ export function usePaperChat() {
     }
     if (!sessionId) {
       const result = await sessionState.createEmptySession();
-      if (!result) {
-        return;
-      }
-      chatStream.replaceMessages(result.messages);
+      applySessionResult(result);
       sessionId = sessionState.paperSession.value?.sessionId;
       if (!sessionId) {
         setErrorMessage("创建会话失败，请稍后重试。");
@@ -94,7 +87,7 @@ export function usePaperChat() {
     sessionState.paperSession.value = {
       sessionId: DEMO_SESSION_ID,
       docId: "demo-paper",
-      fileName: chatStream.defaultPaperName,
+      fileName: DEFAULT_PAPER_NAME,
       chunkCount: 128,
     };
     sessionState.sessions.value = sessionState.sessions.value.map((session) => ({

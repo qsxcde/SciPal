@@ -1,5 +1,6 @@
-import type { PaperDocument, SessionSummary, SourceRef } from "./api";
+import type { SessionSummary, SourceRef } from "../api";
 
+/** 当前激活论文会话的轻量视图模型（侧栏 + 头部展示用）。 */
 export type PaperSession = {
   sessionId: string;
   docId?: string;
@@ -7,6 +8,7 @@ export type PaperSession = {
   chunkCount: number;
 };
 
+/** 聊天区渲染用的消息模型，与持久化实体解耦。 */
 export type ChatMessageViewModel = {
   id: string;
   role: "user" | "assistant";
@@ -30,8 +32,6 @@ export type ComposerToolState = {
 export type SessionSummaryViewModel = SessionSummary & {
   active: boolean;
 };
-
-export type CurrentDocument = PaperDocument;
 
 export type SessionActionTarget = {
   id: string;

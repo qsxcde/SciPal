@@ -32,10 +32,7 @@ defineEmits<{
         @rename="$emit('renameSession', $event)"
         @select="$emit('selectSession', $event)"
       />
-      <p
-        v-if="items.length === 0"
-        class="session-list__empty"
-      >
+      <p v-if="items.length === 0" class="session-list__empty">
         {{ collapsed ? "暂无会话" : "暂无最近会话" }}
       </p>
     </div>
@@ -58,7 +55,7 @@ defineEmits<{
 
 .session-list__empty {
   margin: 8px 0 0;
-  color: #899a90;
+  color: var(--color-text-muted);
   font-size: 12px;
   text-align: center;
 }

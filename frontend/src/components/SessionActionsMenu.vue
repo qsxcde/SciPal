@@ -27,27 +27,17 @@ function handleCommand(command: SessionActionCommand): void {
 </script>
 
 <template>
-  <el-dropdown
-    trigger="click"
-    @command="handleCommand"
-  >
+  <el-dropdown trigger="click" @command="handleCommand">
     <span class="session-actions-menu__trigger">
       <slot />
     </span>
     <template #dropdown>
       <el-dropdown-menu>
-        <el-dropdown-item command="rename">
-          重命名
-        </el-dropdown-item>
+        <el-dropdown-item command="rename"> 重命名 </el-dropdown-item>
         <el-dropdown-item command="pin">
           {{ isPinned ? "取消置顶" : "置顶" }}
         </el-dropdown-item>
-        <el-dropdown-item
-          command="delete"
-          divided
-        >
-          删除
-        </el-dropdown-item>
+        <el-dropdown-item command="delete" divided> 删除 </el-dropdown-item>
       </el-dropdown-menu>
     </template>
   </el-dropdown>

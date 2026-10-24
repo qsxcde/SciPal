@@ -9,18 +9,7 @@ export type MarkdownNode = {
 };
 
 export type MarkdownAllowedTag =
-  | "br"
-  | "blockquote"
-  | "code"
-  | "em"
-  | "h3"
-  | "h4"
-  | "h5"
-  | "li"
-  | "p"
-  | "pre"
-  | "strong"
-  | "ul";
+  "br" | "blockquote" | "code" | "em" | "h3" | "h4" | "h5" | "li" | "p" | "pre" | "strong" | "ul";
 
 const markdown = new MarkdownIt({
   breaks: true,
@@ -155,7 +144,10 @@ function readList(tokens: Token[], startIndex: number): { nextIndex: number; nod
   };
 }
 
-function readBlockquote(tokens: Token[], startIndex: number): { nextIndex: number; node: MarkdownNode } {
+function readBlockquote(
+  tokens: Token[],
+  startIndex: number,
+): { nextIndex: number; node: MarkdownNode } {
   const inlineToken = tokens[startIndex + 2];
   return {
     nextIndex: startIndex + 4,
@@ -167,7 +159,10 @@ function readBlockquote(tokens: Token[], startIndex: number): { nextIndex: numbe
   };
 }
 
-function readHeading(tokens: Token[], startIndex: number): { nextIndex: number; node: MarkdownNode } {
+function readHeading(
+  tokens: Token[],
+  startIndex: number,
+): { nextIndex: number; node: MarkdownNode } {
   const headingOpenToken = tokens[startIndex];
   const inlineToken = tokens[startIndex + 1];
   return {

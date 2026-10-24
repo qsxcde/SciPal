@@ -14,17 +14,9 @@ defineEmits<{
 
 <template>
   <div class="sidebar-header">
-    <div
-      class="sidebar-header__brand"
-      :class="{ 'sidebar-header__brand--collapsed': collapsed }"
-    >
-      <div class="sidebar-header__mark">
-        S
-      </div>
-      <div
-        v-if="!collapsed"
-        class="sidebar-header__copy"
-      >
+    <div class="sidebar-header__brand" :class="{ 'sidebar-header__brand--collapsed': collapsed }">
+      <div class="sidebar-header__mark">S</div>
+      <div v-if="!collapsed" class="sidebar-header__copy">
         <h1>SciPal</h1>
         <p>论文智能助手</p>
       </div>
@@ -76,10 +68,10 @@ defineEmits<{
   width: 36px;
   height: 36px;
   place-items: center;
-  color: #ffffff;
+  color: var(--color-white);
   font-size: 16px;
   font-weight: 900;
-  background: linear-gradient(145deg, #5c7ff0 0%, #244dcc 100%);
+  background: var(--gradient-brand);
   border-radius: 11px;
   box-shadow: 0 12px 24px rgba(71, 110, 230, 0.22);
 }

@@ -1,0 +1,5 @@
+/* 样式入口：按「令牌 → 基础 → 布局 → 组件库覆盖」顺序加载。 */
+@import "./variables.css";
+@import "./base.css";
+@import "./layout.css";
+@import "./element-plus.css";

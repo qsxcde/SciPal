@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import {
-  ChatDotRound,
-  ChatLineRound,
-  CollectionTag,
-  MoreFilled,
-} from "@element-plus/icons-vue";
+import { ChatDotRound, ChatLineRound, CollectionTag, MoreFilled } from "@element-plus/icons-vue";
 import SessionActionsMenu from "./SessionActionsMenu.vue";
 
-const props = defineProps<{
-  active?: boolean;
-  collapsed?: boolean;
-  description: string;
-  id: string;
-  isPinned?: boolean;
-  title: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    active?: boolean;
+    collapsed?: boolean;
+    description: string;
+    id: string;
+    isPinned?: boolean;
+    title: string;
+  }>(),
+  {
+    active: false,
+    collapsed: false,
+    isPinned: false,
+  },
+);
 
 const emit = defineEmits<{
   delete: [sessionId: string];
@@ -49,30 +51,18 @@ function handleRename(): void {
       'session-item--pinned': isPinned,
     }"
   >
-    <button
-      class="session-item__main"
-      :aria-label="title"
-      type="button"
-      @click="handleSelect"
-    >
+    <button class="session-item__main" :aria-label="title" type="button" @click="handleSelect">
       <span class="session-item__icon">
         <el-icon>
           <component :is="active ? ChatDotRound : ChatLineRound" />
         </el-icon>
       </span>
-      <div
-        v-if="!collapsed"
-        class="session-item__content"
-      >
+      <div v-if="!collapsed" class="session-item__content">
         <span class="session-item__title">{{ title }}</span>
         <small>{{ description }}</small>
       </div>
     </button>
-    <span
-      v-if="!collapsed && isPinned"
-      class="session-item__pin"
-      aria-hidden="true"
-    >
+    <span v-if="!collapsed && isPinned" class="session-item__pin" aria-hidden="true">
       <el-icon><CollectionTag /></el-icon>
     </span>
     <SessionActionsMenu
@@ -82,13 +72,7 @@ function handleRename(): void {
       @pin="handlePin"
       @rename="handleRename"
     >
-      <el-button
-        :icon="MoreFilled"
-        circle
-        text
-        class="session-item__menu"
-        aria-label="会话操作"
-      />
+      <el-button :icon="MoreFilled" circle text class="session-item__menu" aria-label="会话操作" />
     </SessionActionsMenu>
   </div>
 </template>
@@ -103,7 +87,9 @@ function handleRename(): void {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .session-item--active {

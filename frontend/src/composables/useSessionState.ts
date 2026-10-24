@@ -1,6 +1,23 @@
 import { computed, ref } from "vue";
-import { archiveSession, createSession, getSession, listSessions, updateSession, uploadDocument } from "../api";
-import type { CurrentDocument, PaperSession, SessionSummaryViewModel, UploadStatus } from "../types";
+import {
+  archiveSession,
+  createSession,
+  getSession,
+  listSessions,
+  updateSession,
+  uploadDocument,
+} from "../api";
+import type { PaperDocument, SessionSummary } from "../api";
+import { DEMO_SESSION_ID } from "../constants/app";
+import {
+  INDEXING_DOCUMENT_STATUSES,
+  UPLOAD_MAX_POLLS,
+  UPLOAD_POLL_INTERVAL_MS,
+  UPLOAD_STATUS_LABELS,
+} from "../constants/upload";
+import type { PaperSession, SessionSummaryViewModel, UploadStatus } from "../types";
+import { toErrorMessage } from "../utils/error";
+import { formatFileSize } from "../utils/format";
 
 export type SessionSnapshotResult = Awaited<ReturnType<typeof getSession>>;
 
@@ -13,30 +30,35 @@ type ApplySnapshotPayload = {
   snapshot: SessionSnapshotResult;
 };
 
-const UPLOAD_POLL_INTERVAL_MS = 1000;
-const UPLOAD_MAX_POLLS = 600;
+/** 会话列表统一打上 active 标记，避免多处重复 map。 */
+function withActiveFlag(
+  sessions: SessionSummary[],
+  activeSessionId?: string,
+): SessionSummaryViewModel[] {
+  return sessions.map((session) => ({
+    ...session,
+    active: session.id === activeSessionId,
+  }));
+}
+
+function pickLatestDocument(documents: PaperDocument[]): PaperDocument | null {
+  if (documents.length === 0) {
+    return null;
+  }
+  return [...documents].sort(
+    (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+  )[0];
+}
 
 /**
  * Owns session list, active session, documents, and upload lifecycle state.
  *
  * Side effects: talks to session/document APIs and keeps active session state in sync.
  */
-export const DEMO_SESSION_ID = "demo-session";
-
-const STATUS_LABELS: Record<string, string> = {
-  uploaded: "已上传",
-  parsing: "解析中",
-  parsed: "解析完成",
-  chunked: "分块中",
-  indexing: "索引构建中",
-  ready: "就绪",
-  failed: "处理失败",
-};
-
 export function useSessionState(options: UseSessionStateOptions) {
   const paperSession = ref<PaperSession | null>(null);
   const sessions = ref<SessionSummaryViewModel[]>([]);
-  const documents = ref<CurrentDocument[]>([]);
+  const documents = ref<PaperDocument[]>([]);
   const isUploading = ref(false);
   const uploadStatus = ref<UploadStatus | null>(null);
 
@@ -45,33 +67,26 @@ export function useSessionState(options: UseSessionStateOptions) {
   const indexedChunks = computed(() => paperSession.value?.chunkCount ?? 0);
 
   function syncActiveSession(sessionId: string): void {
-    sessions.value = sessions.value.map((session) => ({
-      ...session,
-      active: session.id === sessionId,
-    }));
+    sessions.value = withActiveFlag(sessions.value, sessionId);
   }
 
-  function applySnapshot(
-    payload: ApplySnapshotPayload,
-  ): { messages: SessionSnapshotResult["messages"] } {
-    documents.value = payload.snapshot.documents;
-    const docs = payload.snapshot.documents;
-    const latestDocument = docs.length > 0
-      ? [...docs].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0]
-      : null;
+  function applySnapshot(payload: ApplySnapshotPayload): {
+    messages: SessionSnapshotResult["messages"];
+  } {
+    const { snapshot } = payload;
+    documents.value = snapshot.documents;
+    const latestDocument = pickLatestDocument(snapshot.documents);
     paperSession.value = {
-      sessionId: payload.snapshot.id,
+      sessionId: snapshot.id,
       docId: latestDocument?.id,
-      fileName: payload.snapshot.title || latestDocument?.filename || "新论文会话",
-      chunkCount: payload.snapshot.indexed_chunks,
+      fileName: snapshot.title || latestDocument?.filename || "新论文会话",
+      chunkCount: snapshot.indexed_chunks,
     };
     if (!payload.preserveUploadStatus) {
       uploadStatus.value = null;
     }
-    syncActiveSession(payload.snapshot.id);
-    return {
-      messages: payload.snapshot.messages,
-    };
+    syncActiveSession(snapshot.id);
+    return { messages: snapshot.messages };
   }
 
   function resetSessionState(): void {
@@ -81,14 +96,12 @@ export function useSessionState(options: UseSessionStateOptions) {
   }
 
   async function refreshSessions(activeSessionId?: string): Promise<void> {
-    const result = await listSessions();
-    sessions.value = result.map((session) => ({
-      ...session,
-      active: session.id === activeSessionId,
-    }));
+    sessions.value = withActiveFlag(await listSessions(), activeSessionId);
   }
 
-  async function openSession(sessionId: string): Promise<{ messages: SessionSnapshotResult["messages"] } | null> {
+  async function openSession(
+    sessionId: string,
+  ): Promise<{ messages: SessionSnapshotResult["messages"] } | null> {
     options.setErrorMessage("");
     try {
       const snapshot = await getSession(sessionId);
@@ -96,12 +109,14 @@ export function useSessionState(options: UseSessionStateOptions) {
       await refreshSessions(sessionId);
       return result;
     } catch (error) {
-      options.setErrorMessage(error instanceof Error ? error.message : "读取会话失败");
+      options.setErrorMessage(toErrorMessage(error, "读取会话失败"));
       return null;
     }
   }
 
-  async function initializeSessions(): Promise<{ messages: SessionSnapshotResult["messages"] } | null> {
+  async function initializeSessions(): Promise<{
+    messages: SessionSnapshotResult["messages"];
+  } | null> {
     try {
       await refreshSessions();
       if (sessions.value.length > 0) {
@@ -109,17 +124,19 @@ export function useSessionState(options: UseSessionStateOptions) {
       }
       return null;
     } catch (error) {
-      options.setErrorMessage(error instanceof Error ? error.message : "读取会话列表失败");
+      options.setErrorMessage(toErrorMessage(error, "读取会话列表失败"));
       return null;
     }
   }
 
-  async function handleUpload(file: File): Promise<{ messages: SessionSnapshotResult["messages"] } | null> {
+  async function handleUpload(
+    file: File,
+  ): Promise<{ messages: SessionSnapshotResult["messages"] } | null> {
     options.setErrorMessage("");
     isUploading.value = true;
     uploadStatus.value = {
       fileName: file.name,
-      fileSizeLabel: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+      fileSizeLabel: formatFileSize(file.size),
       phase: "parsing",
     };
     try {
@@ -130,10 +147,7 @@ export function useSessionState(options: UseSessionStateOptions) {
           : activeSessionId;
       const result = await uploadDocument(sessionId, file);
       const snapshot = await getSession(sessionId);
-      const nextState = applySnapshot({
-        preserveUploadStatus: true,
-        snapshot,
-      });
+      const nextState = applySnapshot({ preserveUploadStatus: true, snapshot });
       await refreshSessions(sessionId);
       paperSession.value = {
         ...paperSession.value,
@@ -144,28 +158,32 @@ export function useSessionState(options: UseSessionStateOptions) {
       };
       uploadStatus.value = {
         fileName: file.name,
-        fileSizeLabel: `PDF ${Math.max(file.size / (1024 * 1024), 0.01).toFixed(2)}MB`,
+        fileSizeLabel: formatFileSize(file.size, "PDF "),
         phase: result.session_status === "processing" ? "indexing" : "parsing",
       };
+
       const completedSnapshot = await waitForUploadCompletion(sessionId, result.document_id);
       if (!completedSnapshot) {
         return nextState;
       }
+
       const completedState = applySnapshot({
         preserveUploadStatus: true,
         snapshot: completedSnapshot,
       });
-      const uploadedDocument = completedSnapshot.documents.find((document) => document.id === result.document_id);
+      const uploadedDocument = completedSnapshot.documents.find(
+        (document) => document.id === result.document_id,
+      );
       const uploadFailed = uploadedDocument?.status === "failed";
       uploadStatus.value = {
         fileName: file.name,
-        fileSizeLabel: uploadFailed ? "" : `PDF ${Math.max(file.size / (1024 * 1024), 0.01).toFixed(2)}MB`,
-        errorMessage: uploadFailed ? (uploadedDocument.error_message || "解析失败") : undefined,
+        fileSizeLabel: uploadFailed ? "" : formatFileSize(file.size, "PDF "),
+        errorMessage: uploadFailed ? uploadedDocument.error_message || "解析失败" : undefined,
         phase: uploadFailed ? "error" : "ready",
       };
       return completedState;
     } catch (error) {
-      options.setErrorMessage(error instanceof Error ? error.message : "上传失败，请稍后重试");
+      options.setErrorMessage(toErrorMessage(error, "上传失败，请稍后重试"));
       uploadStatus.value = {
         fileName: file.name,
         fileSizeLabel: "上传失败",
@@ -194,26 +212,31 @@ export function useSessionState(options: UseSessionStateOptions) {
       }
       uploadStatus.value = {
         fileName: document.filename,
-        fileSizeLabel: STATUS_LABELS[document.status] ?? document.status,
-        phase: document.status === "indexing" || document.status === "chunked" ? "indexing" : "parsing",
+        fileSizeLabel: UPLOAD_STATUS_LABELS[document.status] ?? document.status,
+        phase: INDEXING_DOCUMENT_STATUSES.has(document.status) ? "indexing" : "parsing",
       };
     }
     return null;
   }
 
-  async function createEmptySession(): Promise<{ messages: SessionSnapshotResult["messages"] } | null> {
+  async function createEmptySession(): Promise<{
+    messages: SessionSnapshotResult["messages"];
+  } | null> {
     options.setErrorMessage("");
     try {
       const sessionId = await createSession();
       uploadStatus.value = null;
       return await openSession(sessionId);
     } catch (error) {
-      options.setErrorMessage(error instanceof Error ? error.message : "创建会话失败");
+      options.setErrorMessage(toErrorMessage(error, "创建会话失败"));
       return null;
     }
   }
 
-  async function renameSession(sessionId: string, title: string): Promise<{ messages: SessionSnapshotResult["messages"] } | null> {
+  async function renameSession(
+    sessionId: string,
+    title: string,
+  ): Promise<{ messages: SessionSnapshotResult["messages"] } | null> {
     options.setErrorMessage("");
     try {
       await updateSession(sessionId, { title });
@@ -223,12 +246,9 @@ export function useSessionState(options: UseSessionStateOptions) {
         return null;
       }
       const snapshot = await getSession(sessionId);
-      return applySnapshot({
-        preserveUploadStatus: true,
-        snapshot,
-      });
+      return applySnapshot({ preserveUploadStatus: true, snapshot });
     } catch (error) {
-      options.setErrorMessage(error instanceof Error ? error.message : "重命名会话失败");
+      options.setErrorMessage(toErrorMessage(error, "重命名会话失败"));
       return null;
     }
   }
@@ -243,7 +263,7 @@ export function useSessionState(options: UseSessionStateOptions) {
       await updateSession(sessionId, { is_pinned: !session.is_pinned });
       await refreshSessions(paperSession.value?.sessionId);
     } catch (error) {
-      options.setErrorMessage(error instanceof Error ? error.message : "置顶会话失败");
+      options.setErrorMessage(toErrorMessage(error, "置顶会话失败"));
     }
   }
 
@@ -265,7 +285,7 @@ export function useSessionState(options: UseSessionStateOptions) {
       }
       return {};
     } catch (error) {
-      options.setErrorMessage(error instanceof Error ? error.message : "删除会话失败");
+      options.setErrorMessage(toErrorMessage(error, "删除会话失败"));
       return null;
     }
   }
@@ -284,9 +304,7 @@ export function useSessionState(options: UseSessionStateOptions) {
     handleUpload,
     initializeSessions,
     openSession,
-    refreshSessions,
     renameSession,
-    resetSessionState,
     togglePinSession,
   };
 }

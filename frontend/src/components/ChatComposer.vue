@@ -73,11 +73,8 @@ function toggleMore(): void {
       type="file"
       accept=".pdf,application/pdf"
       @change="handleFileChange"
-    >
-    <UploadStatusCard
-      v-if="uploadStatus"
-      :status="uploadStatus"
     />
+    <UploadStatusCard v-if="uploadStatus" :status="uploadStatus" />
     <el-input
       :model-value="draft"
       class="chat-composer__input"
@@ -93,7 +90,7 @@ function toggleMore(): void {
       <ComposerTools
         :disabled="isDisabled"
         :state="toolState"
-        @open-upload="openFilePicker"
+        @request-upload="openFilePicker"
         @toggle-more="toggleMore"
         @toggle-search="toggleSearch"
       />
@@ -160,8 +157,8 @@ function toggleMore(): void {
   flex: 0 0 auto;
   width: 34px;
   height: 34px;
-  color: #ffffff;
-  background: linear-gradient(145deg, #5d80ee 0%, #2d55d1 100%);
+  color: var(--color-white);
+  background: var(--gradient-accent);
   border-color: transparent;
   box-shadow: 0 12px 25px rgba(71, 110, 230, 0.24);
 }

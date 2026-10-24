@@ -1,22 +1,15 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
-import LoginView from "./views/LoginView.vue";
-import AppLayout from "./AppLayout.vue";
+import { RouterView } from "vue-router";
 import { useAuth } from "./composables/useAuth";
 
-const { isAuthenticated, loading, checkAuth } = useAuth();
-
-onMounted(() => {
-  void checkAuth();
-});
+const { loading } = useAuth();
 </script>
 
 <template>
   <div v-if="loading" class="loading-screen">
     <p>加载中...</p>
   </div>
-  <LoginView v-else-if="!isAuthenticated" />
-  <AppLayout v-else />
+  <RouterView v-else />
 </template>
 
 <style scoped>
@@ -25,6 +18,6 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   height: 100vh;
-  color: #909399;
+  color: var(--color-text-muted);
 }
 </style>

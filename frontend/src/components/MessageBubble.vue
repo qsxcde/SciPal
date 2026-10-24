@@ -6,10 +6,15 @@ import type { ChatMessageViewModel } from "../types";
 
 const EMPTY_ASSISTANT_FALLBACK = "回答生成失败，请重试或重新发送问题。";
 
-const props = defineProps<{
-  message: ChatMessageViewModel;
-  pending?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    message: ChatMessageViewModel;
+    pending?: boolean;
+  }>(),
+  {
+    pending: false,
+  },
+);
 
 const displayText = computed(() => {
   if (props.pending) {
@@ -25,23 +30,13 @@ const displayText = computed(() => {
 </script>
 
 <template>
-  <article
-    class="message-row"
-    :class="`message-row--${props.message.role}`"
-  >
-    <div
-      v-if="props.message.role === 'assistant'"
-      class="avatar-shell"
-      aria-hidden="true"
-    >
+  <article class="message-row" :class="`message-row--${props.message.role}`">
+    <div v-if="props.message.role === 'assistant'" class="avatar-shell" aria-hidden="true">
       <span class="avatar-shell__brand">S</span>
     </div>
 
     <div class="message-column">
-      <div
-        class="message-bubble"
-        :class="`message-bubble--${props.message.role}`"
-      >
+      <div class="message-bubble" :class="`message-bubble--${props.message.role}`">
         <MarkdownContent :text="displayText" />
       </div>
 
@@ -76,12 +71,12 @@ const displayText = computed(() => {
   align-items: center;
   justify-content: center;
   border-radius: 11px;
-  background: linear-gradient(145deg, #5d80ee 0%, #2d55d1 100%);
+  background: var(--gradient-accent);
   box-shadow: 0 14px 28px rgba(71, 110, 230, 0.2);
 }
 
 .avatar-shell__brand {
-  color: #ffffff;
+  color: var(--color-white);
   font-size: 14px;
   font-weight: 900;
   line-height: 1;
@@ -129,7 +124,7 @@ const displayText = computed(() => {
 }
 
 .message-bubble--assistant :deep(.markdown-content) {
-  color: #26334a;
+  color: var(--color-text-body);
   font-size: 14px;
   line-height: 1.62;
 }
@@ -149,7 +144,7 @@ const displayText = computed(() => {
 }
 
 .message-bubble--assistant :deep(li) {
-  color: #29374f;
+  color: var(--color-text-body);
   font-size: 14px;
   line-height: 1.52;
 }

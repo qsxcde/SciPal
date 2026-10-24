@@ -98,10 +98,7 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
     class="conversation-pane"
     :class="{ 'conversation-pane--messages': props.messages.length > 0 }"
   >
-    <section
-      v-if="props.messages.length === 0"
-      class="welcome-panel"
-    >
+    <section v-if="props.messages.length === 0" class="welcome-panel">
       <h3>我可以怎样帮你读这篇论文？</h3>
       <p>你可以让我总结、解释方法、分析局限、拆解公式，或给出带引用的答案。</p>
       <div class="prompt-grid">
@@ -124,16 +121,8 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
         或先试用示例论文
       </el-button>
     </section>
-    <section
-      v-else
-      class="message-panel"
-      aria-live="polite"
-    >
-      <el-scrollbar
-        ref="scrollbarRef"
-        class="message-scroll"
-        @scroll="handleScroll"
-      >
+    <section v-else class="message-panel" aria-live="polite">
+      <el-scrollbar ref="scrollbarRef" class="message-scroll" @scroll="handleScroll">
         <div class="message-list">
           <MessageBubble
             v-for="(message, index) in props.messages"
@@ -200,7 +189,10 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
   font-size: 13px;
 }
 
-.welcome-panel__demo { margin-top: 18px; color: var(--color-text-soft); }
+.welcome-panel__demo {
+  margin-top: 18px;
+  color: var(--color-text-soft);
+}
 .prompt-grid {
   display: grid;
   width: 100%;
@@ -221,7 +213,10 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
   border-radius: 15px;
 }
 
-.message-scroll { min-height: 0; height: 100%; }
+.message-scroll {
+  min-height: 0;
+  height: 100%;
+}
 .message-scroll :deep(.el-scrollbar__wrap) {
   padding-right: 8px;
   overscroll-behavior: contain;
@@ -244,8 +239,13 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
   box-shadow: var(--shadow-card);
 }
 @media (max-width: 760px) {
-  .prompt-grid { grid-template-columns: 1fr; }
-  .scroll-bottom-button.el-button { right: 12px; bottom: 12px; }
+  .prompt-grid {
+    grid-template-columns: 1fr;
+  }
+  .scroll-bottom-button.el-button {
+    right: 12px;
+    bottom: 12px;
+  }
 }
 
 @media (max-width: 1200px) {

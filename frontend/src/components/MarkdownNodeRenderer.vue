@@ -16,14 +16,7 @@ function resolveTag(tag: MarkdownAllowedTag): MarkdownAllowedTag {
 
 <template>
   <span v-if="node.tag === null">{{ node.text }}</span>
-  <component
-    :is="resolveTag(node.tag)"
-    v-else
-  >
-    <MarkdownNodeRenderer
-      v-for="child in node.children"
-      :key="child.id"
-      :node="child"
-    />
+  <component :is="resolveTag(node.tag)" v-else>
+    <MarkdownNodeRenderer v-for="child in node.children" :key="child.id" :node="child" />
   </component>
 </template>

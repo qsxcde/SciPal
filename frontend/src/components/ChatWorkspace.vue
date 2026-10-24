@@ -4,7 +4,7 @@ import ChatHeaderBar from "./ChatHeaderBar.vue";
 import MessageList from "./MessageList.vue";
 import type { ChatMessageViewModel, SuggestedPrompt, UploadStatus } from "../types";
 
-const props = defineProps<{
+defineProps<{
   draft: string;
   errorMessage: string;
   hasPaper: boolean;
@@ -31,14 +31,8 @@ function handleDraftUpdate(value: string): void {
 </script>
 
 <template>
-  <section
-    class="chat-workspace"
-    aria-label="论文问答区"
-  >
-    <ChatHeaderBar
-      :paper-hint="paperHint"
-      :session-title="sessionTitle"
-    />
+  <section class="chat-workspace" aria-label="论文问答区">
+    <ChatHeaderBar :paper-hint="paperHint" :session-title="sessionTitle" />
     <MessageList
       :has-paper="hasPaper"
       :is-streaming="isStreaming"
@@ -48,10 +42,7 @@ function handleDraftUpdate(value: string): void {
       @prompt-click="$emit('promptClick', $event)"
     />
 
-    <p
-      v-if="errorMessage"
-      class="error-text"
-    >
+    <p v-if="errorMessage" class="error-text">
       {{ errorMessage }}
     </p>
     <ChatComposer
@@ -72,8 +63,7 @@ function handleDraftUpdate(value: string): void {
   height: 100%;
   min-width: 0;
   flex-direction: column;
-  padding: clamp(18px, 1.8vw, 24px) clamp(24px, 3.2vw, 48px)
-    clamp(20px, 2vw, 28px);
+  padding: clamp(18px, 1.8vw, 24px) clamp(24px, 3.2vw, 48px) clamp(20px, 2vw, 28px);
   overflow: hidden;
   background: var(--color-shell);
 }

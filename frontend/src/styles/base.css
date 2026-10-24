@@ -1,0 +1,58 @@
+/* 基础重置与排版：只做全局默认，不承载业务类名。 */
+:root {
+  color: var(--color-text);
+  background: var(--color-page);
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+html,
+body {
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  color: var(--color-text);
+  background:
+    linear-gradient(120deg, rgba(71, 110, 230, 0.08), transparent 36%),
+    linear-gradient(180deg, #f7f9fd 0%, #eff4fa 100%);
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+p,
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(123, 147, 232, 0.22);
+}
