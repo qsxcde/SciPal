@@ -7,6 +7,8 @@
 
 SciPal 是一个面向学术论文阅读场景的 RAG 问答系统。用户上传 PDF 后，系统会在独立会话内完成文档持久化、异步解析、索引构建，并基于论文内容提供带来源引用的中文流式回答。
 
+> 实现细节（架构分层、数据模型、API/SSE 契约、摄取与检索链路、配置项、评测与排障）见 [docs/wiki](docs/wiki/README.md)。
+
 ## 项目特点
 
 - 桌面端 Web 界面，基于 Vue 3 + TypeScript + Element Plus。

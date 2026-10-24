@@ -15,7 +15,8 @@ backend/storage/sqlite/scipal.db
 .vscode/
 tests/
 eval_outputs/
-docs/
+docs/*
+!docs/wiki/
 CLAUDE.md
 backend/storage/sqlite/*.db
 backend/storage/sqlite/*.db-shm
