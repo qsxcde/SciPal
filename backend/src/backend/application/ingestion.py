@@ -6,11 +6,12 @@ from pathlib import Path
 from backend.application.indexing import build_candidate_snapshot
 from backend.application.indexing import cleanup_snapshot_files
 from backend.application.indexing import commit_ready_snapshot
-from backend.domain.exceptions import PaperParseError
 from backend.domain.exceptions import SnapshotCommitError
 from backend.domain.states import DocumentStage
+from backend.rag.embedding.limits import MAX_EMBEDDING_CHARS
 from backend.rag.ingestion.artifacts import save_ingestion_artifacts
 from backend.domain.models import Chunk
+from backend.rag.ingestion.chunking import estimate_tokens
 from backend.rag.ingestion.pipeline import process_pdf_document
 from backend.storage.paths import raw_session_dir
 from backend.storage.sqlite import chunks as chunk_repo
@@ -107,6 +108,7 @@ def _do_parse_document(session_id: str, document: dict, pdf_bytes: bytes) -> lis
         parse_quality_status=ingestion_result.quality_report.overall_status,
     )
     chunks = ingestion_result.chunks
+    _log_chunk_budget(session_id, document_id, chunks)
     document_repo.update_document_status(document_id, DocumentStage.parsed)
 
     chunk_repo.delete_chunks_for_document(document_id)
@@ -126,6 +128,31 @@ def _do_parse_document(session_id: str, document: dict, pdf_bytes: bytes) -> lis
         len(chunks), session_id, document_id,
     )
     return chunks
+
+
+def _log_chunk_budget(session_id: str, document_id: str, chunks: list[Chunk]) -> None:
+    """Surface the gap between estimated tokens and the embedding input cap.
+
+    Chunk sizing uses a cheap heuristic while the embedder truncates by
+    characters; logging both makes silent tail truncation observable.
+    """
+    if not chunks:
+        return
+    estimated = [estimate_tokens(chunk.text) for chunk in chunks]
+    longest_chars = max(len(chunk.text) for chunk in chunks)
+    logger.info(
+        "Chunk budget session_id=%s document_id=%s chunks=%d avg_est_tokens=%d "
+        "max_est_tokens=%d max_chars=%d embedding_char_cap=%d",
+        session_id, document_id, len(chunks),
+        sum(estimated) // len(estimated), max(estimated),
+        longest_chars, MAX_EMBEDDING_CHARS,
+    )
+    if longest_chars > MAX_EMBEDDING_CHARS:
+        logger.warning(
+            "Chunk exceeds embedding input cap session_id=%s document_id=%s "
+            "max_chars=%d cap=%d; the embedder will truncate the tail",
+            session_id, document_id, longest_chars, MAX_EMBEDDING_CHARS,
+        )
 
 
 def _do_build_and_commit_index(session_id: str, document_id: str, chunks: list[Chunk]) -> dict:

@@ -1,33 +1,32 @@
 """Remote reranker via SiliconFlow / OpenAI-compatible rerank API."""
 import logging
-import threading
 import time
 
 import httpx
 
 from backend.config import settings
 from backend.domain.models import Chunk
+from backend.rag.resources import LazyResource
 
 logger = logging.getLogger(__name__)
 
-_client: httpx.Client | None = None
-_client_lock = threading.Lock()
+
+def _create_client() -> httpx.Client:
+    return httpx.Client(
+        base_url=settings.reranker_remote_base_url,
+        headers={
+            "Authorization": f"Bearer {settings.embedding_remote_api_key}",
+            "Content-Type": "application/json",
+        },
+        timeout=30,
+    )
+
+
+_client: LazyResource[httpx.Client] = LazyResource(_create_client)
 
 
 def _get_client() -> httpx.Client:
-    global _client
-    if _client is None:
-        with _client_lock:
-            if _client is None:
-                _client = httpx.Client(
-                    base_url=settings.reranker_remote_base_url,
-                    headers={
-                        "Authorization": f"Bearer {settings.embedding_remote_api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    timeout=30,
-                )
-    return _client
+    return _client.get()
 
 
 def rerank(query: str, chunks: list[Chunk], top_k: int) -> list[Chunk] | None:

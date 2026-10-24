@@ -1,30 +1,29 @@
 """Remote embedding via OpenAI-compatible API (Gitee AI / etc.)."""
 import logging
-import threading
 import time
 
 from openai import OpenAI
 
 from backend.config import settings
 from backend.rag.embedding.local_embedder import truncate_for_embedding
+from backend.rag.resources import LazyResource
 
 logger = logging.getLogger(__name__)
 
-_client: OpenAI | None = None
-_client_lock = threading.Lock()
+
+def _create_client() -> OpenAI:
+    return OpenAI(
+        base_url=settings.embedding_remote_base_url,
+        api_key=settings.embedding_remote_api_key,
+        timeout=30,
+    )
+
+
+_client: LazyResource[OpenAI] = LazyResource(_create_client)
 
 
 def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
-        with _client_lock:
-            if _client is None:
-                _client = OpenAI(
-                    base_url=settings.embedding_remote_base_url,
-                    api_key=settings.embedding_remote_api_key,
-                    timeout=30,
-                )
-    return _client
+    return _client.get()
 
 
 def embed(texts: list[str]) -> list[list[float]]:

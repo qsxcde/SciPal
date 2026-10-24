@@ -85,7 +85,10 @@
 | `indexing/` | `vector_store.FAISSVectorStore` / `create_vector_store` | FAISS 封装：`add_chunks` / `search_with_ranks` / `save` / `load` |
 | `retrieval/` | `hybrid_retriever.retrieve_hybrid_context` | BM25 + Dense + RRF + Rerank + 上下文扩展 |
 | `generation/` | `answer_generator.stream_answer`、`model_client` | 提示词拼装、多 provider 降级、流式 token |
-| `embedding/` | `embedding.create_embed_fn` | 远程 → 本地链式选择 |
+| `embedding/` | `embedding.create_embed_fn` | 远程 → 本地链式选择；输入上限集中在 `embedding/limits.py` |
+| `ingestion/render.py` | `render_block` / `ordered_blocks` | DocumentIR 渲染的唯一入口：chunk 正文与导出 Markdown 共用，避免两套渲染漂移 |
+| `llm_output.py` | `strip_markdown_fence` / `parse_json_object` | LLM 结构化输出的统一清洗；改写/术语扩展/Judge 都走这里 |
+| `resources.py` | `LazyResource` | 外部客户端（OpenAI / httpx）的线程安全懒加载单例 |
 | `answer.py` | `answer.stream_answer` | 单轮问答能力（检索 + 生成 + 引用校验）；`options` 与 `policy` 必须由调用方显式传入 |
 
 ### 2.5 存储层
@@ -100,6 +103,8 @@
 ### 2.6 配置 `backend/src/backend/config.py`
 
 `RuntimeSettings`（全量字段见 08 章）、`Settings`（强制 `DEEPSEEK_API_KEY`）、模块级单例 `settings`、`data_dir()` / `model_dir()` 等路径函数。能力层不得直接 import 它，只能通过 `application/policies.py` 注入参数。
+
+提示词统一由 `backend/prompts/loader.py::load_prompt(section, key="system", default=None)` 读取 `prompts.toml`；`default` 仅用于允许降级的场景，缺 section 且无 `default` 时直接抛 `KeyError`。
 
 ## 3. 启动时序
 

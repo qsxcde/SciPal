@@ -4,6 +4,7 @@ import os
 from langchain_openai import ChatOpenAI
 
 from backend.config import settings
+from backend.rag.llm_output import strip_markdown_fence
 from scipal_eval.models import EvalSample
 from scipal_eval.models import EvalSampleResult
 from scipal_eval.models import JudgeMetricBundle
@@ -47,7 +48,7 @@ def build_judge_prompt(sample: EvalSample, result: EvalSampleResult) -> str:
 
 
 def parse_judge_response(payload: str) -> JudgeMetricBundle:
-  data = json.loads(_strip_markdown_fence(payload))
+  data = json.loads(strip_markdown_fence(payload))
   return JudgeMetricBundle(
     completeness=_safe_score(data.get("completeness")),
     citation_accuracy=_safe_score(data.get("citation_accuracy")),
@@ -97,14 +98,4 @@ def _safe_score(value: object) -> float | None:
   return parsed
 
 
-def _strip_markdown_fence(payload: str) -> str:
-  cleaned = payload.strip()
-  if not cleaned.startswith("```"):
-    return cleaned
-  first_newline = cleaned.find("\n")
-  if first_newline == -1:
-    return cleaned.strip("`").strip()
-  cleaned = cleaned[first_newline + 1 :]
-  if cleaned.endswith("```"):
-    cleaned = cleaned[:-3]
-  return cleaned.strip()
+

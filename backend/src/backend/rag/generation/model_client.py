@@ -7,6 +7,7 @@ order — if one fails, the next is attempted automatically.
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from collections.abc import Generator
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from typing import Any
 from openai import OpenAI
 
 from backend.config import settings
+from backend.rag.resources import LazyResource
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +92,8 @@ class ModelClient:
             providers if providers is not None else build_providers(),
             key=lambda p: p.priority,
         )
-        self._clients: dict[str, OpenAI] = {}
+        self._clients: dict[str, LazyResource[OpenAI]] = {}
+        self._clients_lock = threading.Lock()
         self._last_success: dict[str, float] = {}
 
     @property
@@ -192,13 +195,18 @@ class ModelClient:
 
     def _get_or_create_client(self, provider: ProviderConfig) -> OpenAI:
         cache_key = f"{provider.base_url}|{provider.api_key}"
-        if cache_key not in self._clients:
-            self._clients[cache_key] = OpenAI(
-                api_key=provider.api_key,
-                base_url=provider.base_url,
-                timeout=provider.timeout,
-            )
-        return self._clients[cache_key]
+        with self._clients_lock:
+            resource = self._clients.get(cache_key)
+            if resource is None:
+                resource = LazyResource(
+                    lambda p=provider: OpenAI(
+                        api_key=p.api_key,
+                        base_url=p.base_url,
+                        timeout=p.timeout,
+                    )
+                )
+                self._clients[cache_key] = resource
+        return resource.get()
 
     def _record_success(self, name: str) -> None:
         self._last_success[name] = time.monotonic()

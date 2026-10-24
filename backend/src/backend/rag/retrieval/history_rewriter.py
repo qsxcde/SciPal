@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import logging
 from functools import lru_cache
-import importlib.resources
-import tomllib
 
 from backend.config import settings
+from backend.prompts.loader import load_prompt
 from backend.rag.generation.llm import complete_text
 
 logger = logging.getLogger(__name__)
@@ -19,19 +18,6 @@ logger = logging.getLogger(__name__)
 
 _ANAPHORA_MARKERS_ZH = {"它", "其", "该", "这", "那", "两者", "两者都", "上述", "上文", "前者", "后者", "以上"}
 _ANAPHORA_MARKERS_EN = {"it", "its", "they", "them", "their", "this", "that", "these", "those"}
-
-
-@lru_cache(maxsize=1)
-def _load_history_rewrite_prompt() -> str:
-    """Load history rewrite prompt from prompts.toml."""
-    path = importlib.resources.files("backend.prompts") / "prompts.toml"
-    try:
-        with open(path, "rb") as f:
-            return tomllib.load(f)["history_rewrite"]["system"]
-    except Exception:
-        logger.exception("Failed to load history_rewrite prompt from %s", path)
-        return _FALLBACK_PROMPT
-
 
 _FALLBACK_PROMPT = """You are a query rewriting assistant for an academic paper Q&A system.
 Given the conversation history and the current user query,
@@ -97,7 +83,7 @@ def build_rewrite_prompt(
     query: str,
     history_text: str,
 ) -> str:
-    template = _load_history_rewrite_prompt()
+    template = load_prompt("history_rewrite", default=_FALLBACK_PROMPT)
     return template.format(history=history_text, query=query)
 
 

@@ -1,15 +1,11 @@
-import json
 import logging
-import re
 from collections.abc import Callable
-from functools import cache
-import importlib.resources
-from pathlib import Path
-import tomllib
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from backend.prompts.loader import load_prompt
 from backend.rag.generation.llm import complete_text
+from backend.rag.llm_output import parse_json_object
 
 logger = logging.getLogger(__name__)
 
@@ -37,30 +33,16 @@ def fallback_query_pack(query: str) -> QueryPack:
     )
 
 
-@cache
-def _load_query_rewrite_prompt() -> str:
-    path = importlib.resources.files("backend.prompts") / "prompts.toml"
-    with open(path, "rb") as f:
-        return tomllib.load(f)["query_rewrite"]["system"]
-
-
 def build_query_rewrite_prompt(
     query: str,
     source_language: str,
     target_language: str,
 ) -> str:
-    return _load_query_rewrite_prompt().format(
+    return load_prompt("query_rewrite").format(
         source_language=source_language,
         target_language=target_language,
         query=query,
     )
-
-
-def _strip_markdown_fence(text: str) -> str:
-    """Remove ```json ... ``` or ``` ... ``` markdown fences from LLM output."""
-    text = re.sub(r"^```(?:json)?\s*\n?", "", text.strip(), flags=re.MULTILINE)
-    text = re.sub(r"\n```\s*$", "", text, flags=re.MULTILINE)
-    return text.strip()
 
 
 def generate_query_pack(
@@ -72,10 +54,8 @@ def generate_query_pack(
     prompt = build_query_rewrite_prompt(query, source_language, target_language)
     completion = complete or complete_text
     try:
-        raw = completion(prompt)
-        payload = json.loads(_strip_markdown_fence(raw))
-        if "keywords" not in payload:
-            payload["keywords"] = []
+        payload = parse_json_object(completion(prompt))
+        payload.setdefault("keywords", [])
         return QueryPack.model_validate(payload)
     except Exception:
         logger.exception("generate_query_pack failed for query=%r", query)

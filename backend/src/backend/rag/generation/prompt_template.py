@@ -1,19 +1,7 @@
-from functools import cache
-import importlib.resources
-import tomllib
-
 from backend.domain.models import Chunk
+from backend.prompts.loader import load_prompt
 
-
-@cache
-def _load_prompts() -> dict:
-    path = importlib.resources.files("backend.prompts") / "prompts.toml"
-    with path.open("rb") as f:
-        return tomllib.load(f)
-
-
-_root = _load_prompts()["rag_answer"]
-SYSTEM_PROMPT = _root["system"]
+SYSTEM_PROMPT = load_prompt("rag_answer")
 
 
 def build_prompt(chunks: list[Chunk], question: str) -> str:

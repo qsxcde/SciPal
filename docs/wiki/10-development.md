@@ -36,7 +36,7 @@ cd frontend && npm install && npm run dev
 
 ### 2.1 现状
 
-`tests/` 已纳入版本库，22 个用例覆盖"不需要 torch/faiss 的"核心不变量：
+`tests/` 已纳入版本库，46 个用例覆盖"不需要 torch/faiss 的"核心不变量：
 
 | 文件 | 覆盖内容 |
 |---|---|
@@ -46,6 +46,10 @@ cd frontend && npm install && npm run dev
 | `test_document_intake_flow.py` | 上传落盘 + job 入队、404/413/400 分支无副作用 |
 | `test_access_control.py` | 会话归属规则、开发旁路、生产环境 fail closed |
 | `test_gc_index_snapshots.py` | 只回收 `failed`/旧 `stale`、dry-run、越界路径跳过 |
+| `test_llm_output.py` | LLM 输出的 Markdown fence 剥离（含单行 fence）与 JSON 对象校验 |
+| `test_prompt_loader.py` | `prompts.toml` 单点加载：命中、缺省值、缺 section 报错 |
+| `test_ingestion_render.py` | `render_block` / `ordered_blocks`，以及 chunk 文本与 Markdown 渲染一致 |
+| `test_lazy_resource.py` | 外部客户端只构造一次，并发访问不重复构造 |
 
 `test_package_boundaries.py` 用 AST 静态校验分层依赖（application 不依赖 fastapi、storage 不依赖 rag、rag/answer 不读 settings、仅 api 与 main 依赖 fastapi），不加载任何重依赖。
 
@@ -91,6 +95,7 @@ CI（`.github/workflows/ci.yml`）只安装轻量测试依赖（pytest / pydanti
 - 领域异常到 HTTP 的映射只在 `api/errors.py`；SSE 分帧只在 `api/streaming.py`。
 - 仓储层只写 SQL，不写业务判断；返回 `dict`（`sqlite3.Row` 转换）。
 - `rag/*` 不依赖 `api` / `application`，也不 import `settings`（参数由 `application/policies.py` 注入），保持可被 CLI/测试直接调用。
+- 同一逻辑只能有一份实现：prompt 读取走 `prompts/loader.py`，LLM 输出的 fence/JSON 清洗走 `rag/llm_output.py`，外部客户端单例走 `rag/resources.py`，DocumentIR 渲染走 `rag/ingestion/render.py`。新增第二份实现前先看这四个模块。
 
 ### 3.2 数据库
 

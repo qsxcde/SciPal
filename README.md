@@ -175,7 +175,7 @@ npm run dev
 测试位于仓库根目录 `tests/`，在仓库根执行：
 
 ```bash
-# 全部用例（当前 28 个，不需要 torch / faiss）
+# 全部用例（当前 46 个，不需要 torch / faiss）
 uv run --project backend pytest
 
 # 按标记过滤

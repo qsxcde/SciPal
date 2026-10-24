@@ -11,11 +11,9 @@ from sentence_transformers import SentenceTransformer
 
 from backend import config
 from backend.domain.exceptions import EmbeddingModelUnavailableError
+from backend.rag.embedding.limits import MAX_EMBEDDING_CHARS, MAX_EMBEDDING_WORDS
 
 logger = logging.getLogger(__name__)
-
-MAX_EMBEDDING_WORDS = 220
-MAX_EMBEDDING_CHARS = 1600
 
 _MODEL_RETRY_BASE_INTERVAL = 60.0
 _MODEL_RETRY_MAX_INTERVAL = 600.0

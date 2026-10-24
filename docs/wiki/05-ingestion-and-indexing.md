@@ -164,8 +164,13 @@ warning 例：`NO_HEADINGS_DETECTED`、`LOW_TEXT_DENSITY`。
 
 - 实际传入 `chunk_size = settings.max_chunk_tokens(800)`、`chunk_overlap = settings.chunk_overlap_tokens(100)`。
 - `DEFAULT_CHUNK_SIZE=2000` / `DEFAULT_CHUNK_OVERLAP=120` 仅在未传参时生效。
-- token 估算：`cjk_chars / 1.5 + other_chars / 4`（最小 1），不是真实 tokenizer 计数。
+- token 估算：`estimate_tokens`（`cjk_chars / 1.5 + other_chars / 4`，最小 1），不是真实 tokenizer 计数。
 - 分隔符 `["\n\n", "\n", ". ", "。", "！", "？", " ", ""]`。
+
+渲染与预算：
+
+- 块渲染统一走 `rag/ingestion/render.py::render_block`，chunk 正文与导出 Markdown 不再各写一套；`ordered_blocks` 同样由该模块提供。
+- 切块完成后 `application/ingestion._log_chunk_budget` 记录 `avg/max_est_tokens` 与 `max_chars`；当 `max_chars > MAX_EMBEDDING_CHARS(1600)` 时打 WARNING，提示 embedding 会截断尾部（此前是静默截断）。
 
 `Chunk` 元数据填充规则：
 

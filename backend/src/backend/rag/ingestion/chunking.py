@@ -4,6 +4,7 @@ from collections.abc import Iterable
 import re
 
 from backend.rag.ingestion.document_ir import BBox, BlockIR, DocumentIR
+from backend.rag.ingestion.render import ordered_blocks, render_block
 from backend.domain.models import Chunk, ChunkMetadata
 
 
@@ -13,7 +14,7 @@ SEPARATORS = ["\n\n", "\n", ". ", "。", "！", "？", " ", ""]
 MERGEABLE_TYPES = {"paragraph", "figure_caption", "table_caption", "reference"}
 
 
-def _estimate_tokens(text: str) -> int:
+def estimate_tokens(text: str) -> int:
     """Rough token count: English ~1/4 char, CJK ~1/1.5 char."""
     cjk = sum(1 for c in text if "一" <= c <= "鿿" or 0x3400 <= ord(c) <= 0x4DBF)
     other = len(text) - cjk
@@ -28,7 +29,7 @@ def build_chunks(
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> list[Chunk]:
-    if not _ordered_blocks(document_ir):
+    if not ordered_blocks(document_ir):
         return _build_markdown_only_chunks(markdown, paper_id, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
     chunks: list[Chunk] = []
@@ -39,7 +40,7 @@ def build_chunks(
         if not text_buffer:
             return
         section_path = _section_path(text_buffer[0])
-        body = "\n\n".join(_render_block(block) for block in text_buffer if block.text.strip()).strip()
+        body = "\n\n".join(render_block(block) for block in text_buffer if block.text.strip()).strip()
         block_ids = [block.id for block in text_buffer]
         block_types = _unique(block.type for block in text_buffer)
         linked_block_ids = _linked_block_ids(text_buffer)
@@ -67,7 +68,7 @@ def build_chunks(
             )
         text_buffer = []
 
-    for block in _ordered_blocks(document_ir):
+    for block in ordered_blocks(document_ir):
         if block.type in {"title", "heading", "header_footer"}:
             continue
         if _is_code_block(block):
@@ -159,30 +160,12 @@ def _build_markdown_only_chunks(
     return chunks
 
 
-def _ordered_blocks(document_ir: DocumentIR) -> list[BlockIR]:
-    blocks = document_ir.blocks or [block for page in document_ir.pages for block in page.blocks]
-    return sorted(blocks, key=lambda block: (block.page_number, block.reading_order, block.block_index))
-
-
 def _section_path(block: BlockIR) -> list[str]:
     return block.section_path or ["Document"]
 
 
 def _heading_prefix(section_path: list[str]) -> str:
     return "\n".join(f"{'#' * min(index + 2, 6)} {title}" for index, title in enumerate(section_path))
-
-
-def _render_block(block: BlockIR) -> str:
-    text = block.text.strip()
-    if block.type == "table":
-        return f"[Table on page {block.page_number}]\n{text}" if text else f"[Table on page {block.page_number}]"
-    if block.type == "formula":
-        return text or f"[Formula on page {block.page_number} near {' > '.join(_section_path(block))}]"
-    if block.type == "figure_caption":
-        return f"**Figure:** {text}" if text else ""
-    if block.type == "table_caption":
-        return f"**Table:** {text}" if text else ""
-    return text
 
 
 def _chunk_type(block: BlockIR) -> str:
@@ -211,7 +194,7 @@ def _append_single_block_chunk(chunks: list[Chunk], paper_id: str, block: BlockI
         chunks,
         paper_id=paper_id,
         section_path=_section_path(block),
-        body=_render_block(block),
+        body=render_block(block),
         chunk_type=chunk_type,
         block_ids=[block.id],
         block_types=[block.type],
@@ -270,14 +253,14 @@ def _append_chunk(
 
 def _recursive_split(text: str, *, chunk_size: int, chunk_overlap: int) -> list[str]:
     text = text.strip()
-    if _estimate_tokens(text) <= chunk_size:
+    if estimate_tokens(text) <= chunk_size:
         return [text] if text else []
     pieces = _split_by_separator(text, chunk_size)
     chunks: list[str] = []
     current = ""
     for piece in pieces:
         candidate = f"{current}{piece}" if not current else f"{current} {piece}"
-        if _estimate_tokens(candidate) <= chunk_size or not current:
+        if estimate_tokens(candidate) <= chunk_size or not current:
             current = candidate
             continue
         chunks.append(current.strip())
@@ -289,7 +272,7 @@ def _recursive_split(text: str, *, chunk_size: int, chunk_overlap: int) -> list[
 
 
 def _split_by_separator(text: str, chunk_size: int) -> list[str]:
-    if _estimate_tokens(text) <= chunk_size:
+    if estimate_tokens(text) <= chunk_size:
         return [text]
     for separator in SEPARATORS:
         if separator and separator in text:

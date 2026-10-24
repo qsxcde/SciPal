@@ -9,19 +9,33 @@ from __future__ import annotations
 import json
 import logging
 import re
-from collections.abc import Callable
 from functools import lru_cache
-import importlib.resources
 from pathlib import Path
-import tomllib
 
 from backend.config import settings
+from backend.prompts.loader import load_prompt
 from backend.rag.generation.llm import complete_text
+from backend.rag.llm_output import parse_json_object
 
 logger = logging.getLogger(__name__)
 
 
 _UPPER_ABBREV_RE = re.compile(r"\b[A-Z]{2,6}\b")
+
+_FALLBACK_TERM_PROMPT = """Identify any academic/technical abbreviations or specialized terms in the user query
+that may not be resolved correctly by a semantic search engine.
+For each identified term, provide 2-3 alternative phrasings or expanded forms.
+
+Focus on:
+- Abbreviations (LLM → large language model, MoE → mixture of experts)
+- Naming (Qwen → Qwen model series by Alibaba)
+- Methodology names (RLHF → reinforcement learning from human feedback)
+
+Return JSON:
+{{"terms": [{{"original": "...", "expansions": ["...", "..."]}}]}}
+
+Query: {query}
+"""
 
 
 def load_glossary() -> dict[str, list[str]]:
@@ -88,44 +102,9 @@ def _needs_llm_expansion(query: str, glossary: dict[str, list[str]]) -> bool:
     return False
 
 
-@lru_cache(maxsize=1)
-def _load_term_expand_prompt() -> str:
-    """Load term expand prompt from prompts.toml."""
-    path = importlib.resources.files("backend.prompts") / "prompts.toml"
-    try:
-        with open(path, "rb") as f:
-            return tomllib.load(f)["term_expand"]["system"]
-    except Exception:
-        logger.exception("Failed to load term_expand prompt from %s", path)
-        return _FALLBACK_TERM_PROMPT
-
-
-_FALLBACK_TERM_PROMPT = """Identify any academic/technical abbreviations or specialized terms in the user query
-that may not be resolved correctly by a semantic search engine.
-For each identified term, provide 2-3 alternative phrasings or expanded forms.
-
-Focus on:
-- Abbreviations (LLM → large language model, MoE → mixture of experts)
-- Naming (Qwen → Qwen model series by Alibaba)
-- Methodology names (RLHF → reinforcement learning from human feedback)
-
-Return JSON:
-{{"terms": [{{"original": "...", "expansions": ["...", "..."]}}]}}
-
-Query: {query}
-"""
-
-
 def build_term_expand_prompt(query: str) -> str:
-    template = _load_term_expand_prompt()
+    template = load_prompt("term_expand", default=_FALLBACK_TERM_PROMPT)
     return template.format(query=query)
-
-
-def _strip_markdown_fence(text: str) -> str:
-    """Remove ```json ... ``` or ``` ... ``` markdown fences from LLM output."""
-    text = re.sub(r"^```(?:json)?\s*\n?", "", text.strip(), flags=re.MULTILINE)
-    text = re.sub(r"\n```\s*$", "", text, flags=re.MULTILINE)
-    return text.strip()
 
 
 @lru_cache(maxsize=64)
@@ -133,11 +112,9 @@ def _cached_llm_expand(query: str) -> list[str]:
     """Call LLM to identify and expand academic terms. Cached for identical queries."""
     prompt = build_term_expand_prompt(query)
     try:
-        raw = complete_text(prompt)
-        payload = json.loads(_strip_markdown_fence(raw))
-        terms = payload.get("terms", [])
+        payload = parse_json_object(complete_text(prompt))
         result: list[str] = []
-        for entry in terms:
+        for entry in payload.get("terms", []):
             result.extend(entry.get("expansions", []))
         return result
     except Exception:
