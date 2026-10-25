@@ -49,6 +49,23 @@ def list_documents(session_id: str) -> list[dict]:
         return [dict(row) for row in rows]
 
 
+def list_documents_with_session(user_id: str | None) -> list[dict]:
+    """跨会话列出文档，按访问规则过滤（owner 为空视为公共数据）。"""
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT d.*, s.title AS session_title
+            FROM documents d
+            JOIN sessions s ON s.id = d.session_id
+            WHERE s.is_archived = 0
+              AND (s.user_id IS NULL OR s.user_id = ?)
+            ORDER BY d.updated_at DESC, d.created_at DESC
+            """,
+            (user_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def delete_document(document_id: str) -> None:
 
     document = get_document(document_id)

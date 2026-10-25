@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { EditPen, Expand, Fold } from "@element-plus/icons-vue";
+import { Collection, EditPen, Expand, Fold } from "@element-plus/icons-vue";
 
 defineProps<{
   collapsed: boolean;
@@ -8,6 +8,7 @@ defineProps<{
 
 defineEmits<{
   createSession: [];
+  openLibrary: [];
   toggleCollapse: [];
 }>();
 </script>
@@ -32,6 +33,7 @@ defineEmits<{
         aria-label="切换侧边栏"
         @click="$emit('toggleCollapse')"
       />
+      <el-button :icon="Collection" circle text aria-label="文献库" @click="$emit('openLibrary')" />
       <el-button
         :icon="EditPen"
         circle

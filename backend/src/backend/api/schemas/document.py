@@ -25,6 +25,20 @@ class DocumentSummary(BaseModel):
     updated_at: str
 
 
+class LibraryDocumentSummary(BaseModel):
+    """文献库列表项：文档 + 所属会话标题。"""
+
+    document_id: str
+    session_id: str
+    session_title: str
+    filename: str
+    status: str
+    chunk_count: int
+    file_size: int
+    parse_quality_status: str | None = None
+    updated_at: str
+
+
 class DocumentIntakeResponse(BaseModel):
     document_id: str
     job_id: str

@@ -114,6 +114,24 @@ def get_source_chunk(session_id: str, document_id: str, chunk_index: int) -> dic
     }
 
 
+def list_library_documents(user_id: str | None) -> list[dict]:
+    """文献库列表：跨会话、跨文档的统一视图。"""
+    return [
+        {
+            "document_id": row["id"],
+            "session_id": row["session_id"],
+            "session_title": row["session_title"],
+            "filename": row["filename"],
+            "status": row["status"],
+            "chunk_count": row["chunk_count"],
+            "file_size": row["file_size"],
+            "parse_quality_status": row["parse_quality_status"],
+            "updated_at": row["updated_at"],
+        }
+        for row in document_repo.list_documents_with_session(user_id)
+    ]
+
+
 def get_document_content(session_id: str, document_id: str) -> dict:
     """Return the parsed body blocks of a document for the reader panel.
 

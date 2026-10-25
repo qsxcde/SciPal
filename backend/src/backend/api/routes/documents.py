@@ -1,14 +1,30 @@
 from fastapi import APIRouter, Depends, File, UploadFile
 
 from backend.api.deps import get_accessible_session
-from backend.api.schemas import DocumentContentResponse, DocumentIntakeResponse, SourceChunkResponse
+from backend.api.schemas import (
+    DocumentContentResponse,
+    DocumentIntakeResponse,
+    LibraryDocumentSummary,
+    SourceChunkResponse,
+)
+from backend.api.security import get_current_user
 from backend.application.documents import (
     get_document_content,
     get_source_chunk,
     intake_document_upload,
+    list_library_documents,
 )
 
 router = APIRouter()
+
+
+@router.get("/documents", response_model=list[LibraryDocumentSummary])
+def list_documents(user: dict = Depends(get_current_user)) -> list[LibraryDocumentSummary]:
+    """跨会话的文献库列表（已归档会话不计入）。"""
+    return [
+        LibraryDocumentSummary(**item)
+        for item in list_library_documents(user.get("id") or None)
+    ]
 
 
 @router.post(

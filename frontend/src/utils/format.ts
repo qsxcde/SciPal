@@ -9,6 +9,21 @@ export function formatFileSize(bytes: number, prefix = ""): string {
   return `${prefix}${megabytes.toFixed(2)}MB`;
 }
 
+/** 时间戳展示：`10-25 14:03`，解析失败时回落原文。 */
+export function formatUpdatedAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 /** 页码展示：单页 `p.4`，跨页 `p.4-5`，缺省返回空串。 */
 export function formatPageRange(start?: number | null, end?: number | null): string {
   if (start == null && end == null) {

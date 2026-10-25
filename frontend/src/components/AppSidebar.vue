@@ -22,6 +22,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   deleteSession: [sessionId: string];
   createSession: [];
+  openLibrary: [];
   pinSession: [sessionId: string];
   renameSession: [sessionId: string, title: string];
   selectSession: [sessionId: string];
@@ -91,6 +92,7 @@ function handlePin(sessionId: string): void {
         :collapsed="collapsed"
         :is-busy="isUploading"
         @create-session="$emit('createSession')"
+        @open-library="$emit('openLibrary')"
         @toggle-collapse="$emit('toggleCollapse')"
       />
 

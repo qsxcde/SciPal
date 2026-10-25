@@ -35,6 +35,7 @@
 | GET | `/sessions/{id}` | 会话快照 | 200 | 401 / 404 |
 | PATCH | `/sessions/{id}` | 改标题 / 置顶 | 200 | 401 / 404 |
 | DELETE | `/sessions/{id}` | 归档会话并删磁盘目录 | 200 | 401 |
+| GET | `/documents` | 文献库列表（跨会话） | 200 | 401 |
 | POST | `/sessions/{id}/documents` | 上传 PDF（异步摄取） | **202** | 400 / 401 / 404 / 413 |
 | GET | `/sessions/{id}/documents/{document_id}/content` | 结构化正文（阅读器） | 200 | 401 / 404 |
 | GET | `/sessions/{id}/documents/{document_id}/chunks/{chunk_index}` | 引用定位（还原原文段落） | 200 | 401 / 404 |
@@ -165,7 +166,42 @@ curl -X POST "http://127.0.0.1:8000/sessions/$SID/documents" \
 | 404 | `Session not found: <session_id>` |
 | 413 | `File too large (max 52428800 bytes)` |
 
-### 3.9 `GET /sessions/{id}/documents/{document_id}/content`
+### 3.9 `GET /documents`
+
+跨会话的文献库列表，供前端「文献库」页使用。
+
+```bash
+curl "http://127.0.0.1:8000/documents" -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+[
+  {
+    "document_id": "<uuid>",
+    "session_id": "<uuid>",
+    "session_title": "新会话",
+    "filename": "paper.pdf",
+    "status": "ready",
+    "chunk_count": 128,
+    "file_size": 5242880,
+    "parse_quality_status": "good",
+    "updated_at": "2026-10-25T12:00:00+00:00"
+  }
+]
+```
+
+说明：
+
+- 已归档会话下的文档不计入。
+- 过滤规则与 `domain/access.session_is_accessible` 保持一致：`sessions.user_id IS NULL` 的历史数据对所有调用方可见，其余必须与当前用户匹配。
+- 排序：`documents.updated_at DESC, created_at DESC`。
+- 开发态匿名（无 JWT）时只返回 `user_id IS NULL` 的会话文档。
+
+| 状态码 | detail |
+|---|---|
+| 401 | `Not authenticated` |
+
+### 3.10 `GET /sessions/{id}/documents/{document_id}/content`
 
 返回解析后的结构化正文（来自 `document.ir.json`），供阅读器渲染与引用定位。
 
@@ -206,7 +242,7 @@ curl "http://127.0.0.1:8000/sessions/$SID/documents/$DOC/content" \
 | 404 | `Session not found: <session_id>` |
 | 404 | `Document not found: <document_id>` |
 
-### 3.10 `GET /sessions/{id}/documents/{document_id}/chunks/{chunk_index}`
+### 3.11 `GET /sessions/{id}/documents/{document_id}/chunks/{chunk_index}`
 
 把回答里的 `sources` 还原为原文段落，供前端「引用即定位」面板使用。
 
@@ -240,7 +276,7 @@ curl "http://127.0.0.1:8000/sessions/$SID/documents/$DOC/chunks/4" \
 | 404 | `Session not found: <session_id>` |
 | 404 | `Source chunk not found: document=<id> chunk=<n>` |
 
-### 3.11 `POST /sessions/{id}/messages`（SSE）
+### 3.12 `POST /sessions/{id}/messages`（SSE）
 
 ```json
 {"role": "user", "content": "这篇论文的核心贡献是什么？"}

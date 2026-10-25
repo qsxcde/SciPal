@@ -116,6 +116,19 @@ export type DocumentUploadResult = {
   session_status: "processing";
 };
 
+/** 文献库列表项：文档 + 所属会话标题。 */
+export type LibraryDocument = {
+  document_id: string;
+  session_id: string;
+  session_title: string;
+  filename: string;
+  status: string;
+  chunk_count: number;
+  file_size: number;
+  parse_quality_status: string | null;
+  updated_at: string;
+};
+
 /** 阅读器正文块，id 与 citation 的 block_ids 对齐。 */
 export type PaperBlock = {
   id: string;

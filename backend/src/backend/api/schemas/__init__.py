@@ -15,6 +15,7 @@ from backend.api.schemas.document import (
     DocumentContentResponse,
     DocumentIntakeResponse,
     DocumentSummary,
+    LibraryDocumentSummary,
     PaperBlock,
     SourceChunkResponse,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "DocumentContentResponse",
     "DocumentIntakeResponse",
     "DocumentSummary",
+    "LibraryDocumentSummary",
     "IndexSnapshotSummary",
     "JobSummary",
     "PaperBlock",

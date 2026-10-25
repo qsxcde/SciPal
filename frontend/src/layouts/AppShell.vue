@@ -3,10 +3,12 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import AppSidebar from "../components/AppSidebar.vue";
 import ChatWorkspace from "../components/ChatWorkspace.vue";
+import LibraryPanel from "../components/LibraryPanel.vue";
 import PaperReader from "../components/PaperReader.vue";
 import SourceDrawer from "../components/SourceDrawer.vue";
 import { usePaperChat } from "../composables/usePaperChat";
 import { useAuth } from "../composables/useAuth";
+import { useLibrary } from "../composables/useLibrary";
 import { useSourcePreview } from "../composables/useSourcePreview";
 import type { SelectionAskMode, SidebarSessionItem, SuggestedPrompt } from "../types";
 import { buildSelectionPrompt } from "../utils/prompt";
@@ -48,6 +50,8 @@ const { setActiveSession } = useSourcePreview();
 const activeSessionId = computed(() => paperSession.value?.sessionId ?? "");
 const readerDocument = computed(() => documents.value[0] ?? null);
 const showReader = computed(() => route.name === "paper");
+const showLibrary = computed(() => route.name === "library");
+const { invalidate: invalidateLibrary } = useLibrary();
 const routeSessionId = computed(() =>
   typeof route.params.sessionId === "string" ? route.params.sessionId : null,
 );
@@ -90,6 +94,15 @@ async function syncFromRoute(): Promise<void> {
 
 async function uploadPaper(file: File): Promise<void> {
   await handleUpload(file);
+  invalidateLibrary();
+}
+
+function openLibrary(): void {
+  void router.push({ name: "library" });
+}
+
+function openDocument(sessionId: string): void {
+  void router.push({ name: "paper", params: { sessionId } });
 }
 
 function handlePromptClick(text: string): void {
@@ -158,11 +171,14 @@ watch([showReader, () => documents.value.length, () => paperSession.value?.sessi
         @rename-session="renameSession"
         @select-session="openSession"
         @toggle-collapse="toggleSidebarCollapse"
+        @open-library="openLibrary"
         @logout="handleLogout"
       />
 
+      <LibraryPanel v-if="showLibrary" @open="openDocument" />
+
       <PaperReader
-        v-if="showReader && readerDocument && activeSessionId"
+        v-else-if="showReader && readerDocument && activeSessionId"
         :session-id="activeSessionId"
         :document-id="readerDocument.id"
         @ask="handleAsk"
@@ -170,6 +186,7 @@ watch([showReader, () => documents.value.length, () => paperSession.value?.sessi
       />
 
       <ChatWorkspace
+        v-if="!showLibrary"
         v-model:draft="draft"
         :can-open-reader="Boolean(readerDocument)"
         :error-message="errorMessage"
