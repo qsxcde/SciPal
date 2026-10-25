@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Promotion } from "@element-plus/icons-vue";
-import { computed, ref } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
+import type { InputInstance } from "element-plus";
 import ComposerTools from "./ComposerTools.vue";
 import UploadStatusCard from "./UploadStatusCard.vue";
+import { usePaperChat } from "../composables/usePaperChat";
 import type { ComposerToolState, UploadStatus } from "../types";
 
 const props = defineProps<{
@@ -18,10 +20,25 @@ const emit = defineEmits<{
   uploadPaper: [file: File];
 }>();
 
+const { composerFocusToken } = usePaperChat();
+
 const fileInputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<InputInstance | null>(null);
 const toolState = ref<ComposerToolState>({
   isMoreMenuVisible: false,
   isSearchSelected: false,
+});
+
+// 阅读器里点了「解释这段/追问」后，把焦点与光标交还输入框末尾
+watch(composerFocusToken, async () => {
+  await nextTick();
+  const textarea = inputRef.value?.textarea;
+  if (!textarea) {
+    inputRef.value?.focus();
+    return;
+  }
+  textarea.focus();
+  textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 });
 
 const isDisabled = computed(() => props.isStreaming || props.isUploading);
@@ -76,6 +93,7 @@ function toggleMore(): void {
     />
     <UploadStatusCard v-if="uploadStatus" :status="uploadStatus" />
     <el-input
+      ref="inputRef"
       :model-value="draft"
       class="chat-composer__input"
       type="textarea"

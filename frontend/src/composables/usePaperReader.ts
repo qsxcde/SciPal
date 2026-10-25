@@ -1,6 +1,7 @@
 import { computed, ref } from "vue";
 import { getPaperContent } from "../api";
 import type { PaperContent } from "../api";
+import type { ReaderOutlineItem } from "../types";
 import { toErrorMessage } from "../utils/error";
 
 const HIGHLIGHT_DURATION_MS = 2400;
@@ -15,11 +16,33 @@ const documentId = ref<string | null>(null);
 const isLoading = ref(false);
 const errorMessage = ref("");
 const activeBlockId = ref<string | null>(null);
+const activeSectionKey = ref<string | null>(null);
 const isMounted = ref(false);
 
 let highlightTimer: number | null = null;
 
 const hasContent = computed(() => Boolean(content.value?.blocks.length));
+
+/** 大纲：按 section_path 变化取每节第一个块作为锚点。 */
+const outline = computed<ReaderOutlineItem[]>(() => {
+  const items: ReaderOutlineItem[] = [];
+  let lastPath = "";
+  for (const block of content.value?.blocks ?? []) {
+    const path = block.section_path.join(" > ");
+    if (!path || path === lastPath) {
+      continue;
+    }
+    lastPath = path;
+    items.push({
+      key: `section-${path}`,
+      title: block.section_path[block.section_path.length - 1] ?? path,
+      level: Math.min(block.section_path.length + 1, 4),
+      blockId: block.id,
+      pageNumber: block.page_number,
+    });
+  }
+  return items;
+});
 
 function clearHighlight(): void {
   if (highlightTimer !== null) {
@@ -69,11 +92,16 @@ function unmount(): void {
   clearHighlight();
 }
 
+function setActiveSection(key: string | null): void {
+  activeSectionKey.value = key;
+}
+
 function reset(): void {
   content.value = null;
   documentId.value = null;
   errorMessage.value = "";
   isLoading.value = false;
+  activeSectionKey.value = null;
   unmount();
 }
 
@@ -81,12 +109,15 @@ export function usePaperReader() {
   return {
     content,
     hasContent,
+    outline,
     isLoading,
     errorMessage,
     activeBlockId,
+    activeSectionKey,
     load,
     revealBlock,
     clearHighlight,
+    setActiveSection,
     mount,
     unmount,
     reset,

@@ -8,7 +8,8 @@ import SourceDrawer from "../components/SourceDrawer.vue";
 import { usePaperChat } from "../composables/usePaperChat";
 import { useAuth } from "../composables/useAuth";
 import { useSourcePreview } from "../composables/useSourcePreview";
-import type { SidebarSessionItem, SuggestedPrompt } from "../types";
+import type { SelectionAskMode, SidebarSessionItem, SuggestedPrompt } from "../types";
+import { buildSelectionPrompt } from "../utils/prompt";
 
 const route = useRoute();
 const router = useRouter();
@@ -30,6 +31,7 @@ const {
   documents,
   createEmptySession,
   deleteSession,
+  focusComposer,
   handleUpload,
   initializeSessions,
   openSession,
@@ -110,6 +112,12 @@ function closeReader(): void {
   void router.push({ name: "chat" });
 }
 
+/** 阅读器选区 → 注入 composer 并聚焦，由用户决定是否发送。 */
+function handleAsk(text: string, mode: SelectionAskMode): void {
+  draft.value = buildSelectionPrompt(text, mode);
+  focusComposer();
+}
+
 function handleLogout(): void {
   logout();
   void router.push({ name: "login" });
@@ -157,6 +165,7 @@ watch([showReader, () => documents.value.length, () => paperSession.value?.sessi
         v-if="showReader && readerDocument && activeSessionId"
         :session-id="activeSessionId"
         :document-id="readerDocument.id"
+        @ask="handleAsk"
         @close="closeReader"
       />
 

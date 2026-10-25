@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, watch } from "vue";
-import { Close } from "@element-plus/icons-vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { Close, Tickets } from "@element-plus/icons-vue";
 import MarkdownContent from "./MarkdownContent.vue";
+import PaperOutline from "./PaperOutline.vue";
 import { usePaperReader } from "../composables/usePaperReader";
 import type { PaperBlock } from "../api";
+import type { SelectionAskMode } from "../types";
 
 const props = defineProps<{
   sessionId: string;
@@ -11,10 +13,28 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  ask: [text: string, mode: SelectionAskMode];
   close: [];
 }>();
 
-const { content, isLoading, errorMessage, activeBlockId, load, mount, unmount } = usePaperReader();
+const {
+  content,
+  outline,
+  isLoading,
+  errorMessage,
+  activeBlockId,
+  activeSectionKey,
+  load,
+  revealBlock,
+  setActiveSection,
+  mount,
+  unmount,
+} = usePaperReader();
+
+const scrollRef = ref<HTMLElement | null>(null);
+const bodyRef = ref<HTMLElement | null>(null);
+const outlineVisible = ref(true);
+const selectionMenu = ref<{ text: string; x: number; y: number } | null>(null);
 
 type ReaderNode =
   | { kind: "section"; key: string; title: string; level: number }
@@ -43,13 +63,92 @@ const nodes = computed<ReaderNode[]>(() => {
   return result;
 });
 
-function scrollToActiveBlock(): void {
-  const id = activeBlockId.value;
-  if (!id) {
+let scrollFrame = 0;
+
+/** 滚动时用「最后一个越过顶部阈值的小节标题」标记当前章节。 */
+function syncActiveSection(): void {
+  const container = scrollRef.value;
+  if (!container) {
     return;
   }
-  const element = window.document.getElementById(`paper-block-${id}`);
-  element?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const threshold = container.getBoundingClientRect().top + 64;
+  const headings = container.querySelectorAll<HTMLElement>("[data-section-key]");
+  let current: string | null = null;
+  headings.forEach((heading) => {
+    if (heading.getBoundingClientRect().top <= threshold) {
+      current = heading.dataset.sectionKey ?? null;
+    }
+  });
+  setActiveSection(current);
+}
+
+function handleScroll(): void {
+  selectionMenu.value = null;
+  if (scrollFrame) {
+    return;
+  }
+  scrollFrame = window.requestAnimationFrame(() => {
+    scrollFrame = 0;
+    syncActiveSection();
+  });
+}
+
+function scrollToBlock(blockId: string): void {
+  const element = window.document.getElementById(`paper-block-${blockId}`);
+  element?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function handleOutlineSelect(blockId: string): void {
+  if (!blockId) {
+    return;
+  }
+  scrollToBlock(blockId);
+  revealBlock([blockId]);
+}
+
+function scrollToActiveBlock(): void {
+  const id = activeBlockId.value;
+  if (id) {
+    scrollToBlock(id);
+  }
+}
+
+/** 选区浮条：只处理落在正文区域内的选区。 */
+function handleMouseUp(): void {
+  const selection = window.getSelection();
+  const text = selection?.toString().trim() ?? "";
+  const container = bodyRef.value;
+  if (!selection || !text || text.length < 4 || !container || selection.rangeCount === 0) {
+    selectionMenu.value = null;
+    return;
+  }
+  const range = selection.getRangeAt(0);
+  if (!container.contains(range.commonAncestorContainer)) {
+    selectionMenu.value = null;
+    return;
+  }
+  const rect = range.getBoundingClientRect();
+  selectionMenu.value = {
+    text,
+    x: rect.left + rect.width / 2,
+    y: rect.top,
+  };
+}
+
+function askSelection(mode: SelectionAskMode): void {
+  const menu = selectionMenu.value;
+  if (!menu) {
+    return;
+  }
+  emit("ask", menu.text, mode);
+  selectionMenu.value = null;
+  window.getSelection()?.removeAllRanges();
+}
+
+function handleKeydown(event: KeyboardEvent): void {
+  if (event.key === "Escape") {
+    selectionMenu.value = null;
+  }
 }
 
 watch([activeBlockId, content], async () => {
@@ -72,10 +171,15 @@ onMounted(async () => {
   await load(props.sessionId, props.documentId);
   await nextTick();
   scrollToActiveBlock();
+  syncActiveSection();
+  window.document.addEventListener("mouseup", handleMouseUp);
+  window.document.addEventListener("keydown", handleKeydown);
 });
 
 onBeforeUnmount(() => {
   unmount();
+  window.document.removeEventListener("mouseup", handleMouseUp);
+  window.document.removeEventListener("keydown", handleKeydown);
 });
 </script>
 
@@ -91,60 +195,94 @@ onBeforeUnmount(() => {
           {{ content?.filename || "正在载入正文" }}
         </h1>
       </div>
-      <el-button
-        class="paper-reader__close"
-        :icon="Close"
-        circle
-        text
-        aria-label="收起原文"
-        @click="emit('close')"
-      />
+      <div class="paper-reader__actions">
+        <el-button
+          class="paper-reader__toggle"
+          :class="{ 'is-active': outlineVisible }"
+          :icon="Tickets"
+          text
+          size="small"
+          aria-label="切换目录"
+          @click="outlineVisible = !outlineVisible"
+        />
+        <el-button
+          class="paper-reader__close"
+          :icon="Close"
+          circle
+          text
+          aria-label="收起原文"
+          @click="emit('close')"
+        />
+      </div>
     </header>
 
-    <div class="paper-reader__scroll">
-      <p v-if="isLoading" class="paper-reader__state">正在读取解析结果…</p>
-      <p v-else-if="errorMessage" class="paper-reader__state paper-reader__state--error">
-        {{ errorMessage }}
-      </p>
-      <p v-else-if="!nodes.length" class="paper-reader__state">
-        该论文还没有可展示的结构化正文，请等待解析完成或重新上传。
-      </p>
+    <div class="paper-reader__main">
+      <PaperOutline
+        v-if="outlineVisible && outline.length"
+        :items="outline"
+        :active-key="activeSectionKey"
+        @select="handleOutlineSelect"
+      />
 
-      <article v-else class="paper-reader__body">
-        <template v-for="node in nodes" :key="node.key">
-          <h2
-            v-if="node.kind === 'section'"
-            class="paper-reader__section"
-            :class="`paper-reader__section--h${node.level}`"
-          >
-            {{ node.title }}
-          </h2>
-          <div
-            v-else
-            :id="node.block.id ? `paper-block-${node.block.id}` : undefined"
-            class="paper-reader__block"
-            :class="{
-              'is-active': activeBlockId === node.block.id,
-              'paper-reader__block--table': node.block.type === 'table',
-              'paper-reader__block--formula': node.block.type === 'formula',
-            }"
-          >
-            <p v-if="node.block.page_number" class="paper-reader__anchor" aria-hidden="true">
-              p.{{ node.block.page_number }}
-            </p>
-            <p v-if="node.block.type === 'title'" class="paper-reader__title">
-              {{ node.block.text }}
-            </p>
-            <pre v-else-if="node.block.type === 'table'" class="paper-reader__pre">{{
-              node.block.text
-            }}</pre>
-            <p v-else-if="node.block.type === 'formula'" class="paper-reader__formula">
-              {{ node.block.text }}
-            </p>
-            <MarkdownContent v-else :text="node.block.text" />
-          </div>
-        </template>
-      </article>
+      <div ref="scrollRef" class="paper-reader__scroll" @scroll="handleScroll">
+        <p v-if="isLoading" class="paper-reader__state">正在读取解析结果…</p>
+        <p v-else-if="errorMessage" class="paper-reader__state paper-reader__state--error">
+          {{ errorMessage }}
+        </p>
+        <p v-else-if="!nodes.length" class="paper-reader__state">
+          该论文还没有可展示的结构化正文，请等待解析完成或重新上传。
+        </p>
+
+        <article v-else ref="bodyRef" class="paper-reader__body">
+          <template v-for="node in nodes" :key="node.key">
+            <h2
+              v-if="node.kind === 'section'"
+              class="paper-reader__section"
+              :class="`paper-reader__section--h${node.level}`"
+              :data-section-key="node.key"
+            >
+              {{ node.title }}
+            </h2>
+            <div
+              v-else
+              :id="node.block.id ? `paper-block-${node.block.id}` : undefined"
+              class="paper-reader__block"
+              :class="{
+                'is-active': activeBlockId === node.block.id,
+                'paper-reader__block--table': node.block.type === 'table',
+                'paper-reader__block--formula': node.block.type === 'formula',
+              }"
+            >
+              <p v-if="node.block.page_number" class="paper-reader__anchor" aria-hidden="true">
+                p.{{ node.block.page_number }}
+              </p>
+              <p v-if="node.block.type === 'title'" class="paper-reader__title">
+                {{ node.block.text }}
+              </p>
+              <pre v-else-if="node.block.type === 'table'" class="paper-reader__pre">{{
+                node.block.text
+              }}</pre>
+              <p v-else-if="node.block.type === 'formula'" class="paper-reader__formula">
+                {{ node.block.text }}
+              </p>
+              <MarkdownContent v-else :text="node.block.text" />
+            </div>
+          </template>
+        </article>
+      </div>
+    </div>
+
+    <div
+      v-if="selectionMenu"
+      class="paper-selection"
+      :style="{ left: `${selectionMenu.x}px`, top: `${selectionMenu.y}px` }"
+    >
+      <button type="button" class="paper-selection__action" @click="askSelection('explain')">
+        解释这段
+      </button>
+      <button type="button" class="paper-selection__action" @click="askSelection('followup')">
+        追问
+      </button>
     </div>
   </section>
 </template>
@@ -161,8 +299,8 @@ onBeforeUnmount(() => {
 .paper-reader__bar {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 12px;
+  justify-content: space-between;
   padding: 18px 26px 14px;
   border-bottom: 1px solid var(--color-border);
 }
@@ -190,9 +328,27 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.paper-reader__scroll {
+.paper-reader__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+}
+
+.paper-reader__toggle.is-active {
+  color: var(--color-accent-strong);
+  background: var(--color-accent-soft);
+}
+
+.paper-reader__main {
+  display: flex;
   flex: 1;
   min-height: 0;
+}
+
+.paper-reader__scroll {
+  flex: 1;
+  min-width: 0;
   padding: 26px 30px 96px;
   overflow-y: auto;
 }
@@ -221,6 +377,7 @@ onBeforeUnmount(() => {
   font-family: var(--font-serif);
   line-height: 1.3;
   letter-spacing: -0.01em;
+  scroll-margin-top: 24px;
 }
 
 .paper-reader__section--h2 {
@@ -241,6 +398,7 @@ onBeforeUnmount(() => {
   margin: 0 -12px;
   padding: 6px 12px;
   border-radius: 8px;
+  scroll-margin-top: 96px;
   transition:
     background 0.24s ease,
     box-shadow 0.24s ease;
@@ -313,6 +471,33 @@ onBeforeUnmount(() => {
   gap: 6px;
   margin: 10px 0 0;
   padding-left: 22px;
+}
+
+/* 选区浮条 */
+.paper-selection {
+  position: fixed;
+  z-index: 2300;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--color-text);
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(23, 32, 51, 0.24);
+  transform: translate(-50%, calc(-100% - 10px));
+}
+
+.paper-selection__action {
+  padding: 5px 10px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  background: none;
+  border: 0;
+  border-radius: 7px;
+}
+
+.paper-selection__action:hover {
+  color: var(--color-text);
+  background: var(--color-white);
 }
 
 @media (max-width: 1200px) {

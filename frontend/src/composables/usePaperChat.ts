@@ -21,9 +21,15 @@ export function usePaperChat(): ReturnType<typeof createPaperChat> {
 
 function createPaperChat() {
   const errorMessage = ref("");
+  /** 递增令牌：ChatComposer 监听它来抢占焦点（选区提问后） */
+  const composerFocusToken = ref(0);
 
   function setErrorMessage(message: string): void {
     errorMessage.value = message;
+  }
+
+  function focusComposer(): void {
+    composerFocusToken.value += 1;
   }
 
   const sessionState = useSessionState({ setErrorMessage });
@@ -142,8 +148,10 @@ function createPaperChat() {
     paperSession: sessionState.paperSession,
     sessions: sessionState.sessions,
     uploadStatus: sessionState.uploadStatus,
+    composerFocusToken,
     createEmptySession,
     deleteSession,
+    focusComposer,
     handleUpload,
     initializeSessions,
     openSession,

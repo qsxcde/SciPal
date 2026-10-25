@@ -57,3 +57,15 @@ export type SourceSelection = {
   index: number;
   source: SourceRef;
 };
+
+/** 阅读器大纲条目：key 用于高亮，blockId 用于跳转。 */
+export type ReaderOutlineItem = {
+  key: string;
+  title: string;
+  level: number;
+  blockId: string;
+  pageNumber: number;
+};
+
+/** 选区提问的两种意图。 */
+export type SelectionAskMode = "explain" | "followup";
