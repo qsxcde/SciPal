@@ -21,10 +21,20 @@ def upsert_index(session_id: str, index_path: str, chunks_path: str, status: str
         else:
             conn.execute(
                 """
-                INSERT INTO retrieval_indexes (id, session_id, index_path, chunks_path, status, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO retrieval_indexes (
+                  id, session_id, index_path, chunks_path, status, updated_at, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (str(uuid.uuid4()), session_id, index_path, chunks_path, status, timestamp),
+                (
+                    str(uuid.uuid4()),
+                    session_id,
+                    index_path,
+                    chunks_path,
+                    status,
+                    timestamp,
+                    timestamp,
+                ),
             )
     index = get_index(session_id)
     if index is None:

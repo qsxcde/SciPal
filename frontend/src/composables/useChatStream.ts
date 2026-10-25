@@ -63,11 +63,14 @@ export function useChatStream(options: UseChatStreamOptions) {
     sessionId: string,
     content: string,
     assistant: ChatMessageViewModel,
+    regenerate: boolean,
   ): Promise<void> {
     let accumulated = "";
     assistant.text = "";
 
-    for await (const chunk of streamChat(sessionId, content, abortController?.signal)) {
+    for await (const chunk of streamChat(sessionId, content, abortController?.signal, {
+      regenerate,
+    })) {
       if (chunk.type === "token") {
         accumulated += chunk.value;
         assistant.text = accumulated;
@@ -78,6 +81,42 @@ export function useChatStream(options: UseChatStreamOptions) {
         return;
       }
     }
+  }
+
+  /** 流式执行 + 断线重试；AbortError 会向上抛出由调用方忽略。 */
+  async function runStream(
+    sessionId: string,
+    content: string,
+    assistant: ChatMessageViewModel,
+    regenerate: boolean,
+  ): Promise<void> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= SSE_RETRY_MAX_ATTEMPTS; attempt += 1) {
+      if (attempt > 0) {
+        await delay(SSE_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
+      }
+      try {
+        await consumeOnce(sessionId, content, assistant, regenerate);
+        return;
+      } catch (error) {
+        if (isAbortError(error)) {
+          throw error;
+        }
+        lastError = error;
+      }
+    }
+    throw lastError;
+  }
+
+  function beginStreaming(): void {
+    options.setErrorMessage("");
+    isStreaming.value = true;
+    abortController = new AbortController();
+  }
+
+  function endStreaming(): void {
+    isStreaming.value = false;
+    abortController = null;
   }
 
   async function sendMessage(text: string, sessionId?: string): Promise<void> {
@@ -93,36 +132,61 @@ export function useChatStream(options: UseChatStreamOptions) {
       text: "",
     });
     draft.value = "";
-    options.setErrorMessage("");
-    isStreaming.value = true;
-    abortController = new AbortController();
+    beginStreaming();
 
     try {
-      let lastError: unknown;
-      for (let attempt = 0; attempt <= SSE_RETRY_MAX_ATTEMPTS; attempt += 1) {
-        if (attempt > 0) {
-          await delay(SSE_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
-        }
-        try {
-          await consumeOnce(sessionId, content, assistant);
-          return;
-        } catch (error) {
-          if (isAbortError(error)) {
-            throw error;
-          }
-          lastError = error;
-        }
-      }
-      throw lastError;
+      await runStream(sessionId, content, assistant, false);
     } catch (error) {
       if (isAbortError(error)) {
         return;
       }
       options.setErrorMessage(toErrorMessage(error, "生成回答失败，请稍后重试"));
     } finally {
-      isStreaming.value = false;
-      abortController = null;
+      endStreaming();
     }
+  }
+
+  /** 重新生成最后一条回答；复用上一条 user 消息，不新增消息。 */
+  async function regenerate(sessionId?: string): Promise<void> {
+    if (!sessionId || isStreaming.value || options.isUploading.value) {
+      return;
+    }
+    const lastAssistantIndex = messages.value.findLastIndex(
+      (message) => message.role === "assistant",
+    );
+    if (lastAssistantIndex < 0) {
+      return;
+    }
+    const userMessage = messages.value
+      .slice(0, lastAssistantIndex)
+      .findLast((message) => message.role === "user");
+    if (!userMessage) {
+      return;
+    }
+
+    messages.value = messages.value.slice(0, lastAssistantIndex);
+    const assistant = appendMessage({
+      id: createMessageId("assistant"),
+      role: "assistant",
+      text: "",
+    });
+    beginStreaming();
+
+    try {
+      await runStream(sessionId, userMessage.text, assistant, true);
+    } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
+      options.setErrorMessage(toErrorMessage(error, "重新生成失败，请稍后重试"));
+    } finally {
+      endStreaming();
+    }
+  }
+
+  /** 用户主动停止：中断 fetch，已生成内容保留在界面上。 */
+  function stopStreaming(): void {
+    abortController?.abort();
   }
 
   function useDemoPaper(): void {
@@ -165,8 +229,10 @@ export function useChatStream(options: UseChatStreamOptions) {
     isStreaming,
     messages,
     clearConversation,
+    regenerate,
     replaceMessages,
     sendMessage,
+    stopStreaming,
     useDemoPaper,
   };
 }

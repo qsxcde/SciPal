@@ -36,15 +36,24 @@ def _unlink_if_exists(path: Path) -> None:
         return
 
 
-def build_candidate_snapshot(session_id: str, document_id: str) -> dict:
-    """Build and persist a candidate index snapshot without promoting it."""
+def build_candidate_snapshot(
+    session_id: str,
+    document_id: str | None = None,
+    *,
+    reuse_previous: bool = True,
+) -> dict:
+    """Build and persist a candidate index snapshot without promoting it.
+
+    ``reuse_previous=False`` rebuilds from scratch — required after a document
+    is deleted, because vectors cannot be removed from an existing FAISS index.
+    """
     start = time.monotonic()
     candidate_token = str(uuid.uuid4())
     index_path = _snapshot_index_path(session_id, candidate_token)
     chunks_path = _snapshot_chunks_path(session_id, candidate_token)
     logger.info(
-        "Building candidate index snapshot session_id=%s document_id=%s token=%s",
-        session_id, document_id, candidate_token,
+        "Building candidate index snapshot session_id=%s document_id=%s token=%s reuse_previous=%s",
+        session_id, document_id, candidate_token, reuse_previous,
     )
 
     document_ids = _collect_document_ids(session_id, document_id)
@@ -55,7 +64,7 @@ def build_candidate_snapshot(session_id: str, document_id: str) -> dict:
         document_ids=document_ids,
     )
     try:
-        store = _load_or_create_store(session_id, snapshot, document_ids)
+        store = _load_or_create_store(session_id, snapshot, document_ids, reuse_previous=reuse_previous)
         store.save(index_path=index_path, chunks_path=chunks_path)
     except Exception as exc:
         logger.exception(
@@ -70,15 +79,21 @@ def build_candidate_snapshot(session_id: str, document_id: str) -> dict:
     return snapshot
 
 
-def _collect_document_ids(session_id: str, document_id: str) -> list[str]:
+def _collect_document_ids(session_id: str, document_id: str | None) -> list[str]:
     document_ids = chunk_repo.list_chunk_document_ids(session_id)
-    if document_id not in document_ids:
+    if document_id and document_id not in document_ids:
         document_ids.append(document_id)
     return document_ids
 
 
-def _load_or_create_store(session_id: str, snapshot: dict, document_ids: list[str]) -> FAISSVectorStore:
-    previous_ready = snapshot_repo.get_active_ready_snapshot(session_id)
+def _load_or_create_store(
+    session_id: str,
+    snapshot: dict,
+    document_ids: list[str],
+    *,
+    reuse_previous: bool = True,
+) -> FAISSVectorStore:
+    previous_ready = snapshot_repo.get_active_ready_snapshot(session_id) if reuse_previous else None
     if previous_ready is not None:
         store = FAISSVectorStore.load(
             index_path=Path(previous_ready["index_path"]),
@@ -165,11 +180,48 @@ def _validate_and_promote(session_id: str, snapshot_id: str, document_id: str) -
         raise RuntimeError("索引快照不存在")
     if document_id not in snapshot["document_ids"]:
         raise RuntimeError("索引快照未包含目标文档")
+    return _promote_snapshot(session_id, snapshot_id)
+
+
+def _promote_snapshot(session_id: str, snapshot_id: str) -> dict:
+    snapshot = snapshot_repo.get_snapshot(snapshot_id)
+    if snapshot is None or snapshot["session_id"] != session_id:
+        raise RuntimeError("索引快照不存在")
     if not snapshot_repo.mark_snapshot_ready(snapshot_id):
         raise RuntimeError("索引快照无法切换为 ready")
     ready_snapshot = snapshot_repo.get_snapshot(snapshot_id)
     if ready_snapshot is None:
         raise RuntimeError("索引快照切换后不可用")
+    return ready_snapshot
+
+
+def rebuild_session_snapshot(session_id: str) -> dict | None:
+    """Rebuild the whole session index from surviving chunks.
+
+    Used after a document is deleted: FAISS cannot delete vectors in place, so
+    the index is regenerated and the previous snapshot is retired.
+    """
+    chunks = chunk_repo.list_chunks(session_id)
+    previous = snapshot_repo.get_active_ready_snapshot(session_id)
+
+    if not chunks:
+        if previous is not None:
+            snapshot_repo.mark_snapshot_failed(previous["id"], "所有文档已删除")
+            cleanup_snapshot_files(previous)
+        index_repo.upsert_index(session_id, "", "", "failed")
+        discard_store(session_id)
+        return None
+
+    snapshot = build_candidate_snapshot(session_id, None, reuse_previous=False)
+    ready_snapshot = _promote_snapshot(session_id, snapshot["id"])
+    _publish_index_metadata(ready_snapshot)
+    if previous is not None:
+        cleanup_snapshot_files(previous)
+    discard_store(session_id)
+    logger.info(
+        "Rebuilt index snapshot session_id=%s snapshot_id=%s chunks=%d",
+        session_id, ready_snapshot["id"], len(chunks),
+    )
     return ready_snapshot
 
 

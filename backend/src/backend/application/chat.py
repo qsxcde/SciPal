@@ -115,6 +115,7 @@ async def stream_session_chat(
     content: str,
     wait_timeout_seconds: float | None = None,
     user_id: str | None = None,
+    regenerate: bool = False,
 ) -> AsyncIterator[ChatEvent]:
     session = await _to_thread(session_repo.get_session, session_id)
     if not session_is_accessible(session, user_id):
@@ -133,9 +134,16 @@ async def stream_session_chat(
         for status_event in pending_status_events:
             yield status_event
 
-        # Load message history before persisting current message
+        # 重新生成：删掉旧回答、复用已有提问，避免出现重复的 user 消息
+        if regenerate:
+            await _to_thread(message_repo.delete_trailing_assistant_message, session_id)
+        else:
+            await _persist_and_touch(session_id, "user", content)
+
+        # 历史在写入当前提问之后读取，重新生成时需要把这条提问排除掉
         history = await _to_thread(message_repo.list_messages, session_id)
-        await _persist_and_touch(session_id, "user", content)
+        if regenerate and history and history[-1]["role"] == "user":
+            history = history[:-1]
 
         yield StatusEvent(value="retrieving")
         yield StatusEvent(value="generating")
@@ -147,8 +155,13 @@ async def stream_session_chat(
             history=history,
         )
 
-        async for token_event in state.consume_stream(stream):
-            yield token_event
+        try:
+            async for token_event in state.consume_stream(stream):
+                yield token_event
+        except (GeneratorExit, asyncio.CancelledError):
+            # 客户端中止：把已生成的部分落库，避免刷新后这一轮凭空消失
+            await _persist_interrupted_answer(session_id, state)
+            raise
 
     except ActiveIndexNotReadyError as exc:
         async for event in _handle_active_index_not_ready(session_id, exc, pending_status_events):
@@ -180,6 +193,22 @@ async def _persist_and_touch(
         sources=sources, status=status,
     )
     await _to_thread(touch_session, session_id)
+
+
+async def _persist_interrupted_answer(session_id: str, state: StreamCollector) -> None:
+    """Best-effort persistence when the client aborts mid-stream."""
+    if not state.full_content.strip():
+        return
+    try:
+        await _persist_and_touch(
+            session_id,
+            "assistant",
+            state.full_content,
+            sources=state.sources,
+            status="stopped",
+        )
+    except BaseException:
+        logger.warning("Failed to persist interrupted answer session=%s", session_id, exc_info=True)
 
 
 async def _handle_active_index_not_ready(

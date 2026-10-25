@@ -22,7 +22,9 @@ const emit = defineEmits<{
   demoPaper: [];
   openReader: [];
   promptClick: [text: string];
+  regenerate: [];
   send: [text: string];
+  stop: [];
   "update:draft": [value: string];
   uploadPaper: [file: File];
 }>();
@@ -47,6 +49,8 @@ function handleDraftUpdate(value: string): void {
       :suggested-prompts="suggestedPrompts"
       @demo-paper="$emit('demoPaper')"
       @prompt-click="$emit('promptClick', $event)"
+      @regenerate="$emit('regenerate')"
+      @stop="$emit('stop')"
     />
 
     <p v-if="errorMessage" class="error-text">

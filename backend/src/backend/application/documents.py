@@ -1,10 +1,12 @@
 import json
 import logging
+import shutil
 import uuid
 from contextlib import suppress
 from pathlib import Path
 
-from backend.config import settings
+from backend.application import index_maintenance
+from backend.config import data_dir, settings
 from backend.domain.exceptions import (
     ChunkNotFoundError,
     DocumentNotFoundError,
@@ -112,6 +114,51 @@ def get_source_chunk(session_id: str, document_id: str, chunk_index: int) -> dic
         "text": chunk.text,
         "block_ids": metadata.block_ids or [],
     }
+
+
+def delete_document(session_id: str, document_id: str) -> None:
+    """硬删除文档：数据库行 → 分块 → 磁盘产物 → 重建会话索引。
+
+    索引重建失败时把当前快照置为 failed，宁可让用户重新索引，也不能让检索
+    继续命中已删除的向量。
+    """
+    document = document_repo.get_document(document_id)
+    if document is None or document["session_id"] != session_id:
+        raise DocumentNotFoundError(
+            f"Document not found: {document_id}",
+            session_id=session_id,
+            document_id=document_id,
+        )
+
+    chunk_repo.delete_chunks_for_document(document_id)
+    document_repo.delete_document(document_id)
+    _remove_document_files(document)
+
+    try:
+        index_maintenance.refresh_after_document_change(session_id)
+    except Exception:
+        logger.exception("Index rebuild failed after deleting document=%s", document_id)
+        index_maintenance.invalidate_session_index(session_id, "索引重建失败")
+
+
+def _remove_document_files(document: dict) -> None:
+    for raw in (
+        document.get("file_path"),
+        document.get("parsed_markdown_path"),
+        document.get("quality_report_path"),
+    ):
+        if raw:
+            with suppress(OSError):
+                Path(raw).unlink()
+
+    ir_path = document.get("parsed_ir_path")
+    if not ir_path:
+        return
+    artifact_dir = Path(ir_path).parent
+    root = data_dir().resolve()
+    if artifact_dir.resolve().is_relative_to(root):
+        with suppress(OSError):
+            shutil.rmtree(artifact_dir)
 
 
 def list_library_documents(user_id: str | None) -> list[dict]:

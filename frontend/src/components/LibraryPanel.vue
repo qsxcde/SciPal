@@ -1,15 +1,33 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
-import { Refresh } from "@element-plus/icons-vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
+import { Delete, Refresh, UploadFilled } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { useLibrary } from "../composables/useLibrary";
 import { UPLOAD_STATUS_LABELS } from "../constants/upload";
+import type { LibraryDocument } from "../api";
 import { formatFileSize, formatUpdatedAt } from "../utils/format";
 
 const emit = defineEmits<{
   open: [sessionId: string];
 }>();
 
-const { items, isLoading, errorMessage, documentCount, readyCount, load } = useLibrary();
+const {
+  items,
+  isLoading,
+  isUploading,
+  uploadTotal,
+  uploadDone,
+  errorMessage,
+  documentCount,
+  readyCount,
+  load,
+  remove,
+  uploadMany,
+  startPolling,
+  stopPolling,
+} = useLibrary();
+
+const fileInputRef = ref<HTMLInputElement | null>(null);
 
 const STATUS_TONES: Record<string, string> = {
   ready: "is-ready",
@@ -33,8 +51,43 @@ function openDocument(sessionId: string): void {
   emit("open", sessionId);
 }
 
-onMounted(() => {
-  void load();
+function pickFiles(): void {
+  fileInputRef.value?.click();
+}
+
+async function handleFiles(event: Event): Promise<void> {
+  const target = event.target as HTMLInputElement;
+  const files = Array.from(target.files ?? []);
+  target.value = "";
+  await uploadMany(files);
+  if (uploadTotal.value) {
+    ElMessage.success(`已提交 ${uploadTotal.value} 篇论文，解析完成后可在列表中打开`);
+  }
+}
+
+async function handleDelete(document: LibraryDocument): Promise<void> {
+  try {
+    await ElMessageBox.confirm(
+      `删除《${document.filename}》后不可恢复，分块与索引会一并清理。`,
+      "删除论文",
+      { type: "warning", confirmButtonText: "删除", cancelButtonText: "取消" },
+    );
+  } catch {
+    return;
+  }
+  const removed = await remove(document.session_id, document.document_id);
+  if (removed) {
+    ElMessage.success("已删除");
+  }
+}
+
+onMounted(async () => {
+  await load();
+  startPolling();
+});
+
+onBeforeUnmount(() => {
+  stopPolling();
 });
 </script>
 
@@ -50,61 +103,110 @@ onMounted(() => {
           >
         </p>
       </div>
-      <el-button
-        class="library__refresh"
-        :icon="Refresh"
-        :loading="isLoading"
-        text
-        size="small"
-        @click="load(true)"
-      >
-        刷新
-      </el-button>
+
+      <div class="library__actions">
+        <el-button
+          class="library__upload"
+          :icon="UploadFilled"
+          :loading="isUploading"
+          size="small"
+          @click="pickFiles"
+        >
+          上传论文
+        </el-button>
+        <el-button
+          class="library__refresh"
+          :icon="Refresh"
+          :loading="isLoading"
+          text
+          size="small"
+          @click="load(true)"
+        >
+          刷新
+        </el-button>
+      </div>
     </header>
+
+    <input
+      ref="fileInputRef"
+      class="library__file-input"
+      type="file"
+      accept=".pdf,application/pdf"
+      multiple
+      @change="handleFiles"
+    />
+
+    <p v-if="isUploading" class="library__progress">
+      正在上传 {{ uploadDone }}/{{ uploadTotal }}…
+      <span class="library__progress-bar" aria-hidden="true">
+        <span
+          class="library__progress-fill"
+          :style="{ width: `${uploadTotal ? (uploadDone / uploadTotal) * 100 : 0}%` }"
+        />
+      </span>
+    </p>
 
     <div class="library__body">
       <p v-if="isLoading && !items.length" class="library__state">正在读取文献库…</p>
-      <p v-else-if="errorMessage" class="library__state library__state--error">
+      <p v-else-if="errorMessage && !items.length" class="library__state library__state--error">
         {{ errorMessage }}
       </p>
       <div v-else-if="!items.length" class="library__empty">
         <p class="library__empty-title">还没有收录论文</p>
-        <p class="library__empty-hint">在对话页上传 PDF，解析完成后会出现在这里。</p>
+        <p class="library__empty-hint">
+          点击右上角「上传论文」可一次选择多份 PDF，解析完成后会出现在这里。
+        </p>
       </div>
 
-      <table v-else class="library__table">
-        <thead>
-          <tr>
-            <th scope="col">论文</th>
-            <th scope="col">所属会话</th>
-            <th scope="col">状态</th>
-            <th scope="col" class="library__num">片段</th>
-            <th scope="col" class="library__num">大小</th>
-            <th scope="col" class="library__num">更新</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="item in items"
-            :key="item.document_id"
-            class="library__row"
-            tabindex="0"
-            @click="openDocument(item.session_id)"
-            @keydown.enter="openDocument(item.session_id)"
-          >
-            <td class="library__file">{{ item.filename }}</td>
-            <td class="library__session">{{ item.session_title }}</td>
-            <td>
-              <span class="library__status" :class="statusTone(item.status)">
-                {{ statusLabel(item.status) }}
-              </span>
-            </td>
-            <td class="library__num">{{ item.chunk_count }}</td>
-            <td class="library__num">{{ formatFileSize(item.file_size) }}</td>
-            <td class="library__num library__time">{{ formatUpdatedAt(item.updated_at) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <template v-else>
+        <p v-if="errorMessage" class="library__inline-error">{{ errorMessage }}</p>
+        <table class="library__table">
+          <thead>
+            <tr>
+              <th scope="col">论文</th>
+              <th scope="col">所属会话</th>
+              <th scope="col">状态</th>
+              <th scope="col" class="library__num">片段</th>
+              <th scope="col" class="library__num">大小</th>
+              <th scope="col" class="library__num">更新</th>
+              <th scope="col" class="library__actions-col">
+                <span class="visually-hidden">操作</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in items"
+              :key="item.document_id"
+              class="library__row"
+              tabindex="0"
+              @click="openDocument(item.session_id)"
+              @keydown.enter="openDocument(item.session_id)"
+            >
+              <td class="library__file">{{ item.filename }}</td>
+              <td class="library__session">{{ item.session_title }}</td>
+              <td>
+                <span class="library__status" :class="statusTone(item.status)">
+                  {{ statusLabel(item.status) }}
+                </span>
+              </td>
+              <td class="library__num">{{ item.chunk_count }}</td>
+              <td class="library__num">{{ formatFileSize(item.file_size) }}</td>
+              <td class="library__num library__time">{{ formatUpdatedAt(item.updated_at) }}</td>
+              <td class="library__actions-col">
+                <el-button
+                  class="library__delete"
+                  :icon="Delete"
+                  text
+                  size="small"
+                  aria-label="删除论文"
+                  @click.stop="handleDelete(item)"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </template>
     </div>
   </section>
 </template>
@@ -149,10 +251,51 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.library__refresh {
+.library__actions {
+  display: flex;
   flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.library__upload {
+  font-size: 12px;
+}
+
+.library__refresh {
   color: var(--color-text-soft);
   font-size: 12px;
+}
+
+.library__file-input {
+  display: none;
+}
+
+.library__progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 34px;
+  color: var(--color-accent-strong);
+  font-size: 12px;
+  background: var(--color-accent-soft);
+}
+
+.library__progress-bar {
+  flex: 1;
+  max-width: 220px;
+  height: 4px;
+  overflow: hidden;
+  background: rgba(71, 110, 230, 0.18);
+  border-radius: 999px;
+}
+
+.library__progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.2s ease;
 }
 
 .library__body {
@@ -173,9 +316,18 @@ onMounted(() => {
   color: var(--color-danger);
 }
 
+.library__inline-error {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  color: var(--color-danger);
+  font-size: 12px;
+  background: rgba(217, 83, 79, 0.08);
+  border-radius: 8px;
+}
+
 .library__empty {
   margin: 88px auto;
-  max-width: 360px;
+  max-width: 380px;
   text-align: center;
 }
 
@@ -255,6 +407,19 @@ onMounted(() => {
   font-size: 11px;
 }
 
+.library__actions-col {
+  width: 48px;
+  text-align: right;
+}
+
+.library__delete {
+  color: var(--color-text-muted);
+}
+
+.library__delete:hover {
+  color: var(--color-danger);
+}
+
 .library__status {
   display: inline-block;
   padding: 2px 8px;
@@ -280,6 +445,15 @@ onMounted(() => {
 .library__status.is-idle {
   color: var(--color-text-muted);
   background: var(--color-surface-alt);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 @media (max-width: 1100px) {

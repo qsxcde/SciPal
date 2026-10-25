@@ -10,6 +10,8 @@ from backend.domain.models import SourceRef
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"] = "user"
     content: str
+    """为 true 时复用上一条用户提问，先删除旧回答再重新生成。"""
+    regenerate: bool = False
 
 
 class ChatStreamTokenEvent(BaseModel):

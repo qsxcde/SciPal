@@ -37,6 +37,7 @@
 | DELETE | `/sessions/{id}` | 归档会话并删磁盘目录 | 200 | 401 |
 | GET | `/documents` | 文献库列表（跨会话） | 200 | 401 |
 | POST | `/sessions/{id}/documents` | 上传 PDF（异步摄取） | **202** | 400 / 401 / 404 / 413 |
+| DELETE | `/sessions/{id}/documents/{document_id}` | 删除文档并重建索引 | 200 | 401 / 404 |
 | GET | `/sessions/{id}/documents/{document_id}/content` | 结构化正文（阅读器） | 200 | 401 / 404 |
 | GET | `/sessions/{id}/documents/{document_id}/chunks/{chunk_index}` | 引用定位（还原原文段落） | 200 | 401 / 404 |
 | POST | `/sessions/{id}/messages` | 流式对话 | 200（SSE） | 401 / 404 |
@@ -166,7 +167,32 @@ curl -X POST "http://127.0.0.1:8000/sessions/$SID/documents" \
 | 404 | `Session not found: <session_id>` |
 | 413 | `File too large (max 52428800 bytes)` |
 
-### 3.9 `GET /documents`
+### 3.9 `DELETE /sessions/{id}/documents/{document_id}`
+
+删除单篇论文并重建该会话的索引。
+
+```bash
+curl -X DELETE "http://127.0.0.1:8000/sessions/$SID/documents/$DOC" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{"status": "deleted"}
+```
+
+说明：
+
+- 依次删除 `chunks` 行、`documents` 行、PDF 与解析产物目录（仅限 data 目录内，越界不删）。
+- 随后用剩余 chunks 全量重建索引——FAISS 不支持删除向量，只能重建。
+- 会话内已无文档时，快照置为 `failed`、索引元数据置为 `failed`，`/health` 以外的检索会提示重新索引。
+- 重建失败同样会把索引置为不可用，宁可要求重新索引，也不让检索命中的是已删除内容。
+
+| 状态码 | detail |
+|---|---|
+| 404 | `Session not found: <session_id>` |
+| 404 | `Document not found: <document_id>` |
+
+### 3.10 `GET /documents`
 
 跨会话的文献库列表，供前端「文献库」页使用。
 
@@ -201,7 +227,7 @@ curl "http://127.0.0.1:8000/documents" -H "Authorization: Bearer $TOKEN"
 |---|---|
 | 401 | `Not authenticated` |
 
-### 3.10 `GET /sessions/{id}/documents/{document_id}/content`
+### 3.11 `GET /sessions/{id}/documents/{document_id}/content`
 
 返回解析后的结构化正文（来自 `document.ir.json`），供阅读器渲染与引用定位。
 
@@ -242,7 +268,7 @@ curl "http://127.0.0.1:8000/sessions/$SID/documents/$DOC/content" \
 | 404 | `Session not found: <session_id>` |
 | 404 | `Document not found: <document_id>` |
 
-### 3.11 `GET /sessions/{id}/documents/{document_id}/chunks/{chunk_index}`
+### 3.12 `GET /sessions/{id}/documents/{document_id}/chunks/{chunk_index}`
 
 把回答里的 `sources` 还原为原文段落，供前端「引用即定位」面板使用。
 
@@ -276,13 +302,17 @@ curl "http://127.0.0.1:8000/sessions/$SID/documents/$DOC/chunks/4" \
 | 404 | `Session not found: <session_id>` |
 | 404 | `Source chunk not found: document=<id> chunk=<n>` |
 
-### 3.12 `POST /sessions/{id}/messages`（SSE）
+### 3.13 `POST /sessions/{id}/messages`（SSE）
 
 ```json
-{"role": "user", "content": "这篇论文的核心贡献是什么？"}
+{"role": "user", "content": "这篇论文的核心贡献是什么？", "regenerate": false}
 ```
 
-`role` 默认 `"user"`，当前服务端**只使用 `content`**，不校验也不落库传入的 `role`。
+`role` 默认 `"user"`，服务端只使用 `content` 与 `regenerate`，不校验也不落库传入的 `role`。
+
+`regenerate: true` 时复用上一条提问：先删除末尾的 assistant 消息，再把该提问排除出对话历史后重新生成；若末尾不是 assistant 消息，则退化为普通提问。
+
+客户端中断（关闭页面 / 点「停止生成」）时，已生成的部分以 `status="stopped"` 落库，避免刷新后本轮回答凭空消失。
 
 响应头 `Content-Type: text/event-stream`。会话不存在或无权访问时在建流之前返回 `404 Session not found`；建流成功后的业务错误通过事件表达，HTTP 状态恒为 200。
 

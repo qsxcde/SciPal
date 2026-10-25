@@ -37,8 +37,10 @@ const {
   handleUpload,
   initializeSessions,
   openSession,
+  regenerateLast,
   renameSession,
   sendMessage,
+  stopStreaming,
   togglePinSession,
   useDemoPaper,
 } = usePaperChat();
@@ -201,7 +203,9 @@ watch([showReader, () => documents.value.length, () => paperSession.value?.sessi
         @demo-paper="useDemoPaper"
         @open-reader="openReader"
         @prompt-click="handlePromptClick"
+        @regenerate="regenerateLast"
         @send="sendMessage"
+        @stop="stopStreaming"
         @upload-paper="uploadPaper"
       />
     </section>

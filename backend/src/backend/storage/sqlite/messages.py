@@ -25,7 +25,7 @@ def create_message(
     role: Literal["user", "assistant"],
     content: str,
     sources: list[SourceRef] | None = None,
-    status: Literal["complete", "failed"] = "complete",
+    status: Literal["complete", "failed", "stopped"] = "complete",
 ) -> dict:
 
     message_id = str(uuid.uuid4())
@@ -43,6 +43,28 @@ def create_message(
     if message is None:
         raise RuntimeError("创建消息失败")
     return message
+
+
+def delete_trailing_assistant_message(session_id: str) -> bool:
+    """Delete the newest assistant answer when it is the last message.
+
+    Used by regenerate: the client re-asks the same question, so the stale
+    answer must be removed instead of accumulating duplicates.
+    """
+    with transaction() as conn:
+        row = conn.execute(
+            """
+            SELECT id, role FROM messages
+            WHERE session_id = ?
+            ORDER BY created_at DESC, rowid DESC
+            LIMIT 1
+            """,
+            (session_id,),
+        ).fetchone()
+        if row is None or row["role"] != "assistant":
+            return False
+        conn.execute("DELETE FROM messages WHERE id = ?", (row["id"],))
+        return True
 
 
 def get_message(message_id: str) -> dict | None:

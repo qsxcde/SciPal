@@ -9,6 +9,7 @@ from backend.api.schemas import (
 )
 from backend.api.security import get_current_user
 from backend.application.documents import (
+    delete_document as delete_document_use_case,
     get_document_content,
     get_source_chunk,
     intake_document_upload,
@@ -52,6 +53,17 @@ def upload_document(
         job_status=intake["job"]["status"],
         session_status="processing",
     )
+
+
+@router.delete("/sessions/{session_id}/documents/{document_id}")
+def delete_document(
+    session_id: str,
+    document_id: str,
+    session: dict = Depends(get_accessible_session),
+) -> dict:
+    """删除单篇文档（行 + 分块 + 磁盘产物）并重建会话索引。"""
+    delete_document_use_case(session["id"], document_id)
+    return {"status": "deleted"}
 
 
 @router.get(

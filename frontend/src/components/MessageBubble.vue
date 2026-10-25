@@ -11,13 +11,22 @@ const EMPTY_ASSISTANT_FALLBACK = "回答生成失败，请重试或重新发送�
 
 const props = withDefaults(
   defineProps<{
+    canRegenerate?: boolean;
+    isStreaming?: boolean;
     message: ChatMessageViewModel;
     pending?: boolean;
   }>(),
   {
+    canRegenerate: false,
+    isStreaming: false,
     pending: false,
   },
 );
+
+defineEmits<{
+  regenerate: [];
+  stop: [];
+}>();
 
 const { openCitation } = useSourcePreview();
 
@@ -56,8 +65,14 @@ const displayText = computed(() => {
       />
 
       <MessageActions
-        v-if="props.message.role === 'assistant' && props.message.text.trim()"
+        v-if="
+          props.message.role === 'assistant' && (props.isStreaming || props.message.text.trim())
+        "
+        :can-regenerate="props.canRegenerate"
         :content="props.message.text"
+        :is-streaming="props.isStreaming"
+        @regenerate="$emit('regenerate')"
+        @stop="$emit('stop')"
       />
     </div>
   </article>

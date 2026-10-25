@@ -15,6 +15,8 @@ const props = defineProps<{
 defineEmits<{
   demoPaper: [];
   promptClick: [text: string];
+  regenerate: [];
+  stop: [];
 }>();
 
 const SCROLL_FOLLOW_THRESHOLD = 120;
@@ -91,6 +93,16 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
   if (!props.isStreaming || message.role !== "assistant") return false;
   return index === props.messages.length - 1 && message.text.trim().length === 0;
 }
+
+/** 只有最后一条回答可以重新生成，避免破坏历史轮次。 */
+function isLastAssistant(message: ChatMessageViewModel, index: number): boolean {
+  if (message.role !== "assistant") return false;
+  return props.messages.findLastIndex((item) => item.role === "assistant") === index;
+}
+
+function isStreamingMessage(index: number): boolean {
+  return props.isStreaming && index === props.messages.length - 1;
+}
 </script>
 
 <template>
@@ -127,8 +139,12 @@ function isPendingAssistant(message: ChatMessageViewModel, index: number): boole
           <MessageBubble
             v-for="(message, index) in props.messages"
             :key="message.id"
+            :can-regenerate="!props.isStreaming && isLastAssistant(message, index)"
+            :is-streaming="isStreamingMessage(index) && message.role === 'assistant'"
             :message="message"
             :pending="isPendingAssistant(message, index)"
+            @regenerate="$emit('regenerate')"
+            @stop="$emit('stop')"
           />
         </div>
       </el-scrollbar>

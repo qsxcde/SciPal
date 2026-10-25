@@ -91,7 +91,7 @@
 | `role` | TEXT | NOT NULL | `user` / `assistant` |
 | `content` | TEXT | NOT NULL | |
 | `sources_json` | TEXT | NULL | `list[SourceRef]` 的 JSON |
-| `status` | TEXT | NOT NULL DEFAULT `complete` | `complete` / `failed` |
+| `status` | TEXT | NOT NULL DEFAULT `complete` | `complete` / `failed` / `stopped` |
 | `created_at` | TEXT | NOT NULL | |
 
 索引：`idx_messages_session_id`。

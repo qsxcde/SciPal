@@ -97,6 +97,23 @@ function createPaperChat() {
     await chatStream.sendMessage(text, sessionId);
   }
 
+  /** 重新生成最后一条回答（示例会话与空闲态直接忽略）。 */
+  async function regenerateLast(): Promise<void> {
+    const sessionId = sessionState.paperSession.value?.sessionId;
+    if (!sessionId) {
+      return;
+    }
+    if (sessionId === DEMO_SESSION_ID) {
+      setErrorMessage("示例论文仅供预览，请先上传论文或新建会话后再重新生成。");
+      return;
+    }
+    await chatStream.regenerate(sessionId);
+  }
+
+  function stopStreaming(): void {
+    chatStream.stopStreaming();
+  }
+
   function useDemoPaper(): void {
     errorMessage.value = "";
     sessionState.paperSession.value = {
@@ -155,8 +172,10 @@ function createPaperChat() {
     handleUpload,
     initializeSessions,
     openSession,
+    regenerateLast,
     renameSession,
     sendMessage,
+    stopStreaming,
     togglePinSession: sessionState.togglePinSession,
     useDemoPaper,
   };

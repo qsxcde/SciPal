@@ -26,6 +26,7 @@ async def chat(
         session_id=session["id"],
         content=message.content,
         user_id=user.get("id"),
+        regenerate=message.regenerate,
     )
 
     async def generate():
