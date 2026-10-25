@@ -4,6 +4,8 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from backend.domain.exceptions import (
+    ChunkNotFoundError,
+    DocumentNotFoundError,
     SessionNotFoundError,
     UploadTooLargeError,
     UploadValidationError,
@@ -18,6 +20,20 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={"detail": detail or "Session not found"},
+        )
+
+    @app.exception_handler(ChunkNotFoundError)
+    async def _chunk_not_found(_request: Request, exc: ChunkNotFoundError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": str(exc) or "Source chunk not found"},
+        )
+
+    @app.exception_handler(DocumentNotFoundError)
+    async def _document_not_found(_request: Request, exc: DocumentNotFoundError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": str(exc) or "Document not found"},
         )
 
     @app.exception_handler(UploadTooLargeError)

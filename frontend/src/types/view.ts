@@ -51,3 +51,9 @@ export type SuggestedPrompt = {
   id: string;
   text: string;
 };
+
+/** 一次引用点击：序号用于角标，source 携带定位坐标。 */
+export type SourceSelection = {
+  index: number;
+  source: SourceRef;
+};

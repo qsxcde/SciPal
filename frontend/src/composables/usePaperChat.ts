@@ -7,10 +7,19 @@ import { useSessionState } from "./useSessionState";
 type SessionLoadResult = { messages: SessionSnapshot["messages"] } | null;
 
 /**
- * Composes session state and chat streaming into a single app-facing API
- * while keeping each concern in a smaller dedicated composable.
+ * Composes session state and chat streaming into a single app-facing API.
+ *
+ * 单例：`/`（对话）与 `/papers/:id`（阅读）是两个路由，但必须共享同一份
+ * 会话与消息状态，否则来回切换会重复请求甚至断流。
  */
-export function usePaperChat() {
+let store: ReturnType<typeof createPaperChat> | null = null;
+
+export function usePaperChat(): ReturnType<typeof createPaperChat> {
+  store ??= createPaperChat();
+  return store;
+}
+
+function createPaperChat() {
   const errorMessage = ref("");
 
   function setErrorMessage(message: string): void {

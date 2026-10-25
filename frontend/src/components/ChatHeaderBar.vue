@@ -1,7 +1,14 @@
 <script setup lang="ts">
+import { Document } from "@element-plus/icons-vue";
+
 defineProps<{
   paperHint: string;
   sessionTitle: string;
+  canOpenReader: boolean;
+}>();
+
+const emit = defineEmits<{
+  openReader: [];
 }>();
 </script>
 
@@ -16,6 +23,17 @@ defineProps<{
       </p>
       <p v-else class="chat-header-bar__hint">暂未关联论文</p>
     </div>
+
+    <el-button
+      class="chat-header-bar__reader"
+      :icon="Document"
+      :disabled="!canOpenReader"
+      text
+      size="small"
+      @click="emit('openReader')"
+    >
+      原文
+    </el-button>
   </header>
 </template>
 
@@ -25,6 +43,7 @@ defineProps<{
   width: min(100%, 1080px);
   align-items: center;
   gap: 10px;
+  justify-content: space-between;
   margin: 0 auto;
   padding: 0 0 14px;
 }
@@ -50,6 +69,12 @@ defineProps<{
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-header-bar__reader {
+  flex: 0 0 auto;
+  color: var(--color-text-soft);
+  font-size: 12px;
 }
 
 @media (max-width: 1200px) {

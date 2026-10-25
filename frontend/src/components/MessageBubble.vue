@@ -2,6 +2,9 @@
 import { computed } from "vue";
 import MarkdownContent from "./MarkdownContent.vue";
 import MessageActions from "./MessageActions.vue";
+import SourceCitationList from "./SourceCitationList.vue";
+import type { SourceRef } from "../api";
+import { useSourcePreview } from "../composables/useSourcePreview";
 import type { ChatMessageViewModel } from "../types";
 
 const EMPTY_ASSISTANT_FALLBACK = "回答生成失败，请重试或重新发送问题。";
@@ -15,6 +18,12 @@ const props = withDefaults(
     pending: false,
   },
 );
+
+const { openCitation } = useSourcePreview();
+
+function handleSourceSelect(source: SourceRef, index: number): void {
+  void openCitation(source, index);
+}
 
 const displayText = computed(() => {
   if (props.pending) {
@@ -39,6 +48,12 @@ const displayText = computed(() => {
       <div class="message-bubble" :class="`message-bubble--${props.message.role}`">
         <MarkdownContent :text="displayText" />
       </div>
+
+      <SourceCitationList
+        v-if="props.message.role === 'assistant' && props.message.sources?.length"
+        :sources="props.message.sources"
+        @select="handleSourceSelect"
+      />
 
       <MessageActions
         v-if="props.message.role === 'assistant' && props.message.text.trim()"

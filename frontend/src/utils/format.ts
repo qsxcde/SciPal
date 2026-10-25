@@ -8,3 +8,17 @@ export function formatFileSize(bytes: number, prefix = ""): string {
   const megabytes = Math.max(bytes / BYTES_PER_MB, 0.01);
   return `${prefix}${megabytes.toFixed(2)}MB`;
 }
+
+/** 页码展示：单页 `p.4`，跨页 `p.4-5`，缺省返回空串。 */
+export function formatPageRange(start?: number | null, end?: number | null): string {
+  if (start == null && end == null) {
+    return "";
+  }
+  if (start == null) {
+    return `p.${end}`;
+  }
+  if (end == null || end === start) {
+    return `p.${start}`;
+  }
+  return `p.${start}-${end}`;
+}

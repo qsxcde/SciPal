@@ -1,8 +1,12 @@
 from fastapi import APIRouter, Depends, File, UploadFile
 
 from backend.api.deps import get_accessible_session
-from backend.api.schemas import DocumentIntakeResponse
-from backend.application.documents import intake_document_upload
+from backend.api.schemas import DocumentContentResponse, DocumentIntakeResponse, SourceChunkResponse
+from backend.application.documents import (
+    get_document_content,
+    get_source_chunk,
+    intake_document_upload,
+)
 
 router = APIRouter()
 
@@ -31,4 +35,39 @@ def upload_document(
         document_status=intake["document"]["status"],
         job_status=intake["job"]["status"],
         session_status="processing",
+    )
+
+
+@router.get(
+    "/sessions/{session_id}/documents/{document_id}/content",
+    response_model=DocumentContentResponse,
+)
+def read_document_content(
+    session_id: str,
+    document_id: str,
+    session: dict = Depends(get_accessible_session),
+) -> DocumentContentResponse:
+    """返回解析后的结构化正文，供阅读器渲染与引用定位。"""
+    return DocumentContentResponse(
+        **get_document_content(session_id=session["id"], document_id=document_id)
+    )
+
+
+@router.get(
+    "/sessions/{session_id}/documents/{document_id}/chunks/{chunk_index}",
+    response_model=SourceChunkResponse,
+)
+def read_source_chunk(
+    session_id: str,
+    document_id: str,
+    chunk_index: int,
+    session: dict = Depends(get_accessible_session),
+) -> SourceChunkResponse:
+    """把回答里的引用还原为原文段落，供前端阅读器定位。"""
+    return SourceChunkResponse(
+        **get_source_chunk(
+            session_id=session["id"],
+            document_id=document_id,
+            chunk_index=chunk_index,
+        )
     )

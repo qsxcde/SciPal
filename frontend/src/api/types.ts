@@ -18,6 +18,23 @@ export type SourceRef = {
   section: string;
   chunk_index: number;
   text_excerpt?: string | null;
+  page_start?: number | null;
+  page_end?: number | null;
+  block_ids?: string[] | null;
+  confidence?: number | null;
+};
+
+/** 引用定位结果：后端按 (document_id, chunk_index) 还原的完整段落。 */
+export type SourceChunk = {
+  document_id: string;
+  chunk_index: number;
+  section: string;
+  section_path: string[];
+  page_start: number | null;
+  page_end: number | null;
+  type: string;
+  text: string;
+  block_ids: string[];
 };
 
 export type DocumentStatus =
@@ -97,6 +114,25 @@ export type DocumentUploadResult = {
   document_status: "uploaded";
   job_status: "queued" | "running";
   session_status: "processing";
+};
+
+/** 阅读器正文块，id 与 citation 的 block_ids 对齐。 */
+export type PaperBlock = {
+  id: string;
+  type: string;
+  text: string;
+  section_path: string[];
+  page_number: number;
+};
+
+export type PaperContent = {
+  document_id: string;
+  filename: string;
+  status: string;
+  parser_name: string | null;
+  parse_quality_status: string | null;
+  chunk_count: number;
+  blocks: PaperBlock[];
 };
 
 export type MessageChunk =

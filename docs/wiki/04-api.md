@@ -36,6 +36,8 @@
 | PATCH | `/sessions/{id}` | 改标题 / 置顶 | 200 | 401 / 404 |
 | DELETE | `/sessions/{id}` | 归档会话并删磁盘目录 | 200 | 401 |
 | POST | `/sessions/{id}/documents` | 上传 PDF（异步摄取） | **202** | 400 / 401 / 404 / 413 |
+| GET | `/sessions/{id}/documents/{document_id}/content` | 结构化正文（阅读器） | 200 | 401 / 404 |
+| GET | `/sessions/{id}/documents/{document_id}/chunks/{chunk_index}` | 引用定位（还原原文段落） | 200 | 401 / 404 |
 | POST | `/sessions/{id}/messages` | 流式对话 | 200（SSE） | 401 / 404 |
 
 ## 3. 端点详情
@@ -160,10 +162,85 @@ curl -X POST "http://127.0.0.1:8000/sessions/$SID/documents" \
 | 状态码 | detail |
 |---|---|
 | 400 | `Uploaded file is not a valid PDF`（服务层另有 `Cannot determine file size`，但路由用 `len(bytes)` 兜底，实际不会触发） |
-| 404 | `Session not found. Please create a session first.` |
-| 413 | `File too large (max 50MB)` |
+| 404 | `Session not found: <session_id>` |
+| 413 | `File too large (max 52428800 bytes)` |
 
-### 3.9 `POST /sessions/{id}/messages`（SSE）
+### 3.9 `GET /sessions/{id}/documents/{document_id}/content`
+
+返回解析后的结构化正文（来自 `document.ir.json`），供阅读器渲染与引用定位。
+
+```bash
+curl "http://127.0.0.1:8000/sessions/$SID/documents/$DOC/content" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{
+  "document_id": "<uuid>",
+  "filename": "paper.pdf",
+  "status": "ready",
+  "parser_name": "mineru",
+  "parse_quality_status": "good",
+  "chunk_count": 42,
+  "blocks": [
+    {
+      "id": "b-1",
+      "type": "paragraph",
+      "text": "The dominant sequence transduction models ...",
+      "section_path": ["1", "Introduction"],
+      "page_number": 1
+    }
+  ]
+}
+```
+
+说明：
+
+- `blocks[].id` 与 SSE `sources[].block_ids` 同源，前端据此滚动到命中段落并高亮。
+- 已过滤 `header_footer` 与空文本块，按 `(page_number, reading_order, block_index)` 排序。
+- IR 文件缺失或不可读时返回 `blocks: []`，不报错（前端展示"暂无结构化正文"）。
+- 按 `(session_id, document_id)` 校验归属，跨会话 404。
+
+| 状态码 | detail |
+|---|---|
+| 404 | `Session not found: <session_id>` |
+| 404 | `Document not found: <document_id>` |
+
+### 3.10 `GET /sessions/{id}/documents/{document_id}/chunks/{chunk_index}`
+
+把回答里的 `sources` 还原为原文段落，供前端「引用即定位」面板使用。
+
+```bash
+curl "http://127.0.0.1:8000/sessions/$SID/documents/$DOC/chunks/4" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{
+  "document_id": "<uuid>",
+  "chunk_index": 4,
+  "section": "3 > Method",
+  "section_path": ["3", "Method"],
+  "page_start": 7,
+  "page_end": 8,
+  "type": "paragraph",
+  "text": "<完整 chunk 正文，非 excerpt>",
+  "block_ids": ["b-12", "b-13"]
+}
+```
+
+说明：
+
+- 按 `(session_id, document_id, chunk_index)` 唯一命中，跨会话返回 404，避免用 document_id 横向越权。
+- 返回 `chunks.text_content`（全文），而 SSE `sources[].text_excerpt` 只有 220 字符摘要。
+- 引用里的 `paper_id` 即 `document_id`；历史消息缺 `paper_id` 时前端只展示 excerpt。
+
+| 状态码 | detail |
+|---|---|
+| 404 | `Session not found: <session_id>` |
+| 404 | `Source chunk not found: document=<id> chunk=<n>` |
+
+### 3.11 `POST /sessions/{id}/messages`（SSE）
 
 ```json
 {"role": "user", "content": "这篇论文的核心贡献是什么？"}

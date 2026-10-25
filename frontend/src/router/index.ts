@@ -1,13 +1,21 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 import { useAuth } from "../composables/useAuth";
 
+const AppShell = () => import("../layouts/AppShell.vue");
+
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     {
       path: "/",
       name: "chat",
-      component: () => import("../layouts/AppLayout.vue"),
+      component: AppShell,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/papers/:sessionId",
+      name: "paper",
+      component: AppShell,
       meta: { requiresAuth: true },
     },
     {

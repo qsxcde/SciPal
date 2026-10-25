@@ -5,6 +5,7 @@ import MessageList from "./MessageList.vue";
 import type { ChatMessageViewModel, SuggestedPrompt, UploadStatus } from "../types";
 
 defineProps<{
+  canOpenReader: boolean;
   draft: string;
   errorMessage: string;
   hasPaper: boolean;
@@ -19,6 +20,7 @@ defineProps<{
 
 const emit = defineEmits<{
   demoPaper: [];
+  openReader: [];
   promptClick: [text: string];
   send: [text: string];
   "update:draft": [value: string];
@@ -32,7 +34,12 @@ function handleDraftUpdate(value: string): void {
 
 <template>
   <section class="chat-workspace" aria-label="论文问答区">
-    <ChatHeaderBar :paper-hint="paperHint" :session-title="sessionTitle" />
+    <ChatHeaderBar
+      :can-open-reader="canOpenReader"
+      :paper-hint="paperHint"
+      :session-title="sessionTitle"
+      @open-reader="$emit('openReader')"
+    />
     <MessageList
       :has-paper="hasPaper"
       :is-streaming="isStreaming"

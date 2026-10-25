@@ -106,6 +106,20 @@ def list_chunks_for_documents(session_id: str, document_ids: list[str]) -> list[
     return [_row_to_chunk(row) for row in rows]
 
 
+def get_chunk(session_id: str, document_id: str, chunk_index: int) -> Chunk | None:
+    """Fetch a single chunk by citation coordinates."""
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT * FROM chunks
+            WHERE session_id = ? AND document_id = ? AND chunk_index = ?
+            LIMIT 1
+            """,
+            (session_id, document_id, chunk_index),
+        ).fetchone()
+    return _row_to_chunk(row) if row else None
+
+
 def list_chunk_document_ids(session_id: str) -> list[str]:
 
     with connect() as conn:

@@ -33,6 +33,7 @@
   --gradient-accent-hover: linear-gradient(145deg, #6d8cf0 0%, #355ed8 100%);
   --gradient-accent-disabled: linear-gradient(180deg, #b7c3ea 0%, #a8b5df 100%);
   --font-sans: Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  --font-serif: "Source Serif 4", "Noto Serif SC", "Songti SC", Georgia, serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 
   /* 断点统一在此声明，媒体查询需写字面值：sm 760 / md 1100 / lg 1200 / xl 1440 */

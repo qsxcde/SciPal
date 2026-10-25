@@ -11,7 +11,13 @@ from backend.api.schemas.chat import (
     ChatStreamTokenEvent,
     ChatStreamWarningEvent,
 )
-from backend.api.schemas.document import DocumentIntakeResponse, DocumentSummary
+from backend.api.schemas.document import (
+    DocumentContentResponse,
+    DocumentIntakeResponse,
+    DocumentSummary,
+    PaperBlock,
+    SourceChunkResponse,
+)
 from backend.api.schemas.session import (
     IndexSnapshotSummary,
     JobSummary,
@@ -34,15 +40,18 @@ __all__ = [
     "ChatStreamStatusEvent",
     "ChatStreamTokenEvent",
     "ChatStreamWarningEvent",
+    "DocumentContentResponse",
     "DocumentIntakeResponse",
     "DocumentSummary",
     "IndexSnapshotSummary",
     "JobSummary",
+    "PaperBlock",
     "PersistedMessage",
     "RetrievalIndexSummary",
     "SessionCreateResponse",
     "SessionSnapshot",
     "SessionSummary",
     "SessionUpdateRequest",
+    "SourceChunkResponse",
     "UserResponse",
 ]
