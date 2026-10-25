@@ -67,6 +67,14 @@ class DocumentContentResponse(BaseModel):
     blocks: list[PaperBlock]
 
 
+class SourceBlockBox(BaseModel):
+    """引用块在原文中的位置：归一化坐标（0-1），左上角原点。"""
+
+    id: str
+    page_number: int
+    bbox: dict[str, float] | None = None
+
+
 class SourceChunkResponse(BaseModel):
     """回复引用的原文定位结果，供阅读器面板展示。"""
 
@@ -79,3 +87,4 @@ class SourceChunkResponse(BaseModel):
     type: str
     text: str
     block_ids: list[str]
+    blocks: list[SourceBlockBox] = []

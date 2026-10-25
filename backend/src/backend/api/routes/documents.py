@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi.responses import FileResponse
 
 from backend.api.deps import get_accessible_session
 from backend.api.schemas import (
@@ -11,6 +12,7 @@ from backend.api.security import get_current_user
 from backend.application.documents import (
     delete_document as delete_document_use_case,
     get_document_content,
+    get_document_file,
     get_source_chunk,
     intake_document_upload,
     list_library_documents,
@@ -64,6 +66,17 @@ def delete_document(
     """删除单篇文档（行 + 分块 + 磁盘产物）并重建会话索引。"""
     delete_document_use_case(session["id"], document_id)
     return {"status": "deleted"}
+
+
+@router.get("/sessions/{session_id}/documents/{document_id}/file")
+def read_document_file(
+    session_id: str,
+    document_id: str,
+    session: dict = Depends(get_accessible_session),
+) -> FileResponse:
+    """下载/内联渲染原始 PDF（前端阅读器用）。"""
+    path = get_document_file(session["id"], document_id)
+    return FileResponse(path, media_type="application/pdf", filename=path.name)
 
 
 @router.get(

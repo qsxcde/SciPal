@@ -1,8 +1,19 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
 import { Close, Tickets } from "@element-plus/icons-vue";
 import MarkdownContent from "./MarkdownContent.vue";
 import PaperOutline from "./PaperOutline.vue";
+
+// pdf.js 体积较大，只在切到「原页」时才加载
+const PdfViewer = defineAsyncComponent(() => import("./PdfViewer.vue"));
 import { usePaperReader } from "../composables/usePaperReader";
 import type { PaperBlock } from "../api";
 import type { SelectionAskMode } from "../types";
@@ -24,6 +35,8 @@ const {
   errorMessage,
   activeBlockId,
   activeSectionKey,
+  citationBoxes,
+  citationPage,
   load,
   revealBlock,
   setActiveSection,
@@ -34,7 +47,19 @@ const {
 const scrollRef = ref<HTMLElement | null>(null);
 const bodyRef = ref<HTMLElement | null>(null);
 const outlineVisible = ref(true);
+const viewMode = ref<"text" | "pdf">("text");
+const pdfPage = ref(1);
 const selectionMenu = ref<{ text: string; x: number; y: number } | null>(null);
+
+// 引用命中时自动切到原页并定位
+watch([citationPage, citationBoxes], () => {
+  const page = citationPage.value ?? citationBoxes.value[0]?.page_number ?? null;
+  if (!page) {
+    return;
+  }
+  pdfPage.value = page;
+  viewMode.value = "pdf";
+});
 
 type ReaderNode =
   | { kind: "section"; key: string; title: string; level: number }
@@ -196,6 +221,24 @@ onBeforeUnmount(() => {
         </h1>
       </div>
       <div class="paper-reader__actions">
+        <div class="paper-reader__modes" role="group" aria-label="原文视图">
+          <button
+            type="button"
+            class="paper-reader__mode"
+            :class="{ 'is-active': viewMode === 'text' }"
+            @click="viewMode = 'text'"
+          >
+            正文
+          </button>
+          <button
+            type="button"
+            class="paper-reader__mode"
+            :class="{ 'is-active': viewMode === 'pdf' }"
+            @click="viewMode = 'pdf'"
+          >
+            原页
+          </button>
+        </div>
         <el-button
           class="paper-reader__toggle"
           :class="{ 'is-active': outlineVisible }"
@@ -218,13 +261,22 @@ onBeforeUnmount(() => {
 
     <div class="paper-reader__main">
       <PaperOutline
-        v-if="outlineVisible && outline.length"
+        v-if="viewMode === 'text' && outlineVisible && outline.length"
         :items="outline"
         :active-key="activeSectionKey"
         @select="handleOutlineSelect"
       />
 
-      <div ref="scrollRef" class="paper-reader__scroll" @scroll="handleScroll">
+      <PdfViewer
+        v-if="viewMode === 'pdf'"
+        :boxes="citationBoxes"
+        :document-id="props.documentId"
+        :page="pdfPage"
+        :session-id="props.sessionId"
+        @update:page="pdfPage = $event"
+      />
+
+      <div v-else ref="scrollRef" class="paper-reader__scroll" @scroll="handleScroll">
         <p v-if="isLoading" class="paper-reader__state">正在读取解析结果…</p>
         <p v-else-if="errorMessage" class="paper-reader__state paper-reader__state--error">
           {{ errorMessage }}
@@ -338,6 +390,29 @@ onBeforeUnmount(() => {
 .paper-reader__toggle.is-active {
   color: var(--color-accent-strong);
   background: var(--color-accent-soft);
+}
+
+.paper-reader__modes {
+  display: flex;
+  padding: 2px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.paper-reader__mode {
+  padding: 3px 10px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+}
+
+.paper-reader__mode.is-active {
+  color: var(--color-text);
+  background: var(--color-panel);
+  box-shadow: 0 1px 3px rgba(48, 68, 101, 0.12);
 }
 
 .paper-reader__main {

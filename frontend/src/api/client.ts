@@ -81,6 +81,15 @@ export function jsonRequest(payload: unknown): JsonRequestPayload {
   };
 }
 
+/** 下载二进制内容（PDF 等），带鉴权头。 */
+export async function fetchBinary(path: string, fallback: string): Promise<ArrayBuffer> {
+  const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() });
+  if (!res.ok) {
+    throw await readError(res, fallback);
+  }
+  return res.arrayBuffer();
+}
+
 /** 以流式方式打开响应，非 2xx 时抛出后端 detail。 */
 export async function openStream(
   path: string,

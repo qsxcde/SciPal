@@ -103,6 +103,8 @@ def get_source_chunk(session_id: str, document_id: str, chunk_index: int) -> dic
             chunk_index=chunk_index,
         )
     metadata = chunk.metadata
+    block_ids = metadata.block_ids or []
+    document = document_repo.get_document(document_id)
     return {
         "document_id": document_id,
         "chunk_index": metadata.chunk_index,
@@ -112,8 +114,100 @@ def get_source_chunk(session_id: str, document_id: str, chunk_index: int) -> dic
         "page_end": metadata.page_end,
         "type": metadata.type,
         "text": chunk.text,
-        "block_ids": metadata.block_ids or [],
+        "block_ids": block_ids,
+        "blocks": _resolve_block_boxes(
+            document.get("parsed_ir_path") if document else None,
+            block_ids,
+        ),
     }
+
+
+def get_document_file(session_id: str, document_id: str) -> Path:
+    """Return the stored PDF path, refusing anything outside the data directory."""
+    document = _get_owned_document(session_id, document_id)
+    path = Path(document["file_path"]).resolve()
+    root = data_dir().resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise DocumentNotFoundError(
+            f"Document file not found: {document_id}",
+            session_id=session_id,
+            document_id=document_id,
+        )
+    return path
+
+
+def _get_owned_document(session_id: str, document_id: str) -> dict:
+    document = document_repo.get_document(document_id)
+    if document is None or document["session_id"] != session_id:
+        raise DocumentNotFoundError(
+            f"Document not found: {document_id}",
+            session_id=session_id,
+            document_id=document_id,
+        )
+    return document
+
+
+def _resolve_block_boxes(ir_path: str | None, block_ids: list[str]) -> list[dict]:
+    """Map cited block ids to page numbers and normalized (0-1) boxes.
+
+    The IR stores bbox in PDF points; normalizing here keeps the frontend free
+    of page-size math and works for any render scale.
+    """
+    if not ir_path or not block_ids:
+        return []
+    payload = _load_ir_payload(ir_path)
+    if payload is None:
+        return []
+
+    wanted = set(block_ids)
+    pages = {page.get("page_number"): page for page in payload.get("pages") or []}
+    boxes: list[dict] = []
+    for block in _iter_ir_blocks(payload):
+        if block.get("id") not in wanted:
+            continue
+        page_number = block.get("page_number") or 0
+        boxes.append(
+            {
+                "id": block["id"],
+                "page_number": page_number,
+                "bbox": _normalize_bbox(block.get("bbox"), pages.get(page_number)),
+            }
+        )
+    return boxes
+
+
+def _normalize_bbox(bbox: object, page: dict | None) -> dict[str, float] | None:
+    if not isinstance(bbox, dict) or page is None:
+        return None
+    width = float(page.get("width") or 0)
+    height = float(page.get("height") or 0)
+    if width <= 0 or height <= 0:
+        return None
+    try:
+        x0 = float(bbox.get("x0", 0.0)) / width
+        y0 = float(bbox.get("y0", 0.0)) / height
+        x1 = float(bbox.get("x1", 0.0)) / width
+        y1 = float(bbox.get("y1", 0.0)) / height
+    except (TypeError, ValueError):
+        return None
+    return {
+        "x0": max(0.0, min(1.0, x0)),
+        "y0": max(0.0, min(1.0, y0)),
+        "x1": max(0.0, min(1.0, x1)),
+        "y1": max(0.0, min(1.0, y1)),
+    }
+
+
+def _load_ir_payload(ir_path: str) -> dict | None:
+    path = Path(ir_path)
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        logger.warning("Unreadable parsed IR at %s", path)
+        return None
+    return payload if isinstance(payload, dict) else None
 
 
 def delete_document(session_id: str, document_id: str) -> None:
@@ -204,23 +298,23 @@ def get_document_content(session_id: str, document_id: str) -> dict:
     }
 
 
+def _iter_ir_blocks(payload: dict) -> list[dict]:
+    """IR 可能把 blocks 放在文档级，也可能只放在页级。"""
+    blocks = payload.get("blocks") or []
+    if blocks:
+        return blocks
+    return [block for page in payload.get("pages") or [] for block in page.get("blocks") or []]
+
+
 def _load_ir_blocks(ir_path: str | None) -> list[dict]:
     """Flatten ``document.ir.json`` into ordered, renderable blocks."""
     if not ir_path:
         return []
-    path = Path(ir_path)
-    if not path.is_file():
+    payload = _load_ir_payload(ir_path)
+    if payload is None:
         return []
 
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        logger.warning("Unreadable parsed IR at %s", path)
-        return []
-
-    raw_blocks = payload.get("blocks") or [
-        block for page in payload.get("pages") or [] for block in page.get("blocks") or []
-    ]
+    raw_blocks = _iter_ir_blocks(payload)
     ordered = sorted(
         raw_blocks,
         key=lambda block: (

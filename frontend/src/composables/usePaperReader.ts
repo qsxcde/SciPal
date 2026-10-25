@@ -1,6 +1,6 @@
 import { computed, ref } from "vue";
 import { getPaperContent } from "../api";
-import type { PaperContent } from "../api";
+import type { PaperContent, SourceBlockBox } from "../api";
 import type { ReaderOutlineItem } from "../types";
 import { toErrorMessage } from "../utils/error";
 
@@ -18,6 +18,9 @@ const errorMessage = ref("");
 const activeBlockId = ref<string | null>(null);
 const activeSectionKey = ref<string | null>(null);
 const isMounted = ref(false);
+/** 被引用命中的原文块坐标，供 PDF 原页高亮 */
+const citationBoxes = ref<SourceBlockBox[]>([]);
+const citationPage = ref<number | null>(null);
 
 let highlightTimer: number | null = null;
 
@@ -96,12 +99,20 @@ function setActiveSection(key: string | null): void {
   activeSectionKey.value = key;
 }
 
+/** 引用定位：同时记录原页坐标，阅读器据此切到「原页」并高亮。 */
+function revealCitation(blocks: SourceBlockBox[] | null, page: number | null): void {
+  citationBoxes.value = blocks ?? [];
+  citationPage.value = page;
+}
+
 function reset(): void {
   content.value = null;
   documentId.value = null;
   errorMessage.value = "";
   isLoading.value = false;
   activeSectionKey.value = null;
+  citationBoxes.value = [];
+  citationPage.value = null;
   unmount();
 }
 
@@ -114,8 +125,11 @@ export function usePaperReader() {
     errorMessage,
     activeBlockId,
     activeSectionKey,
+    citationBoxes,
+    citationPage,
     load,
     revealBlock,
+    revealCitation,
     clearHighlight,
     setActiveSection,
     mount,

@@ -24,6 +24,13 @@ export type SourceRef = {
   confidence?: number | null;
 };
 
+/** 引用块在原页的位置，坐标为 0-1 归一化、左上角原点。 */
+export type SourceBlockBox = {
+  id: string;
+  page_number: number;
+  bbox: { x0: number; y0: number; x1: number; y1: number } | null;
+};
+
 /** 引用定位结果：后端按 (document_id, chunk_index) 还原的完整段落。 */
 export type SourceChunk = {
   document_id: string;
@@ -35,6 +42,7 @@ export type SourceChunk = {
   type: string;
   text: string;
   block_ids: string[];
+  blocks: SourceBlockBox[];
 };
 
 export type DocumentStatus =

@@ -5,7 +5,7 @@ import type { SourceSelection } from "../types";
 import { toErrorMessage } from "../utils/error";
 import { usePaperReader } from "./usePaperReader";
 
-const { revealBlock } = usePaperReader();
+const { revealBlock, revealCitation } = usePaperReader();
 
 /**
  * 引用抽屉的共享状态。
@@ -47,8 +47,9 @@ async function openCitation(source: SourceRef, index: number): Promise<void> {
   isLoading.value = true;
   try {
     chunk.value = await getSourceChunk(sessionId, source.paper_id, source.chunk_index);
-    // 阅读器可见时同步滚动并高亮命中段落
+    // 阅读器可见时同步滚动并高亮命中段落；原页模式按坐标高亮
     revealBlock(chunk.value.block_ids);
+    revealCitation(chunk.value.blocks, chunk.value.page_start);
   } catch (error) {
     errorMessage.value = toErrorMessage(error, "读取原文失败");
   } finally {

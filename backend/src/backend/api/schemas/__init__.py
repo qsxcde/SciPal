@@ -17,6 +17,7 @@ from backend.api.schemas.document import (
     DocumentSummary,
     LibraryDocumentSummary,
     PaperBlock,
+    SourceBlockBox,
     SourceChunkResponse,
 )
 from backend.api.schemas.session import (
@@ -54,6 +55,7 @@ __all__ = [
     "SessionSnapshot",
     "SessionSummary",
     "SessionUpdateRequest",
+    "SourceBlockBox",
     "SourceChunkResponse",
     "UserResponse",
 ]

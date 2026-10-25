@@ -39,7 +39,8 @@
 | POST | `/sessions/{id}/documents` | 上传 PDF（异步摄取） | **202** | 400 / 401 / 404 / 413 |
 | DELETE | `/sessions/{id}/documents/{document_id}` | 删除文档并重建索引 | 200 | 401 / 404 |
 | GET | `/sessions/{id}/documents/{document_id}/content` | 结构化正文（阅读器） | 200 | 401 / 404 |
-| GET | `/sessions/{id}/documents/{document_id}/chunks/{chunk_index}` | 引用定位（还原原文段落） | 200 | 401 / 404 |
+| GET | `/sessions/{id}/documents/{document_id}/file` | 原始 PDF 字节（原页渲染） | 200 | 401 / 404 |
+| GET | `/sessions/{id}/documents/{document_id}/chunks/{chunk_index}` | 引用定位（还原原文段落 + 坐标） | 200 | 401 / 404 |
 | POST | `/sessions/{id}/messages` | 流式对话 | 200（SSE） | 401 / 404 |
 
 ## 3. 端点详情
@@ -268,7 +269,26 @@ curl "http://127.0.0.1:8000/sessions/$SID/documents/$DOC/content" \
 | 404 | `Session not found: <session_id>` |
 | 404 | `Document not found: <document_id>` |
 
-### 3.12 `GET /sessions/{id}/documents/{document_id}/chunks/{chunk_index}`
+### 3.12 `GET /sessions/{id}/documents/{document_id}/file`
+
+返回原始 PDF 字节，前端用 pdf.js 渲染「原页」视图。
+
+```bash
+curl "http://127.0.0.1:8000/sessions/$SID/documents/$DOC/file" \
+  -H "Authorization: Bearer $TOKEN" -o paper.pdf
+```
+
+说明：
+
+- `Content-Type: application/pdf`。
+- 只允许 data 目录内的路径；越界或文件缺失一律 404，避免被当作任意文件读取口。
+
+| 状态码 | detail |
+|---|---|
+| 404 | `Session not found: <session_id>` |
+| 404 | `Document file not found: <document_id>` |
+
+### 3.13 `GET /sessions/{id}/documents/{document_id}/chunks/{chunk_index}`
 
 把回答里的 `sources` 还原为原文段落，供前端「引用即定位」面板使用。
 
@@ -287,7 +307,14 @@ curl "http://127.0.0.1:8000/sessions/$SID/documents/$DOC/chunks/4" \
   "page_end": 8,
   "type": "paragraph",
   "text": "<完整 chunk 正文，非 excerpt>",
-  "block_ids": ["b-12", "b-13"]
+  "block_ids": ["b-12", "b-13"],
+  "blocks": [
+    {
+      "id": "b-12",
+      "page_number": 7,
+      "bbox": { "x0": 0.1, "y0": 0.12, "x1": 0.9, "y1": 0.35 }
+    }
+  ]
 }
 ```
 
@@ -295,6 +322,7 @@ curl "http://127.0.0.1:8000/sessions/$SID/documents/$DOC/chunks/4" \
 
 - 按 `(session_id, document_id, chunk_index)` 唯一命中，跨会话返回 404，避免用 document_id 横向越权。
 - 返回 `chunks.text_content`（全文），而 SSE `sources[].text_excerpt` 只有 220 字符摘要。
+- `blocks[].bbox` 是 **0-1 归一化**坐标（左上原点），由 IR 的 PDF 点坐标除以页面宽高得到，前端可直接按渲染尺寸换算；IR 缺失或块不存在时为空数组。
 - 引用里的 `paper_id` 即 `document_id`；历史消息缺 `paper_id` 时前端只展示 excerpt。
 
 | 状态码 | detail |
@@ -302,7 +330,7 @@ curl "http://127.0.0.1:8000/sessions/$SID/documents/$DOC/chunks/4" \
 | 404 | `Session not found: <session_id>` |
 | 404 | `Source chunk not found: document=<id> chunk=<n>` |
 
-### 3.13 `POST /sessions/{id}/messages`（SSE）
+### 3.14 `POST /sessions/{id}/messages`（SSE）
 
 ```json
 {"role": "user", "content": "这篇论文的核心贡献是什么？", "regenerate": false}
