@@ -77,7 +77,11 @@ def _count_glossary_matches(query: str, glossary: dict[str, list[str]]) -> int:
     return sum(1 for term in glossary if term.lower() in query_lower)
 
 
-def _needs_llm_expansion(query: str, glossary: dict[str, list[str]]) -> bool:
+def _needs_llm_expansion(
+    query: str,
+    glossary: dict[str, list[str]],
+    llm_fallback: bool = True,
+) -> bool:
     """Determine if LLM term expansion is warranted.
 
     Triggers when:

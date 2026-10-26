@@ -31,7 +31,10 @@ jobs:
           uv venv .venv-ci
           uv pip install --python .venv-ci/bin/python \
             pytest pytest-asyncio fastapi pydantic pydantic-settings \
-            python-jose bcrypt
+            python-jose bcrypt ruff
+
+      - name: Lint (ruff)
+        run: .venv-ci/bin/ruff check backend/src tests
 
       - name: Byte-compile all sources
         run: .venv-ci/bin/python -m compileall -q backend/src
