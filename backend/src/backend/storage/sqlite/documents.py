@@ -1,5 +1,8 @@
 import uuid
 
+from typing import cast
+
+from backend.core.model.records import DocumentRecord
 from backend.storage.sqlite.connection import connect, transaction
 from backend.storage.sqlite.sessions import now_iso
 
@@ -11,7 +14,7 @@ def create_document(
     mime_type: str,
     file_size: int,
     document_id: str | None = None,
-) -> dict:
+) -> DocumentRecord:
 
     document_id = document_id or str(uuid.uuid4())
     timestamp = now_iso()
@@ -32,21 +35,21 @@ def create_document(
     return document
 
 
-def get_document(document_id: str) -> dict | None:
+def get_document(document_id: str) -> DocumentRecord | None:
 
     with connect() as conn:
         row = conn.execute("SELECT * FROM documents WHERE id = ?", (document_id,)).fetchone()
-        return dict(row) if row else None
+        return cast(DocumentRecord, dict(row)) if row else None
 
 
-def list_documents(session_id: str) -> list[dict]:
+def list_documents(session_id: str) -> list[DocumentRecord]:
 
     with connect() as conn:
         rows = conn.execute(
             "SELECT * FROM documents WHERE session_id = ? ORDER BY created_at ASC",
             (session_id,),
         ).fetchall()
-        return [dict(row) for row in rows]
+        return [cast(DocumentRecord, dict(row)) for row in rows]
 
 
 def list_documents_with_session(user_id: str | None) -> list[dict]:
