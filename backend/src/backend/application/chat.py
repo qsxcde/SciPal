@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -26,6 +27,8 @@ from backend.storage.sqlite import sessions as session_repo
 from backend.storage.sqlite.sessions import touch_session
 
 logger = logging.getLogger(__name__)
+
+STREAM_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="scipal-stream")
 
 MISSING_SOURCES_EVENT_ERROR = "Stream protocol error: missing sources event from stream_answer()."
 
@@ -79,8 +82,18 @@ class StreamCollector:
     async def consume_stream(self, stream) -> AsyncIterator[TokenEvent]:
         loop = asyncio.get_running_loop()
         gen = iter(stream)
+        try:
+            async for event in self._drain(gen, loop):
+                yield event
+        finally:
+            # 取消/中断时释放同步生成器，避免挂起的 HTTP 响应继续计费
+            close = getattr(gen, "close", None)
+            if close is not None:
+                close()
+
+    async def _drain(self, gen, loop) -> AsyncIterator[TokenEvent]:
         while True:
-            done, event = await loop.run_in_executor(None, _advance_stream_gen, gen)
+            done, event = await loop.run_in_executor(STREAM_EXECUTOR, _advance_stream_gen, gen)
             if done:
                 if event is not None:
                     event = {"type": "_retval", "value": event}
@@ -275,12 +288,15 @@ async def _persist_interrupted_answer(session_id: str, state: StreamCollector) -
     if not state.full_content.strip():
         return
     try:
-        await _persist_and_touch(
-            session_id,
-            "assistant",
-            state.full_content,
-            sources=state.sources,
-            status="stopped",
+        # shield：取消域内仍要写完这条 stopped 消息
+        await asyncio.shield(
+            _persist_and_touch(
+                session_id,
+                "assistant",
+                state.full_content,
+                sources=state.sources,
+                status="stopped",
+            )
         )
     except BaseException:
         logger.warning("Failed to persist interrupted answer session=%s", session_id, exc_info=True)

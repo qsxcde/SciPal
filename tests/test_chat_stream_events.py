@@ -264,3 +264,27 @@ async def test_provider_usage_is_persisted_when_available(monkeypatch, session):
     stored = message_repo.list_messages(session["id"])[-1]
     assert stored["prompt_tokens"] == 11
     assert stored["completion_tokens"] == 7
+
+
+@pytest.mark.integration
+async def test_cancelling_the_stream_closes_the_sync_generator():
+    """取消时同步生成器必须被 close，否则上游 HTTP 响应不会被释放。"""
+    from backend.application.chat import StreamCollector
+
+    closed = False
+
+    def _source():
+        nonlocal closed
+        try:
+            yield "one"
+            yield "two"
+        finally:
+            closed = True
+
+    collector = StreamCollector()
+    stream = collector.consume_stream(_source())
+    await stream.__anext__()
+
+    await stream.aclose()
+
+    assert closed is True
