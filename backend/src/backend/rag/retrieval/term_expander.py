@@ -40,11 +40,13 @@ Query: {query}
 
 def load_glossary() -> dict[str, list[str]]:
     """Load term glossary from JSON file. Returns empty dict on failure."""
-    from backend.config import project_root
+    from backend.config import backend_project_dir
     raw_path = settings.term_expand_glossary_path
     path = Path(raw_path)
     if not path.is_absolute():
-        path = project_root() / raw_path
+        # Relative paths are documented against the repository root, e.g.
+        # "backend/data/term_glossary.json".
+        path = backend_project_dir().parent / raw_path
     if not path.exists():
         logger.warning("Term glossary not found at %s, skipping", path)
         return {}

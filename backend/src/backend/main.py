@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api.errors import register_exception_handlers
 from backend.api.routes import auth, chat, documents, sessions
 from backend.application.documents import recover_orphaned_documents
-from backend.config import settings
+from backend.config import env_file_path, repo_env_file_warning, settings
 from backend.storage.sqlite.schema import init_db
 from backend.worker.handlers import register_default_handlers
 from backend.worker.runner import InProcessJobRunner
@@ -26,8 +26,21 @@ logger = logging.getLogger(__name__)
 runner = InProcessJobRunner()
 
 
+def _log_configuration_source() -> None:
+    """Make the effective .env path visible; a stray root-level .env is ignored."""
+    env_path = env_file_path()
+    if env_path.is_file():
+        logger.info("Configuration: loading %s", env_path)
+    else:
+        logger.info("Configuration: %s not found, using environment and defaults", env_path)
+    warning = repo_env_file_warning()
+    if warning:
+        logger.warning(warning)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    _log_configuration_source()
     await asyncio.to_thread(init_db)
     try:
         await asyncio.to_thread(recover_orphaned_documents)

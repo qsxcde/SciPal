@@ -9,9 +9,28 @@ def backend_root() -> Path:
     return Path(__file__).resolve().parents[0]
 
 
-def project_root() -> Path:
-    """Repository root (parent of the ``src`` layout)."""
+def backend_project_dir() -> Path:
+    """Backend project directory (it owns ``pyproject.toml``, i.e. ``<repo>/backend``)."""
     return backend_root().parent.parent
+
+
+def env_file_path() -> Path:
+    """The `.env` file that ``RuntimeSettings`` actually loads.
+
+    A repository-root `.env` is *not* read; see ``repo_env_file_warning``.
+    """
+    return backend_project_dir() / ".env"
+
+
+def repo_env_file_warning() -> str | None:
+    """Explain a repository-root `.env` that would be silently ignored."""
+    stray = backend_project_dir().parent / ".env"
+    if not stray.is_file():
+        return None
+    return (
+        f"Ignoring {stray}: SciPal only loads {env_file_path()}. "
+        "Move the file or copy the values there."
+    )
 
 
 class RuntimeSettings(BaseSettings):
@@ -98,7 +117,7 @@ class RuntimeSettings(BaseSettings):
     msg_no_valid_citations: str = "模型生成的回答中未引用有效论文来源，请核实。"
     msg_default_session_title: str = "新论文会话"
 
-    model_config = SettingsConfigDict(env_file=project_root() / ".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=env_file_path(), extra="ignore")
 
 
 class Settings(RuntimeSettings):

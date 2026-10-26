@@ -87,10 +87,10 @@ cd 01-SciPal
 
 ### 2. 配置环境变量
 
-复制并填写仓库根目录的 `.env`：
+复制并填写 `backend/.env`（后端只读取这个路径，仓库根目录的 `.env` 会被忽略并在启动时告警）：
 
 ```bash
-cp backend/.env.example .env
+cp backend/.env.example backend/.env
 ```
 
 示例配置：

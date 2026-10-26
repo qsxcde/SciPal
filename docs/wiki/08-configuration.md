@@ -1,13 +1,18 @@
 # 08 配置参考
 
 定义：`backend/src/backend/config.py`（`RuntimeSettings`，pydantic-settings `BaseSettings`）
-加载：`SettingsConfigDict(env_file=project_root() / ".env", extra="ignore")`
-即：读取**仓库根目录**的 `.env`，未设置 `env_prefix`，环境变量名 = 字段名大写。
+加载：`SettingsConfigDict(env_file=env_file_path(), extra="ignore")`，其中
+`env_file_path() = backend_project_dir() / ".env"`
+即：读取 **`backend/.env`**，未设置 `env_prefix`，环境变量名 = 字段名大写。
+仓库根目录的 `.env` **不会被读取**，启动时会打印一条 warning。
 
 ```
-SciPal/.env          ← 后端配置（不是 backend/.env）
-frontend/.env        ← 仅 VITE_* 变量
+SciPal/backend/.env  ← 后端配置（唯一生效路径）
+SciPal/frontend/.env ← 仅 VITE_* 变量
 ```
+
+启动日志会打印实际加载的路径：
+`Configuration: loading /…/SciPal/backend/.env`。
 
 模块级单例 `settings = RuntimeSettings()` 在 import 时即完成加载；改配置必须重启进程。
 
