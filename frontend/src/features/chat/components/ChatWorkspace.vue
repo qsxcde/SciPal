@@ -2,7 +2,7 @@
 import ChatComposer from "./ChatComposer.vue";
 import ChatHeaderBar from "./ChatHeaderBar.vue";
 import MessageList from "./MessageList.vue";
-import type { ChatMessageViewModel, SuggestedPrompt, UploadStatus } from "../types";
+import type { ChatMessageViewModel, SuggestedPrompt, UploadStatus } from "../../../types";
 
 defineProps<{
   canOpenReader: boolean;

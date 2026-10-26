@@ -3,9 +3,9 @@ import { Promotion } from "@element-plus/icons-vue";
 import { computed, nextTick, ref, watch } from "vue";
 import type { InputInstance } from "element-plus";
 import ComposerTools from "./ComposerTools.vue";
-import UploadStatusCard from "./UploadStatusCard.vue";
-import { usePaperChat } from "../composables/usePaperChat";
-import type { ComposerToolState, UploadStatus } from "../types";
+import UploadStatusCard from "../../../components/UploadStatusCard.vue";
+import { usePaperChat } from "../../../composables/usePaperChat";
+import type { ComposerToolState, UploadStatus } from "../../../types";
 
 const props = defineProps<{
   draft: string;

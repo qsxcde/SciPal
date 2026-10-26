@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MoreFilled, Paperclip, Search } from "@element-plus/icons-vue";
 import { computed } from "vue";
-import type { ComposerToolState } from "../types";
+import type { ComposerToolState } from "../../../types";
 
 const props = defineProps<{
   disabled: boolean;

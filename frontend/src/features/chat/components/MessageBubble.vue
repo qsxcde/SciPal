@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import MarkdownContent from "./MarkdownContent.vue";
+import MarkdownContent from "../../../components/MarkdownContent.vue";
 import MessageActions from "./MessageActions.vue";
 import SourceCitationList from "./SourceCitationList.vue";
-import type { SourceRef } from "../api";
-import { useSourcePreview } from "../composables/useSourcePreview";
-import type { ChatMessageViewModel } from "../types";
+import type { SourceRef } from "../../../api";
+import { useSourcePreview } from "../../../composables/useSourcePreview";
+import type { ChatMessageViewModel } from "../../../types";
 
 const EMPTY_ASSISTANT_FALLBACK = "回答生成失败，请重试或重新发送问题。";
 

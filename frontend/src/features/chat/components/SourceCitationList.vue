@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { SourceRef } from "../api";
-import { formatPageRange } from "../utils/format";
+import type { SourceRef } from "../../../api";
+import { formatPageRange } from "../../../utils/format";
 
 defineProps<{
   sources: SourceRef[];
