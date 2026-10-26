@@ -63,5 +63,11 @@ jobs:
       - name: Test
         run: npm test
 
+      # 生成的类型必须与 contracts/openapi.json 一致，否则说明改了契约没重新生成
+      - name: Verify generated types
+        run: |
+          npm run gen
+          git diff --exit-code -- src/contracts
+
       - name: Build
         run: npm run build

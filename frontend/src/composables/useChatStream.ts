@@ -71,14 +71,27 @@ export function useChatStream(options: UseChatStreamOptions) {
     for await (const chunk of streamChat(sessionId, content, abortController?.signal, {
       regenerate,
     })) {
-      if (chunk.type === "token") {
-        accumulated += chunk.value;
-        assistant.text = accumulated;
-      } else if (chunk.type === "sources") {
-        assistant.sources = chunk.value;
-      } else if (chunk.type === "error") {
-        assistant.text = accumulated || `生成失败：${chunk.value}`;
-        return;
+      switch (chunk.type) {
+        case "token":
+          accumulated += chunk.value;
+          assistant.text = accumulated;
+          break;
+        case "sources":
+          assistant.sources = chunk.value;
+          break;
+        case "error":
+          assistant.text = accumulated || `生成失败：${chunk.value}`;
+          return;
+        case "status":
+        case "warning":
+        case "done":
+          // 状态与告警只影响进度提示，正文由 token 事件驱动。
+          break;
+        default: {
+          // 后端新增事件类型时这里会编译失败，强制前端补齐处理。
+          const unhandled: never = chunk;
+          void unhandled;
+        }
       }
     }
   }

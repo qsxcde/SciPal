@@ -77,6 +77,7 @@ app.include_router(chat.router)
 
 @app.get("/health")
 def health():
+    """健康检查：进程存活与后台任务线程状态。"""
     return {
         "status": "ok",
         "job_runner": runner.health_status() if runner is not None else {},

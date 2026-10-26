@@ -15,6 +15,7 @@ router = APIRouter(prefix="/auth")
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def register(body: AuthRequest) -> AuthResponse:
+    """注册账号并直接签发 token。"""
     if not settings.jwt_secret_key:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Auth not configured")
     username = body.username.strip()
@@ -36,6 +37,7 @@ def register(body: AuthRequest) -> AuthResponse:
 
 @router.post("/login", response_model=AuthResponse)
 def login(body: AuthRequest) -> AuthResponse:
+    """用用户名密码换取 JWT。"""
     if not settings.jwt_secret_key:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Auth not configured")
     user = user_repo.get_user_by_username(body.username.strip())
@@ -50,4 +52,5 @@ def login(body: AuthRequest) -> AuthResponse:
 
 @router.get("/me", response_model=UserResponse)
 def me(user: dict = Depends(get_current_user)) -> UserResponse:
+    """返回当前 token 对应的用户。"""
     return UserResponse(id=user["id"], username=user["username"])

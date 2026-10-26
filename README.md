@@ -227,15 +227,28 @@ uv run --project backend python -m scipal_eval.cli run \
 
 ## API 概览
 
+<!-- api-endpoints:start -->
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/sessions` | 创建会话 |
-| GET | `/sessions` | 读取会话列表 |
-| GET | `/sessions/{id}` | 读取会话快照，包含文档、消息、任务和索引状态 |
-| PATCH | `/sessions/{id}` | 更新会话标题或置顶状态 |
-| DELETE | `/sessions/{id}` | 归档会话 |
-| POST | `/sessions/{id}/documents` | 上传 PDF，返回文档与任务受理状态 |
-| POST | `/sessions/{id}/messages` | 发送消息，返回 `text/event-stream` |
+| POST | `/auth/login` | 用用户名密码换取 JWT。 |
+| GET | `/auth/me` | 返回当前 token 对应的用户。 |
+| POST | `/auth/register` | 注册账号并直接签发 token。 |
+| GET | `/documents` | 跨会话的文献库列表（已归档会话不计入）。 |
+| GET | `/health` | 健康检查：进程存活与后台任务线程状态。 |
+| GET | `/sessions` | 按当前用户列出会话（不含已归档）。 |
+| POST | `/sessions` | 新建空会话。 |
+| DELETE | `/sessions/{session_id}` | 归档会话（幂等，不暴露会话是否存在）。 |
+| GET | `/sessions/{session_id}` | 读取会话快照：文档、消息、任务与索引状态。 |
+| PATCH | `/sessions/{session_id}` | 更新会话标题或置顶状态。 |
+| POST | `/sessions/{session_id}/documents` | 上传 PDF 并受理异步摄取任务，立即返回 202。 |
+| DELETE | `/sessions/{session_id}/documents/{document_id}` | 删除单篇文档（行 + 分块 + 磁盘产物）并重建会话索引。 |
+| GET | `/sessions/{session_id}/documents/{document_id}/chunks/{chunk_index}` | 把回答里的引用还原为原文段落，供前端阅读器定位。 |
+| GET | `/sessions/{session_id}/documents/{document_id}/content` | 返回解析后的结构化正文，供阅读器渲染与引用定位。 |
+| GET | `/sessions/{session_id}/documents/{document_id}/file` | 下载/内联渲染原始 PDF（前端阅读器用）。 |
+| POST | `/sessions/{session_id}/messages` | 发送提问，以 text/event-stream 流式返回回答。 |
+<!-- api-endpoints:end -->
+
+> 上表由 `contracts/openapi.json` 生成，请勿手改（`python -m backend.scripts.api_table`）。
 
 ## 当前限制
 

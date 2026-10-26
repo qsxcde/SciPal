@@ -4,6 +4,24 @@
 本地地址：`http://127.0.0.1:8000`，OpenAPI 文档 `http://127.0.0.1:8000/docs`
 契约定义：`backend/src/backend/api/schemas/`（全部 snake_case，无 alias）
 
+契约真值（单一来源）：
+
+```
+backend/src/backend/api/schemas/*.py        ← 唯一定义处
+        │  python -m backend.scripts.export_openapi
+        ▼
+contracts/openapi.json                       ← 提交进仓库
+        │  cd frontend && npm run gen
+        ▼
+frontend/src/contracts/openapi.d.ts          ← 生成的 TS 类型，禁止手改
+```
+
+- `frontend/src/api/types.ts` 只做 `Schemas["Xxx"]` 的别名映射，不再手写字段。
+- SSE 事件模型不在 OpenAPI 的 paths 下，导出脚本会把 6 个 `ChatStream*Event`
+  和 `ChatStreamEvent` 联合补进 components。
+- CI 会校验：`contracts/openapi.json` 与 app 一致、生成类型与 JSON 一致、
+  README 端点表与契约一致。
+
 ## 1. 通用约定
 
 | 项 | 约定 |

@@ -8,11 +8,11 @@ class AuthRequest(BaseModel):
     password: str
 
 
-class AuthResponse(BaseModel):
-    token: str
-    user: dict
-
-
 class UserResponse(BaseModel):
     id: str
     username: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    user: UserResponse

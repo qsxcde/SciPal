@@ -16,11 +16,13 @@ router = APIRouter()
 
 @router.get("/sessions", response_model=list[SessionSummary])
 def list_sessions(user: dict = Depends(get_current_user)) -> list[dict]:
+    """按当前用户列出会话（不含已归档）。"""
     return session_service.list_sessions(user_id=user.get("id") or None)
 
 
 @router.post("/sessions", response_model=SessionCreateResponse)
 def create_session(user: dict = Depends(get_current_user)) -> SessionCreateResponse:
+    """新建空会话。"""
     return SessionCreateResponse(
         session_id=session_service.create_session(user_id=user.get("id") or None)
     )
@@ -28,6 +30,7 @@ def create_session(user: dict = Depends(get_current_user)) -> SessionCreateRespo
 
 @router.get("/sessions/{session_id}", response_model=SessionSnapshot)
 def get_session(session_id: str, user: dict = Depends(get_current_user)) -> dict:
+    """读取会话快照：文档、消息、任务与索引状态。"""
     snapshot = session_service.get_session_snapshot(session_id, user_id=user.get("id"))
     if snapshot is None:
         raise SessionNotFoundError(f"Session not found: {session_id}", session_id=session_id)
@@ -40,6 +43,7 @@ def update_session(
     payload: SessionUpdateRequest,
     _session: dict = Depends(get_accessible_session),
 ) -> dict:
+    """更新会话标题或置顶状态。"""
     summary = session_service.update_session(
         session_id=session_id,
         title=payload.title,
@@ -55,6 +59,7 @@ def delete_session(
     session_id: str,
     user: dict = Depends(get_current_user),
 ) -> dict:
+    """归档会话（幂等，不暴露会话是否存在）。"""
     # Intentionally idempotent: deleting an unknown or foreign session is a no-op
     # and must not reveal whether the session exists.
     if session_service.get_accessible_session(session_id, user.get("id")) is not None:

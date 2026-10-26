@@ -10,6 +10,7 @@
     "typecheck": "vue-tsc -b",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "gen": "npx --yes --package openapi-typescript@7.13.0 openapi-typescript ../contracts/openapi.json -o src/contracts/openapi.d.ts",
     "test": "vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

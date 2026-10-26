@@ -22,6 +22,7 @@ async def chat(
     session: dict = Depends(get_accessible_session),
     user: dict = Depends(get_current_user),
 ) -> StreamingResponse:
+    """发送提问，以 text/event-stream 流式返回回答。"""
     events = stream_session_chat(
         session_id=session["id"],
         content=message.content,

@@ -42,6 +42,7 @@ def upload_document(
     file: UploadFile = File(...),
     session: dict = Depends(get_accessible_session),
 ) -> DocumentIntakeResponse:
+    """上传 PDF 并受理异步摄取任务，立即返回 202。"""
     reject_by_content_length(request.headers.get("content-length"))
     pdf_bytes = read_upload_with_limit(file)
     intake = intake_document_upload(

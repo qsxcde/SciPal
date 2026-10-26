@@ -55,7 +55,7 @@ async function openCitation(source: SourceRef, index: number): Promise<void> {
     chunk.value = await getSourceChunk(sessionId, source.paper_id, source.chunk_index);
     // 阅读器可见时同步滚动并高亮命中段落；原页模式按坐标高亮
     revealBlock(chunk.value.block_ids);
-    revealCitation(chunk.value.blocks, chunk.value.page_start);
+    revealCitation(chunk.value.blocks, chunk.value.page_start ?? null);
   } catch (error) {
     errorMessage.value = toErrorMessage(error, "读取原文失败");
   } finally {
