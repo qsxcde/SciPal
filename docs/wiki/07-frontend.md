@@ -18,7 +18,7 @@
 运行时依赖：`vue ^3.5`、`vue-router ^4.6`、`element-plus ^2.12`、`@element-plus/icons-vue`、`markdown-it ^14.2`。
 开发依赖：`vite ^8`、`@vitejs/plugin-vue`、`typescript ~6.0`、`vue-tsc`、`eslint`、`typescript-eslint`、`eslint-plugin-vue`。
 
-`vite.config.ts` 只有 `plugins: [vue()]`——**没有 dev server 代理、没有路径别名**。跨域依赖后端 CORS，接口地址由 `VITE_API_BASE_URL` 提供（默认 `http://127.0.0.1:8000`）。
+`vite.config.ts` 注册 Vue 插件、dev server 代理（`/auth`、`/sessions`、`/health` → `VITE_DEV_PROXY_TARGET`，默认 `http://127.0.0.1:8000`）与 `manualChunks` 分包；没有路径别名。
 
 ## 2. 目录结构
 
@@ -30,21 +30,21 @@ frontend/
 ├── .env.example                 # VITE_API_BASE_URL=http://127.0.0.1:8000
 ├── prototypes/                  # 静态 HTML + 截图设计稿，不参与构建
 └── src/
-    ├── main.ts                  # 按需注册 Element Plus 组件 + 样式，mount #app
+    ├── main.ts                  # 注册 Element Plus + router，mount #app
     ├── App.vue                  # 三态：loading / 未登录 / 主界面
-    ├── AppLayout.vue            # 页面级编排，唯一调用 usePaperChat()
-    ├── index.css                # 全局样式与 CSS 变量
-    ├── api.ts                   # HTTP + SSE 客户端 + 后端契约类型
-    ├── types.ts                 # 视图模型（反向复用 api.ts 类型）
-    ├── router/index.ts          # hash 路由表（当前未注册）
+    ├── layouts/AppShell.vue     # 页面级编排，唯一调用 usePaperChat()
+    ├── contracts/openapi.d.ts   # 由 contracts/openapi.json 生成，禁止手改
+    ├── api/                     # client / sse / auth / chat / documents / library / ...
+    │   └── types.ts             # 后端契约别名映射（Schemas["Xxx"]）
+    ├── types/                   # view.ts 视图模型、index.ts 汇总
+    ├── router/index.ts          # hash 路由表，已在 main.ts 注册
     ├── utils/markdown.ts        # markdown-it token → MarkdownNode 树
+    ├── styles/                  # variables / base / layout / element-plus
     ├── views/LoginView.vue
-    ├── composables/
-    │   ├── useAuth.ts
-    │   ├── useSessionState.ts
-    │   ├── useChatStream.ts
-    │   └── usePaperChat.ts
-    └── components/              # 16 个 SFC
+    ├── constants/               # app / chat / upload
+    ├── composables/             # useAuth useSessionState useChatStream usePaperChat
+    │                            # useLibrary usePaperReader useSourcePreview useClientReset
+    └── components/              # 22 个 SFC（待 P5 按域拆分）
 ```
 
 ## 3. 组件树
