@@ -9,6 +9,7 @@ from backend.application import index_maintenance
 from backend.config import data_dir, settings
 from backend.domain.exceptions import (
     ChunkNotFoundError,
+    JobInProgressError,
     DocumentNotFoundError,
     InvalidUploadError,
     SessionNotFoundError,
@@ -224,6 +225,8 @@ def delete_document(session_id: str, document_id: str) -> None:
             document_id=document_id,
         )
 
+    _reject_if_job_running(session_id)
+
     chunk_repo.delete_chunks_for_document(document_id)
     document_repo.delete_document(document_id)
     _remove_document_files(document)
@@ -233,6 +236,14 @@ def delete_document(session_id: str, document_id: str) -> None:
     except Exception:
         logger.exception("Index rebuild failed after deleting document=%s", document_id)
         index_maintenance.invalidate_session_index(session_id, "索引重建失败")
+
+
+def _reject_if_job_running(session_id: str) -> None:
+    """删除 / 归档必须等摄取结束，否则 worker 会边写 chunk 边被删（FK 冲突）。"""
+    if job_repo.has_running_job(session_id):
+        raise JobInProgressError(
+            "Session is still being processed, try again later.", session_id=session_id
+        )
 
 
 def _remove_document_files(document: dict) -> None:

@@ -6,7 +6,9 @@ import pytest
 
 from backend.application import index_maintenance
 from backend.application.documents import delete_document
-from backend.domain.exceptions import DocumentNotFoundError
+from backend.domain.exceptions import DocumentNotFoundError, JobInProgressError
+from backend.domain.states import DocumentStage
+from backend.storage.sqlite import jobs as job_repo
 from backend.domain.models import Chunk, ChunkMetadata
 from backend.storage.sqlite import chunks as chunk_repo
 from backend.storage.sqlite import documents as document_repo
@@ -104,3 +106,20 @@ def test_rebuild_failure_invalidates_index(tmp_path, monkeypatch):
 
     assert document_repo.get_document(document_id) is None
     assert invalidated == [(session_id, "索引重建失败")]
+
+
+@pytest.mark.integration
+def test_delete_is_rejected_while_the_session_is_ingesting(tmp_path: Path):
+    session_id, document_id, _pdf = _seed(tmp_path)
+    job = job_repo.create_job(
+        session_id=session_id,
+        document_id=document_id,
+        job_type="document_ingestion",
+        stage=DocumentStage.uploaded,
+    )
+    assert job_repo.mark_job_running(job["id"]) is True
+
+    with pytest.raises(JobInProgressError):
+        delete_document(session_id, document_id)
+
+    assert document_repo.get_document(document_id) is not None

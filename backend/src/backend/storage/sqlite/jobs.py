@@ -153,3 +153,13 @@ def get_job(job_id: str) -> dict | None:
     with connect() as conn:
         row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return row_to_dict(row)
+
+
+def has_running_job(session_id: str) -> bool:
+    """Whether the session still has a job in the running state."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM jobs WHERE session_id = ? AND status = ? LIMIT 1",
+            (session_id, JobStatus.running),
+        ).fetchone()
+    return row is not None

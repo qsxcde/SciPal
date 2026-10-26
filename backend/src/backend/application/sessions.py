@@ -113,6 +113,12 @@ def get_store(session_id: str) -> AbstractVectorStore:
 
 
 def destroy_session(session_id: str) -> None:
+    if jobs.has_running_job(session_id):
+        from backend.domain.exceptions import JobInProgressError
+
+        raise JobInProgressError(
+            "Session is still being processed, try again later.", session_id=session_id
+        )
     sessions.archive_session(session_id)
     store_cache.discard_store(session_id)
     remove_session_dir(session_id)

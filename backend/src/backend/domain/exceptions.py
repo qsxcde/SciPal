@@ -52,6 +52,14 @@ class DocumentNotFoundError(Exception):
         super().__init__(message)
 
 
+class JobInProgressError(RuntimeError):
+    """Raised when a destructive action races with a running ingestion job."""
+
+    def __init__(self, message: str = "", session_id: str | None = None):
+        self.session_id = session_id
+        super().__init__(message)
+
+
 class ActiveIndexNotReadyError(RuntimeError):
     def __init__(self, message: str = "", session_id: str | None = None):
         self.session_id = session_id

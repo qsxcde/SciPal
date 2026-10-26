@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from backend.domain.exceptions import (
     ChunkNotFoundError,
     DocumentNotFoundError,
+    JobInProgressError,
     SessionNotFoundError,
     UploadTooLargeError,
     UploadValidationError,
@@ -34,6 +35,13 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={"detail": str(exc) or "Document not found"},
+        )
+
+    @app.exception_handler(JobInProgressError)
+    async def _job_in_progress(_request: Request, exc: JobInProgressError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"detail": str(exc) or "Job in progress"},
         )
 
     @app.exception_handler(UploadTooLargeError)
