@@ -46,3 +46,22 @@ class JobRecord(TypedDict):
     created_at: str
     started_at: str | None
     finished_at: str | None
+class SessionRecord(TypedDict):
+    id: str
+    title: str
+    user_id: str | None
+    created_at: str
+    updated_at: str
+    last_opened_at: str
+    is_archived: int
+    is_pinned: int
+
+
+class IndexRecord(TypedDict):
+    id: str
+    session_id: str
+    index_path: str
+    chunks_path: str
+    status: str
+    created_at: str
+    updated_at: str

@@ -1,10 +1,13 @@
 import uuid
 
+from typing import cast
+
+from backend.core.model.records import IndexRecord
 from backend.storage.sqlite.connection import connect, transaction
 from backend.storage.sqlite.sessions import now_iso
 
 
-def upsert_index(session_id: str, index_path: str, chunks_path: str, status: str) -> dict:
+def upsert_index(session_id: str, index_path: str, chunks_path: str, status: str) -> IndexRecord:
 
     timestamp = now_iso()
     existing = get_index(session_id)
@@ -42,11 +45,11 @@ def upsert_index(session_id: str, index_path: str, chunks_path: str, status: str
     return index
 
 
-def get_index(session_id: str) -> dict | None:
+def get_index(session_id: str) -> IndexRecord | None:
 
     with connect() as conn:
         row = conn.execute(
             "SELECT * FROM retrieval_indexes WHERE session_id = ?",
             (session_id,),
         ).fetchone()
-        return dict(row) if row else None
+        return cast(IndexRecord, dict(row)) if row else None
