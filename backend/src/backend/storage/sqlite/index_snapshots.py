@@ -199,7 +199,8 @@ def list_snapshots_pending_cleanup(stale_before: str) -> list[dict]:
                 stale_before,
             ),
         ).fetchall()
-        return [_row_to_snapshot(row) for row in rows]
+        snapshots = (_row_to_snapshot(row) for row in rows)
+        return [snapshot for snapshot in snapshots if snapshot is not None]
 
 
 def delete_snapshot(snapshot_id: str) -> bool:

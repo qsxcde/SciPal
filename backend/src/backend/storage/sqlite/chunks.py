@@ -1,4 +1,5 @@
 import json
+from typing import Any
 import uuid
 
 from backend.domain.models import Chunk, ChunkMetadata
@@ -165,7 +166,7 @@ def _json_or_none(value: object) -> str | None:
     return json.dumps(value, ensure_ascii=False)
 
 
-def _json_load(value: str | None) -> object:
+def _json_load(value: str | None) -> Any:
     if value is None:
         return None
     return json.loads(value)
