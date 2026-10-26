@@ -277,3 +277,19 @@ application/** 不得 import fastapi（保留现有规则）
    收进 `stores/`，暴露 `create/reset`；`resetClientState()` 改为调用它们。
 3. 最后拆 `PaperReader.vue`(587) 与 `LibraryPanel.vue`(471)，加 `eslint-plugin-boundaries` 规则。
 
+#### 4d 的前置判断（2026-10-27 补充）
+
+4d 的目标是「把 `storage/sqlite/*` 的裸 `dict` 换成 `core/model` 实体」。实施前必须先决定
+一件事：**仓库目前没有类型检查器**（只有 ruff 的 E9/F821/F841），所以单纯把 `-> dict`
+改成 `TypedDict` 或 pydantic 模型，除了运行期转换成本外**不会产生任何检查收益**——
+调用方继续写 `document["status"]` 也不会报错。
+
+因此 4d 的正确顺序是：
+
+1. 引入 `mypy`（`backend` dev 依赖 + CI 步骤），先只对 `core/` 与 `storage/` 开
+   `disallow_untyped_defs`，把现有的 `-> dict` 标注为 `dict[str, Any]` 作为基线；
+2. 加 `core/model/records.py`（`DocumentRecord` / `MessageRecord` / `JobRecord` 等 `TypedDict`），
+   逐个替换仓储函数签名——此时 mypy 会列出所有仍在用错误键名的调用点；
+3. 最后再把 `TypedDict` 换成 pydantic 实体（运行期校验 + 属性访问）。
+
+跳过第 1 步直接做 2/3，等于在没有网的情况下改 8 个高频函数的返回类型。
