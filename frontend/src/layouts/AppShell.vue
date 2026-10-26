@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import AppSidebar from "../components/AppSidebar.vue";
+import AppSidebar from "../features/sessions/components/AppSidebar.vue";
 import ChatWorkspace from "../features/chat/components/ChatWorkspace.vue";
 import LibraryPanel from "../features/library/components/LibraryPanel.vue";
 import PaperReader from "../features/reader/components/PaperReader.vue";

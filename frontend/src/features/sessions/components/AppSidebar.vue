@@ -4,7 +4,7 @@ import { Expand, Plus } from "@element-plus/icons-vue";
 import RenameSessionDialog from "./RenameSessionDialog.vue";
 import SessionList from "./SessionList.vue";
 import SidebarHeader from "./SidebarHeader.vue";
-import type { SessionActionTarget, SidebarSessionItem } from "../types";
+import type { SessionActionTarget, SidebarSessionItem } from "../../../types";
 
 const props = withDefaults(
   defineProps<{

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SessionListItem from "./SessionListItem.vue";
-import type { SidebarSessionItem } from "../types";
+import type { SidebarSessionItem } from "../../../types";
 
 defineProps<{
   collapsed: boolean;
