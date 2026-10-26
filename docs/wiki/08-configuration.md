@@ -96,6 +96,7 @@ SciPal/frontend/.env ← 仅 VITE_* 变量
 | `INDEX_POLL_MAX_INTERVAL` | `1.0` | 退避上限 |
 | `INDEX_MAX_WAIT` | `10.0` | 总等待预算（秒） |
 | `RUNNER_IDLE_POLL_INTERVAL` | `0.05` | runner 空转间隔 |
+| `RUNNER_CONCURRENCY` | `2` | 摄取作业并发数；1 为串行（旧行为） |
 
 ### 2.8 检索
 
