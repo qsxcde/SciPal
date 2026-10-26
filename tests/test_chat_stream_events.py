@@ -1,5 +1,7 @@
 """Chat streaming: event order and failure paths of the SSE use case."""
 
+import asyncio
+
 import pytest
 
 pytest.importorskip("faiss", reason="faiss-cpu is not installed")
@@ -178,3 +180,28 @@ async def test_successful_regenerate_removes_only_the_previous_answer(monkeypatc
     assert "old answer" not in contents
     assert "new answer" in contents
     assert contents.count("question") == 1
+
+
+@pytest.mark.integration
+async def test_turns_in_the_same_session_run_one_at_a_time(monkeypatch, session):
+    """同一会话的两路请求不能交错执行，否则 regenerate 会删掉另一路刚写的答案。"""
+    trace: list[str] = []
+
+    async def _resolve(session_id, **_kwargs):
+        trace.append(f"enter:{session_id}")
+        await asyncio.sleep(0.02)
+        trace.append(f"exit:{session_id}")
+        return object(), None
+
+    def _stream(_store, _content, *, options, policy, history):
+        yield {"type": "token", "value": "x"}
+        yield {"type": "sources", "value": []}
+
+    _stub(monkeypatch, _stream, resolve=_resolve)
+
+    await asyncio.gather(
+        _collect(chat_module.stream_session_chat(session["id"], "q1")),
+        _collect(chat_module.stream_session_chat(session["id"], "q2")),
+    )
+
+    assert trace == [f"enter:{session['id']}", f"exit:{session['id']}", f"enter:{session['id']}", f"exit:{session['id']}"]

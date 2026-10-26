@@ -110,7 +110,49 @@ class StreamCollector:
             raise RuntimeError(MISSING_SOURCES_EVENT_ERROR)
 
 
+_chat_locks: dict[str, asyncio.Lock] = {}
+
+
+def _session_lock(session_id: str) -> asyncio.Lock:
+    """One lock per session; the event loop serializes access to the dict."""
+    lock = _chat_locks.get(session_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _chat_locks[session_id] = lock
+    return lock
+
+
 async def stream_session_chat(
+    session_id: str,
+    content: str,
+    wait_timeout_seconds: float | None = None,
+    user_id: str | None = None,
+    regenerate: bool = False,
+) -> AsyncIterator[ChatEvent]:
+    """Serialize turns within one session.
+
+    Two tabs (or a regenerate racing a send) would otherwise interleave
+    "delete previous answer / read history / persist answer".
+    """
+    async with _session_lock(session_id):
+        inner = _stream_session_chat(
+            session_id,
+            content,
+            wait_timeout_seconds=wait_timeout_seconds,
+            user_id=user_id,
+            regenerate=regenerate,
+        )
+        try:
+            async for event in inner:
+                yield event
+        except GeneratorExit:
+            # 客户端中断：必须把 GeneratorExit 送进内层生成器，
+            # 否则「落库为 stopped」的清理逻辑会被跳过。
+            await inner.aclose()
+            raise
+
+
+async def _stream_session_chat(
     session_id: str,
     content: str,
     wait_timeout_seconds: float | None = None,
