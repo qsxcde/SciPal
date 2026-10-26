@@ -134,9 +134,13 @@ async def stream_session_chat(
         for status_event in pending_status_events:
             yield status_event
 
-        # 重新生成：删掉旧回答、复用已有提问，避免出现重复的 user 消息
+        # 重新生成：复用已有提问，新答案写成功后才删旧答案。
+        # 先删后写会在生成失败时永久丢失上一轮完整回答。
+        replaced_answer_id: str | None = None
         if regenerate:
-            await _to_thread(message_repo.delete_trailing_assistant_message, session_id)
+            previous = await _to_thread(message_repo.list_messages, session_id)
+            if previous and previous[-1]["role"] == "assistant":
+                replaced_answer_id = previous[-1]["id"]
         else:
             await _persist_and_touch(session_id, "user", content)
 
@@ -174,6 +178,8 @@ async def stream_session_chat(
         return
 
     await _persist_and_touch(session_id, "assistant", state.full_content, sources=state.sources)
+    if replaced_answer_id is not None:
+        await _to_thread(message_repo.delete_message, replaced_answer_id)
     if state.warning:
         yield WarningEvent(value=state.warning)
     yield SourcesEvent(value=state.sources)

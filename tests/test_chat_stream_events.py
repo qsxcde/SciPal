@@ -138,3 +138,43 @@ async def test_client_abort_persists_a_stopped_answer(monkeypatch, session):
     assert stored[-1]["role"] == "assistant"
     assert stored[-1]["content"] == "half"
     assert stored[-1]["status"] == "stopped"
+
+
+@pytest.mark.integration
+async def test_failed_regenerate_keeps_the_previous_answer(monkeypatch, session):
+    """重新生成失败时不能把上一轮完整回答删掉。"""
+    message_repo.create_message(session["id"], "user", "question")
+    message_repo.create_message(session["id"], "assistant", "old answer")
+
+    def _stream(_store, _content, *, options, policy, history):
+        yield {"type": "token", "value": "partial"}
+
+    _stub(monkeypatch, _stream)
+
+    await _collect(
+        chat_module.stream_session_chat(session["id"], "question", regenerate=True)
+    )
+
+    contents = [message["content"] for message in message_repo.list_messages(session["id"])]
+    assert "old answer" in contents
+
+
+@pytest.mark.integration
+async def test_successful_regenerate_removes_only_the_previous_answer(monkeypatch, session):
+    message_repo.create_message(session["id"], "user", "question")
+    message_repo.create_message(session["id"], "assistant", "old answer")
+
+    def _stream(_store, _content, *, options, policy, history):
+        yield {"type": "token", "value": "new answer"}
+        yield {"type": "sources", "value": []}
+
+    _stub(monkeypatch, _stream)
+
+    await _collect(
+        chat_module.stream_session_chat(session["id"], "question", regenerate=True)
+    )
+
+    contents = [message["content"] for message in message_repo.list_messages(session["id"])]
+    assert "old answer" not in contents
+    assert "new answer" in contents
+    assert contents.count("question") == 1

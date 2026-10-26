@@ -46,6 +46,13 @@ def create_message(
     return message
 
 
+def delete_message(message_id: str) -> bool:
+    """Delete one message by id; used after a successful regenerate."""
+    with transaction() as conn:
+        cursor = conn.execute("DELETE FROM messages WHERE id = ?", (message_id,))
+    return cursor.rowcount > 0
+
+
 def delete_trailing_assistant_message(session_id: str) -> bool:
     """Delete the newest assistant answer when it is the last message.
 
