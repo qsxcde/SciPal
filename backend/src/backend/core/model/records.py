@@ -33,3 +33,16 @@ class MessageRecord(TypedDict):
     prompt_tokens: int | None
     completion_tokens: int | None
     created_at: str
+class JobRecord(TypedDict):
+    id: str
+    session_id: str
+    document_id: str | None
+    type: str
+    status: str
+    stage: str
+    attempt: int
+    error_message: str | None
+    payload_json: str | None
+    created_at: str
+    started_at: str | None
+    finished_at: str | None

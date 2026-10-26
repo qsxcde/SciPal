@@ -1,5 +1,7 @@
 import uuid
-from typing import Literal
+from typing import Literal, cast
+
+from backend.core.model.records import JobRecord
 
 from backend.domain.states import DocumentStage
 from backend.domain.states import JobStatus
@@ -16,7 +18,7 @@ def create_job(
     job_type: str,
     stage: DocumentStage,
     payload_json: str | None = None,
-) -> dict:
+) -> JobRecord:
 
     job_id = str(uuid.uuid4())
     timestamp = now_iso()
@@ -37,7 +39,7 @@ def create_job(
     return job
 
 
-def list_runnable_jobs(limit: int = 10) -> list[dict]:
+def list_runnable_jobs(limit: int = 10) -> list[JobRecord]:
 
     with connect() as conn:
         rows = conn.execute(
@@ -49,10 +51,10 @@ def list_runnable_jobs(limit: int = 10) -> list[dict]:
             """,
             (limit,),
         ).fetchall()
-        return [dict(row) for row in rows]
+        return [cast(JobRecord, dict(row)) for row in rows]
 
 
-def list_running_jobs(limit: int = 10) -> list[dict]:
+def list_running_jobs(limit: int = 10) -> list[JobRecord]:
 
     with connect() as conn:
         rows = conn.execute(
@@ -64,10 +66,10 @@ def list_running_jobs(limit: int = 10) -> list[dict]:
             """,
             (JobStatus.running, JobStatus.interrupted, limit),
         ).fetchall()
-        return [dict(row) for row in rows]
+        return [cast(JobRecord, dict(row)) for row in rows]
 
 
-def list_jobs_for_session(session_id: str) -> list[dict]:
+def list_jobs_for_session(session_id: str) -> list[JobRecord]:
 
     with connect() as conn:
         rows = conn.execute(
@@ -78,7 +80,7 @@ def list_jobs_for_session(session_id: str) -> list[dict]:
             """,
             (session_id,),
         ).fetchall()
-        return [dict(row) for row in rows]
+        return [cast(JobRecord, dict(row)) for row in rows]
 
 
 def mark_job_running(job_id: str) -> bool:
@@ -148,11 +150,11 @@ def mark_job_finished(
     return cursor.rowcount > 0
 
 
-def get_job(job_id: str) -> dict | None:
+def get_job(job_id: str) -> JobRecord | None:
 
     with connect() as conn:
         row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
-        return row_to_dict(row)
+        return cast(JobRecord | None, row_to_dict(row))
 
 
 def has_running_job(session_id: str) -> bool:
