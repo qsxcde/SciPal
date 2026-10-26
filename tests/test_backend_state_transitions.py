@@ -2,9 +2,11 @@
 
 import pytest
 
-from backend.domain.states import DocumentStage, JobStatus
+from backend.api.schemas.session import PersistedMessage
+from backend.domain.states import DocumentStage, JobStatus, MessageStatus
 from backend.storage.sqlite import documents
 from backend.storage.sqlite import jobs
+from backend.storage.sqlite import messages
 from backend.storage.sqlite import sessions
 
 
@@ -71,3 +73,26 @@ def test_document_status_update_clears_stale_error_message():
     refreshed = documents.get_document(document["id"])
     assert refreshed["status"] == DocumentStage.parsing
     assert refreshed["error_message"] is None
+
+
+@pytest.mark.unit
+def test_stopped_message_satisfies_the_persisted_message_contract():
+    """Regression: a stopped answer must not break GET /sessions/{id}.
+
+    application/chat.py persists status="stopped" when the client aborts
+    mid-stream. The snapshot response model is what turns such a row into a
+    500 for the whole session, so the contract is asserted against the stored
+    row rather than against a hand-built payload.
+    """
+    session = sessions.create_session("stopped answer")
+    stored = messages.create_message(
+        session_id=session["id"],
+        role="assistant",
+        content="partial answer",
+        status=MessageStatus.stopped,
+    )
+
+    persisted = PersistedMessage(**stored)
+
+    assert persisted.status is MessageStatus.stopped
+    assert persisted.content == "partial answer"

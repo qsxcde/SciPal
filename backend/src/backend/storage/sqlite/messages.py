@@ -3,6 +3,7 @@ import uuid
 from typing import Literal
 
 from backend.domain.models import SourceRef
+from backend.domain.states import MessageStatus
 from backend.storage.sqlite.connection import connect, transaction
 from backend.storage.sqlite.sessions import now_iso
 
@@ -25,7 +26,7 @@ def create_message(
     role: Literal["user", "assistant"],
     content: str,
     sources: list[SourceRef] | None = None,
-    status: Literal["complete", "failed", "stopped"] = "complete",
+    status: MessageStatus = MessageStatus.complete,
 ) -> dict:
 
     message_id = str(uuid.uuid4())

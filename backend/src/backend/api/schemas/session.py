@@ -9,6 +9,7 @@ from backend.domain.models import SourceRef
 from backend.domain.states import DocumentStage
 from backend.domain.states import IndexSnapshotStatus
 from backend.domain.states import JobStatus
+from backend.domain.states import MessageStatus
 from backend.domain.states import SessionStatus
 
 
@@ -22,7 +23,7 @@ class PersistedMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
     sources: list[SourceRef] = Field(default_factory=list)
-    status: Literal["complete", "failed"]
+    status: MessageStatus
     created_at: str
 
 

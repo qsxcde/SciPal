@@ -20,6 +20,12 @@ class DocumentStage(StrEnum):
     failed = "failed"
 
 
+class MessageStatus(StrEnum):
+    complete = "complete"
+    failed = "failed"
+    stopped = "stopped"
+
+
 class IndexSnapshotStatus(StrEnum):
     building = "building"
     ready = "ready"
