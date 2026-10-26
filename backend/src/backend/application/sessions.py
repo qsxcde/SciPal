@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from backend.domain.access import session_is_accessible
 from backend.config import settings
-from backend.rag.indexing.vector_store import AbstractVectorStore
 from backend.domain.exceptions import SessionNotFoundError
 from backend.domain.states import DocumentStage, PROCESSING_DOCUMENT_STAGES, SessionStatus
 from backend.storage.sqlite import chunks
@@ -12,6 +15,9 @@ from backend.storage.sqlite import messages
 from backend.storage.sqlite import sessions
 from backend.adapters.vector import store_cache
 from backend.storage.paths import remove_session_dir
+
+if TYPE_CHECKING:
+    from backend.rag.indexing.vector_store import AbstractVectorStore
 
 
 def create_session(user_id: str | None = None) -> str:

@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 import threading
 from collections import OrderedDict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from backend.domain.states import PROCESSING_DOCUMENT_STAGES
-from backend.rag.indexing.vector_store import FAISSVectorStore
 from backend.rag.retrieval.filters import filter_indexable_chunks
+
+if TYPE_CHECKING:
+    from backend.rag.indexing.vector_store import FAISSVectorStore
 from backend.storage.paths import session_indexes_dir
 from backend.storage.sqlite import chunks as chunk_repo
 from backend.storage.sqlite import documents as document_repo
@@ -29,6 +34,19 @@ def index_paths(session_id: str) -> tuple[str, str]:
     return str(indexes_dir / "faiss.index"), str(indexes_dir / "chunks.json")
 
 
+def _new_store() -> FAISSVectorStore:
+    """Import FAISS lazily so importing this module stays dependency-light."""
+    from backend.rag.indexing.vector_store import FAISSVectorStore
+
+    return FAISSVectorStore()
+
+
+def _load_store(index_path: Path, chunks_path: Path) -> FAISSVectorStore:
+    from backend.rag.indexing.vector_store import FAISSVectorStore
+
+    return FAISSVectorStore.load(index_path=index_path, chunks_path=chunks_path)
+
+
 def get_store(session_id: str) -> FAISSVectorStore:
     with _store_lock:
         metadata = index_repo.get_index(session_id)
@@ -37,9 +55,9 @@ def get_store(session_id: str) -> FAISSVectorStore:
             cached = _stores.get(session_id)
             if cached and cached[0] == cache_key:
                 return cached[1]
-            store = FAISSVectorStore.load(
-                index_path=Path(metadata["index_path"]),
-                chunks_path=Path(metadata["chunks_path"]),
+            store = _load_store(
+                Path(metadata["index_path"]),
+                Path(metadata["chunks_path"]),
             )
             _cache_store(session_id, cache_key, store)
             return store
@@ -55,11 +73,11 @@ def get_store(session_id: str) -> FAISSVectorStore:
             for document in session_documents
         )
         if existing_chunks and not has_processing_documents:
-            store = FAISSVectorStore()
+            store = _new_store()
             store.add_chunks(filter_indexable_chunks(existing_chunks))
             return store
 
-        store = FAISSVectorStore()
+        store = _new_store()
         _cache_store(session_id, "empty", store)
         return store
 
@@ -76,9 +94,9 @@ def get_store_for_snapshot(snapshot: dict) -> FAISSVectorStore:
         cached = _stores.get(session_id)
         if cached and cached[0] == cache_key:
             return cached[1]
-        store = FAISSVectorStore.load(
-            index_path=Path(snapshot["index_path"]),
-            chunks_path=Path(snapshot["chunks_path"]),
+        store = _load_store(
+            Path(snapshot["index_path"]),
+            Path(snapshot["chunks_path"]),
         )
         _cache_store(session_id, cache_key, store)
         return store
