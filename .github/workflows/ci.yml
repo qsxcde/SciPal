@@ -37,10 +37,10 @@ jobs:
         run: .venv-ci/bin/ruff check backend/src tests
 
       # 类型检查先只覆盖存储层与内核，作为 4d 的基线
-      - name: Type check (mypy, storage + core)
+      - name: Type check (mypy, storage + core + application)
         run: >-
           .venv-ci/bin/mypy --config-file backend/pyproject.toml
-          backend/src/backend/storage backend/src/backend/core
+          backend/src/backend/storage backend/src/backend/core backend/src/backend/application
 
       - name: Byte-compile all sources
         run: .venv-ci/bin/python -m compileall -q backend/src

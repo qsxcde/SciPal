@@ -63,5 +63,5 @@ addopts = "-q"
 python_version = "3.11"
 ignore_missing_imports = true
 warn_unused_ignores = false
-# 基线：先锁住存储层与内核；用例层还差 27 处调用点（见 remediation-plan 交接章节）
-files = ["src/backend/storage", "src/backend/core"]
+# 存储层、内核、用例层全部纳入；接口层仍是 dict 边界，暂不纳入
+files = ["src/backend/storage", "src/backend/core", "src/backend/application"]

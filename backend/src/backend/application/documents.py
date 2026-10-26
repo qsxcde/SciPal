@@ -138,7 +138,9 @@ def get_document_file(session_id: str, document_id: str) -> Path:
     return path
 
 
-def _get_owned_document(session_id: str, document_id: str) -> dict:
+def _get_owned_document(
+    session_id: str, document_id: str
+) -> DocumentRecord:
     document = document_repo.get_document(document_id)
     if document is None or document["session_id"] != session_id:
         raise DocumentNotFoundError(

@@ -8,6 +8,7 @@ from collections.abc import Callable
 
 from backend.adapters.vector import store_cache
 from backend.core.contracts.ports import VectorStore
+from backend.core.model.records import SnapshotRecord
 from backend.config import settings
 from backend.domain.exceptions import ActiveIndexNotReadyError, SessionNotFoundError
 from backend.storage.sqlite import index_snapshots as snapshot_repo
@@ -36,11 +37,17 @@ async def resolve_session_store(
             session_id,
             timeout_seconds=wait_timeout_seconds,
         )
+        if ready_snapshot is None:
+            raise ActiveIndexNotReadyError(
+                "索引尚未就绪", session_id=session_id
+            )
 
     return store_cache.get_store_for_snapshot(ready_snapshot), waited_for_index
 
 
-async def wait_for_ready_index(session_id: str, timeout_seconds: float) -> dict | None:
+async def wait_for_ready_index(
+    session_id: str, timeout_seconds: float
+) -> SnapshotRecord | None:
     deadline = time.monotonic() + timeout_seconds
     backoff = settings.index_poll_interval
     while time.monotonic() < deadline:

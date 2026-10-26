@@ -47,7 +47,7 @@ def build_candidate_snapshot(
     document_id: str | None = None,
     *,
     reuse_previous: bool = True,
-) -> dict:
+) -> SnapshotRecord:
     """Build and persist a candidate index snapshot without promoting it.
 
     ``reuse_previous=False`` rebuilds from scratch — required after a document
@@ -132,7 +132,7 @@ def commit_ready_snapshot(
     snapshot_id: str,
     document_id: str,
     chunk_count: int,
-) -> dict:
+) -> SnapshotRecord:
     """Promote a successfully built candidate snapshot to the active ready snapshot."""
     start = time.monotonic()
     logger.info(
@@ -182,7 +182,9 @@ def commit_ready_snapshot(
     return ready_snapshot
 
 
-def _validate_and_promote(session_id: str, snapshot_id: str, document_id: str) -> dict:
+def _validate_and_promote(
+    session_id: str, snapshot_id: str, document_id: str
+) -> SnapshotRecord:
     snapshot = snapshot_repo.get_snapshot(snapshot_id)
     if snapshot is None or snapshot["session_id"] != session_id:
         raise RuntimeError("索引快照不存在")
@@ -191,7 +193,7 @@ def _validate_and_promote(session_id: str, snapshot_id: str, document_id: str) -
     return _promote_snapshot(session_id, snapshot_id)
 
 
-def _promote_snapshot(session_id: str, snapshot_id: str) -> dict:
+def _promote_snapshot(session_id: str, snapshot_id: str) -> SnapshotRecord:
     snapshot = snapshot_repo.get_snapshot(snapshot_id)
     if snapshot is None or snapshot["session_id"] != session_id:
         raise RuntimeError("索引快照不存在")
@@ -203,7 +205,7 @@ def _promote_snapshot(session_id: str, snapshot_id: str) -> dict:
     return ready_snapshot
 
 
-def rebuild_session_snapshot(session_id: str) -> dict | None:
+def rebuild_session_snapshot(session_id: str) -> SnapshotRecord | None:
     """Rebuild the whole session index from surviving chunks.
 
     Used after a document is deleted: FAISS cannot delete vectors in place, so
@@ -233,7 +235,7 @@ def rebuild_session_snapshot(session_id: str) -> dict | None:
     return ready_snapshot
 
 
-def _publish_index_metadata(ready_snapshot: dict) -> None:
+def _publish_index_metadata(ready_snapshot: SnapshotRecord) -> None:
     index_repo.upsert_index(
         session_id=ready_snapshot["session_id"],
         index_path=ready_snapshot["index_path"],

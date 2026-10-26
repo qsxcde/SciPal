@@ -1,3 +1,6 @@
+from typing import Any
+
+
 class PaperParseError(Exception):
     def __init__(self, message: str = "", session_id: str | None = None, document_id: str | None = None):
         self.session_id = session_id
@@ -72,7 +75,7 @@ class SnapshotCommitError(RuntimeError):
     def __init__(
         self,
         message: str = "",
-        candidate_snapshot: dict | None = None,
+        candidate_snapshot: Any | None = None,
         preserve_candidate_snapshot_files: bool = False,
     ):
         self.candidate_snapshot = candidate_snapshot

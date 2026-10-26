@@ -8,7 +8,7 @@ from backend import composition
 from backend.application.indexing import build_candidate_snapshot
 from backend.application.indexing import cleanup_snapshot_files
 from backend.application.indexing import commit_ready_snapshot
-from backend.core.model.records import DocumentRecord
+from backend.core.model.records import DocumentRecord, SnapshotRecord
 from backend.domain.exceptions import SnapshotCommitError
 from backend.domain.states import DocumentStage, JobStatus
 from backend.adapters.embedding.limits import MAX_EMBEDDING_CHARS
@@ -64,7 +64,9 @@ def run_document_ingestion_job(
         raise
 
 
-def _do_parse_document(session_id: str, document: dict, pdf_bytes: bytes) -> list[Chunk]:
+def _do_parse_document(
+    session_id: str, document: DocumentRecord, pdf_bytes: bytes
+) -> list[Chunk]:
     document_id = document["id"]
     logger.info(
         "Starting document parsing session_id=%s document_id=%s filename=%s bytes=%d",
@@ -160,7 +162,9 @@ def _log_chunk_budget(session_id: str, document_id: str, chunks: list[Chunk]) ->
         )
 
 
-def _do_build_and_commit_index(session_id: str, document_id: str, chunks: list[Chunk]) -> dict:
+def _do_build_and_commit_index(
+    session_id: str, document_id: str, chunks: list[Chunk]
+) -> SnapshotRecord:
     logger.info(
         "Building candidate index snapshot session_id=%s document_id=%s chunk_count=%d",
         session_id, document_id, len(chunks),
@@ -191,7 +195,7 @@ def _do_build_and_commit_index(session_id: str, document_id: str, chunks: list[C
 def _mark_failed(
     document_id: str,
     session_id: str,
-    snapshot: dict | None,
+    snapshot: SnapshotRecord | None,
     exc: Exception,
     preserve_candidate_snapshot_files: bool = False,
 ) -> None:

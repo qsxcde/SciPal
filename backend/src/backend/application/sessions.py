@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from backend.core.model.records import (
     DocumentRecord,
@@ -33,7 +33,7 @@ def create_session(user_id: str | None = None) -> str:
     return session["id"]
 
 
-def list_sessions(user_id: str | None = None) -> list[dict]:
+def list_sessions(user_id: str | None = None) -> list[SessionRecord]:
     return sessions.list_sessions(user_id=user_id)
 
 
@@ -41,11 +41,13 @@ def update_session(
     session_id: str,
     title: str | None = None,
     is_pinned: bool | None = None,
-) -> dict | None:
+) -> SessionRecord | None:
     return sessions.update_session(session_id=session_id, title=title, is_pinned=is_pinned)
 
 
-def get_accessible_session(session_id: str, user_id: str | None) -> dict | None:
+def get_accessible_session(
+    session_id: str, user_id: str | None
+) -> SessionRecord | None:
     """Return the session row only when it exists, is not archived and is owned by ``user_id``.
 
     ``sessions.user_id`` may be NULL for sessions created while authentication was
@@ -57,7 +59,9 @@ def get_accessible_session(session_id: str, user_id: str | None) -> dict | None:
     return session
 
 
-def get_session_snapshot(session_id: str, user_id: str | None = None) -> dict | None:
+def get_session_snapshot(
+    session_id: str, user_id: str | None = None
+) -> dict[str, Any] | None:
     session = get_accessible_session(session_id, user_id)
     if session is None:
         return None
@@ -77,7 +81,7 @@ def get_session_snapshot(session_id: str, user_id: str | None = None) -> dict | 
     )
 
 
-def _derive_session_status(session_documents: list[dict]) -> str:
+def _derive_session_status(session_documents: list[DocumentRecord]) -> str:
     if not session_documents:
         return SessionStatus.empty
     statuses = {document["status"] for document in session_documents}
@@ -94,15 +98,15 @@ def _derive_session_status(session_documents: list[dict]) -> str:
 
 def _build_session_snapshot(
     *,
-    session: SessionRecord,
+    session: dict[str, Any],
     documents: list[DocumentRecord],
     messages: list[MessageRecord],
     indexed_chunks: int,
     retrieval_index: IndexRecord | None,
     active_index: SnapshotRecord | None,
     jobs: list[JobRecord],
-) -> dict:
-    snapshot = dict(session)
+) -> dict[str, Any]:
+    snapshot: dict[str, Any] = dict(session)
     snapshot["documents"] = documents
     snapshot["messages"] = messages
     snapshot["indexed_chunks"] = indexed_chunks

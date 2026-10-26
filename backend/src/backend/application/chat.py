@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from typing import Any
 
 from backend.application import policies
@@ -156,7 +156,7 @@ async def stream_session_chat(
     "delete previous answer / read history / persist answer".
     """
     async with _session_lock(session_id):
-        inner = _stream_session_chat(
+        inner: AsyncGenerator[ChatEvent, None] = _stream_session_chat(
             session_id,
             content,
             wait_timeout_seconds=wait_timeout_seconds,
@@ -181,7 +181,7 @@ async def _stream_session_chat(
     user_id: str | None = None,
     regenerate: bool = False,
     client_message_id: str | None = None,
-) -> AsyncIterator[ChatEvent]:
+) -> AsyncGenerator[ChatEvent, None]:
     session = await _to_thread(session_repo.get_session, session_id)
     if not session_is_accessible(session, user_id):
         raise SessionNotFoundError(f"Session not found: {session_id}", session_id=session_id)

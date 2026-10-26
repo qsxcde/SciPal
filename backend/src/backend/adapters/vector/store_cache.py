@@ -5,6 +5,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from backend.core.model.records import SnapshotRecord
 from backend.domain.states import PROCESSING_DOCUMENT_STAGES
 from backend.rag.retrieval.filters import filter_indexable_chunks
 
@@ -87,7 +88,7 @@ def discard_store(session_id: str) -> None:
         _stores.pop(session_id, None)
 
 
-def get_store_for_snapshot(snapshot: dict) -> FAISSVectorStore:
+def get_store_for_snapshot(snapshot: SnapshotRecord) -> FAISSVectorStore:
     session_id = snapshot["session_id"]
     cache_key = f"snapshot:{snapshot['id']}:{snapshot['updated_at']}"
     with _store_lock:
