@@ -22,11 +22,9 @@ RAG_SETTINGS_DEBT = {
     "rag/ingestion/mineru_backend.py",
     "rag/ingestion/pipeline.py",
     "rag/ingestion/text_pdf_backend.py",
-    "rag/retrieval/history_rewriter.py",
     "rag/retrieval/remote_reranker.py",
     "rag/retrieval/reranker.py",
     "rag/retrieval/retriever.py",
-    "rag/retrieval/term_expander.py",
 }
 
 # worker/runner.py 是作业队列的适配器，直接操作 jobs 表属预期；

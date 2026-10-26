@@ -59,7 +59,10 @@ class HybridRetrievalOptions:
     # Query rewrite enhancement
     history_rewrite_enabled: bool = True
     history_rewrite_max_rounds: int = 4
+    history_rewrite_min_query_length: int = 3
     term_expand_enabled: bool = True
+    term_expand_llm_fallback: bool = True
+    term_glossary_path: str | None = None
 
 
 @dataclass(frozen=True)
@@ -176,6 +179,8 @@ def retrieve_hybrid_context(
             query,
             history,
             max_rounds=retrieval_options.history_rewrite_max_rounds,
+            enabled=retrieval_options.history_rewrite_enabled,
+            min_query_length=retrieval_options.history_rewrite_min_query_length,
         )
         if rewritten != query:
             logger.info("History rewrite: %r -> %r", query, rewritten)
@@ -184,8 +189,13 @@ def retrieve_hybrid_context(
 
     # Step 2: Academic term expansion
     if retrieval_options.term_expand_enabled:
-        glossary = load_term_glossary()
-        _, extra_keywords, term_expand_source = term_expand(query, glossary)
+        glossary = load_term_glossary(retrieval_options.term_glossary_path)
+        _, extra_keywords, term_expand_source = term_expand(
+            query,
+            glossary,
+            enabled=retrieval_options.term_expand_enabled,
+            llm_fallback=retrieval_options.term_expand_llm_fallback,
+        )
         if extra_keywords:
             used_term_expand = True
 

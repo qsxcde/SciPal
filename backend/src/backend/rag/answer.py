@@ -76,7 +76,10 @@ class RetrievalOptions(BaseModel):
     # Query rewrite enhancement
     history_rewrite_enabled: bool = True
     history_rewrite_max_rounds: int = 4
+    history_rewrite_min_query_length: int = 3
     term_expand_enabled: bool = True
+    term_expand_llm_fallback: bool = True
+    term_glossary_path: str | None = None
 
 
 class RetrievalDiagnostics(BaseModel):

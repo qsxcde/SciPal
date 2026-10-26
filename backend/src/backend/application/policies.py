@@ -4,8 +4,18 @@ This is the single place where deployment settings are translated into the
 configuration-free objects consumed by ``backend.rag``.
 """
 
-from backend.config import settings
+from pathlib import Path
+
+from backend.config import backend_project_dir, settings
 from backend.rag.answer import AnswerPolicy, RetrievalOptions
+
+
+def _glossary_path() -> str:
+    """Resolve the term glossary path once, so RAG never has to."""
+    raw = Path(settings.term_expand_glossary_path)
+    if raw.is_absolute():
+        return str(raw)
+    return str(backend_project_dir().parent / raw)
 
 
 def retrieval_options() -> RetrievalOptions:
@@ -23,7 +33,10 @@ def retrieval_options() -> RetrievalOptions:
         rerank_top_k=settings.rerank_top_k,
         history_rewrite_enabled=settings.history_rewrite_enabled,
         history_rewrite_max_rounds=settings.history_rewrite_max_rounds,
+        history_rewrite_min_query_length=settings.history_rewrite_min_query_length,
         term_expand_enabled=settings.term_expand_enabled,
+        term_expand_llm_fallback=settings.term_expand_llm_fallback,
+        term_glossary_path=_glossary_path(),
     )
 
 

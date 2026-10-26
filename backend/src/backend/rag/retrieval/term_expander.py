@@ -12,7 +12,6 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-from backend.config import settings
 from backend.composition import text_completer
 from backend.prompts.loader import load_prompt
 from backend.rag.llm_output import parse_json_object
@@ -38,15 +37,13 @@ Query: {query}
 """
 
 
-def load_glossary() -> dict[str, list[str]]:
+def load_glossary(path: str | Path | None = None) -> dict[str, list[str]]:
     """Load term glossary from JSON file. Returns empty dict on failure."""
-    from backend.config import backend_project_dir
-    raw_path = settings.term_expand_glossary_path
-    path = Path(raw_path)
+    if path is None:
+        return {}
+    path = Path(path)
     if not path.is_absolute():
-        # Relative paths are documented against the repository root, e.g.
-        # "backend/data/term_glossary.json".
-        path = backend_project_dir().parent / raw_path
+        path = Path.cwd() / path
     if not path.exists():
         logger.warning("Term glossary not found at %s, skipping", path)
         return {}
@@ -87,7 +84,7 @@ def _needs_llm_expansion(query: str, glossary: dict[str, list[str]]) -> bool:
     - Query length > 5 chars with no glossary matches (possibly unseen terms)
     - Query contains uppercase abbreviation patterns not in glossary
     """
-    if not settings.term_expand_llm_fallback:
+    if not llm_fallback:
         return False
 
     # Heuristic 1: Long query with zero glossary matches
@@ -127,6 +124,9 @@ def _cached_llm_expand(query: str) -> list[str]:
 def term_expand(
     query: str,
     glossary: dict[str, list[str]] | None = None,
+    *,
+    enabled: bool = True,
+    llm_fallback: bool = True,
 ) -> tuple[str, list[str], str | None]:
     """Expand query with academic term alternatives.
 
@@ -141,14 +141,14 @@ def term_expand(
         Tuple of (original_query, extra_keywords, expand_source).
         expand_source is "glossary", "glossary+llm", or None.
     """
-    if not settings.term_expand_enabled:
+    if not enabled:
         return query, [], None
 
-    effective_glossary = glossary if glossary is not None else load_glossary()
+    effective_glossary = glossary if glossary is not None else {}
     extra_keywords: list[str] = _match_glossary(query, effective_glossary)
     used_llm = False
 
-    if _needs_llm_expansion(query, effective_glossary):
+    if _needs_llm_expansion(query, effective_glossary, llm_fallback):
         llm_keywords = _cached_llm_expand(query)
         if llm_keywords:
             used_llm = True

@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 from functools import lru_cache
 
-from backend.config import settings
 from backend.composition import text_completer
 from backend.prompts.loader import load_prompt
 
@@ -51,13 +50,13 @@ def _has_anaphora(query: str) -> bool:
     return False
 
 
-def _should_rewrite(query: str, history: list[dict]) -> bool:
+def _should_rewrite(query: str, history: list[dict], min_query_length: int = 3) -> bool:
     """Determine if history-aware rewrite is needed."""
     if not history:
         return False
     if _has_anaphora(query):
         return True
-    if len(query) < settings.history_rewrite_min_query_length:
+    if len(query) < min_query_length:
         return True
     return False
 
@@ -103,7 +102,9 @@ def _cached_rewrite(query: str, history_text: str) -> str:
 def history_aware_rewrite(
     current_query: str,
     history: list[dict],
-    max_rounds: int | None = None,
+    max_rounds: int = 4,
+    enabled: bool = True,
+    min_query_length: int = 3,
 ) -> str:
     """Rewrite current query with multi-turn context awareness.
 
@@ -112,18 +113,18 @@ def history_aware_rewrite(
         history: List of previous messages with 'role' and 'content' keys,
                  ordered oldest to newest. Only user and assistant messages
                  from prior turns should be included (not the current query).
-        max_rounds: Max conversation rounds to consider (default from config).
+        max_rounds: Max conversation rounds to consider.
+        enabled: Whether multi-turn rewriting is enabled at all.
 
     Returns:
         Self-contained rewritten query, or original query if no rewrite needed.
     """
-    if not settings.history_rewrite_enabled:
+    if not enabled:
         return current_query
-    if not _should_rewrite(current_query, history):
+    if not _should_rewrite(current_query, history, min_query_length):
         return current_query
 
-    rounds = max_rounds if max_rounds is not None else settings.history_rewrite_max_rounds
-    history_text = _format_history(history, rounds)
+    history_text = _format_history(history, max_rounds)
     if not history_text:
         return current_query
 
