@@ -19,15 +19,9 @@ from backend.rag.ingestion.text_pdf_backend import TextPDFBackend
 logger = logging.getLogger(__name__)
 
 
-def _resolve_parser_chain() -> list[ParserBackend]:
-    """Build fallback chain: MinerU API (if configured) → local MinerU → TextPDF."""
-    backends: list[ParserBackend] = [MinerUBackend(), TextPDFBackend()]
-    if settings.mineru_api_key:
-        backends.insert(0, MinerUApiBackend())
-        logger.info("Parser chain: MinerUApiBackend -> MinerUBackend -> TextPDFBackend")
-    else:
-        logger.info("Parser chain (no API key): MinerUBackend -> TextPDFBackend")
-    return backends
+def default_parser_chain() -> list[ParserBackend]:
+    """Fallback chain used when the caller does not inject one."""
+    return [MinerUBackend(), TextPDFBackend()]
 
 
 class IngestionResult(BaseModel):
@@ -130,11 +124,15 @@ def process_pdf_document(
     paper_id: str,
     filename: str,
     parser_backend: ParserBackend | None = None,
+    parser_chain: list[ParserBackend] | None = None,
 ) -> IngestionResult:
+    """Parse a PDF; the caller decides which backends to try and in what order."""
     if parser_backend is not None:
         backends = [parser_backend]
+    elif parser_chain is not None:
+        backends = parser_chain
     else:
-        backends = _resolve_parser_chain()
+        backends = default_parser_chain()
 
     raw, backend = _try_parsers(backends, pdf_bytes, filename)
     return _process_parsed_result(raw, backend, paper_id, filename)

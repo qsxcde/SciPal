@@ -4,6 +4,7 @@ import shutil
 import time
 from pathlib import Path
 
+from backend import composition
 from backend.application.indexing import build_candidate_snapshot
 from backend.application.indexing import cleanup_snapshot_files
 from backend.application.indexing import commit_ready_snapshot
@@ -75,6 +76,7 @@ def _do_parse_document(session_id: str, document: dict, pdf_bytes: bytes) -> lis
         pdf_bytes=pdf_bytes,
         paper_id=document_id,
         filename=document["filename"],
+        parser_chain=composition.parser_chain(),
     )
     logger.info(
         "Completed document parsing session_id=%s document_id=%s parser=%s version=%s "

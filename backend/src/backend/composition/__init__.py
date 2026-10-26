@@ -29,6 +29,19 @@ def text_completer() -> TextCompleter:
     return LlmTextCompleter()
 
 
+def parser_chain() -> list:
+    """Ordered parser fallbacks: MinerU cloud (if key) -> local MinerU -> text PDF."""
+    from backend.config import settings
+    from backend.rag.ingestion.mineru_api_backend import MinerUApiBackend
+    from backend.rag.ingestion.mineru_backend import MinerUBackend
+    from backend.rag.ingestion.text_pdf_backend import TextPDFBackend
+
+    backends = [MinerUBackend(), TextPDFBackend()]
+    if settings.mineru_api_key:
+        backends.insert(0, MinerUApiBackend())
+    return backends
+
+
 @lru_cache(maxsize=1)
 def embedder() -> Embedder:
     """Process-wide embedder (remote -> local fallback chain)."""
