@@ -1,25 +1,16 @@
 from datetime import UTC, datetime, timedelta
 
-import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 
+from backend.application import auth as auth_service
 from backend.config import settings
-from backend.storage.sqlite import users as user_repo
 
 _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 # 未配置 JWT_SECRET_KEY 时允许匿名访问的环境；生产环境必须显式配置鉴权。
 _ANONYMOUS_ALLOWED_ENVS = frozenset({"development", "dev", "local", "test", "testing"})
-
-
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-
-def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
 def create_access_token(user_id: str, username: str) -> str:
@@ -52,7 +43,7 @@ async def get_current_user(token: str | None = Depends(_oauth2_scheme)) -> dict:
     user_id: str | None = payload.get("sub")
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    user = user_repo.get_user_by_id(user_id)
+    user = auth_service.get_user(user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user

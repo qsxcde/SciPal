@@ -19,7 +19,8 @@ from backend.storage.sqlite import documents as document_repo
 from backend.storage.sqlite import index_snapshots as snapshot_repo
 from backend.storage.sqlite import jobs as job_repo
 from backend.storage.sqlite import sessions
-from backend.worker.handlers import DOCUMENT_INGESTION_JOB, ingest_document
+from backend.application.ingestion import run_queued_ingestion_job
+from backend.worker.handlers import DOCUMENT_INGESTION_JOB
 from backend.worker.runner import InProcessJobRunner, register_handler
 
 
@@ -56,7 +57,7 @@ def _snapshot_files(session_id: str) -> list[Path]:
 
 @pytest.mark.integration
 def test_parse_failure_marks_document_job_and_snapshot_state(monkeypatch, tmp_path):
-    register_handler(DOCUMENT_INGESTION_JOB, ingest_document)
+    register_handler(DOCUMENT_INGESTION_JOB, run_queued_ingestion_job)
     session, document, job = _seed(tmp_path)
 
     def _explode(**_kwargs):
@@ -78,11 +79,11 @@ def test_parse_failure_marks_document_job_and_snapshot_state(monkeypatch, tmp_pa
 
 @pytest.mark.integration
 def test_missing_upload_file_fails_before_parsing(monkeypatch, tmp_path):
-    register_handler(DOCUMENT_INGESTION_JOB, ingest_document)
+    register_handler(DOCUMENT_INGESTION_JOB, run_queued_ingestion_job)
     _session, document, job = _seed(tmp_path, create_file=False)
 
     with pytest.raises(FileNotFoundError):
-        ingest_document(job)
+        run_queued_ingestion_job(job)
 
     stored_document = document_repo.get_document(document["id"])
     assert stored_document["status"] == "failed"
@@ -92,7 +93,7 @@ def test_missing_upload_file_fails_before_parsing(monkeypatch, tmp_path):
 
 @pytest.mark.integration
 def test_failed_job_does_not_block_the_next_job_for_the_same_session(monkeypatch, tmp_path):
-    register_handler(DOCUMENT_INGESTION_JOB, ingest_document)
+    register_handler(DOCUMENT_INGESTION_JOB, run_queued_ingestion_job)
     session, failed_document, failed_job = _seed(tmp_path)
 
     def _explode(**_kwargs):

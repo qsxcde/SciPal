@@ -1,3 +1,4 @@
+import json
 import logging
 import shutil
 import time
@@ -7,7 +8,7 @@ from backend.application.indexing import build_candidate_snapshot
 from backend.application.indexing import cleanup_snapshot_files
 from backend.application.indexing import commit_ready_snapshot
 from backend.domain.exceptions import SnapshotCommitError
-from backend.domain.states import DocumentStage
+from backend.domain.states import DocumentStage, JobStatus
 from backend.rag.embedding.limits import MAX_EMBEDDING_CHARS
 from backend.rag.ingestion.artifacts import save_ingestion_artifacts
 from backend.domain.models import Chunk
@@ -16,6 +17,7 @@ from backend.rag.ingestion.pipeline import process_pdf_document
 from backend.storage.paths import raw_session_dir
 from backend.storage.sqlite import chunks as chunk_repo
 from backend.storage.sqlite import documents as document_repo
+from backend.storage.sqlite import jobs as job_repo
 from backend.storage.sqlite import index_snapshots as snapshot_repo
 from backend.application.store_cache import discard_store
 
@@ -229,3 +231,37 @@ def _clear_document_artifacts(document_id: str) -> None:
         parser_version=None,
         parse_quality_status=None,
     )
+
+
+def run_queued_ingestion_job(job: dict) -> None:
+    """Execute one queued document_ingestion job end to end.
+
+    The worker layer only knows that a job exists; reading the upload, updating
+    the document and closing the job row all belong to the use case.
+    """
+    if job["stage"] != DocumentStage.uploaded:
+        raise RuntimeError(f"Unsupported job stage: {job['stage']}")
+    payload = json.loads(job["payload_json"] or "{}")
+    document_id = payload.get("document_id") or job["document_id"]
+    if document_id is None:
+        raise RuntimeError("Missing document id in job payload")
+    document = document_repo.get_document(document_id)
+    if document is None:
+        raise RuntimeError("Document not found for ingestion job")
+    file_path = payload.get("file_path") or document["file_path"]
+    try:
+        pdf_bytes = Path(file_path).read_bytes()
+    except Exception as exc:
+        document_repo.update_document_status(
+            document_id,
+            DocumentStage.failed,
+            chunk_count=0,
+            error_message=str(exc),
+        )
+        raise
+    run_document_ingestion_job(
+        session_id=job["session_id"],
+        document=document,
+        pdf_bytes=pdf_bytes,
+    )
+    job_repo.mark_job_finished(job["id"], JobStatus.succeeded)

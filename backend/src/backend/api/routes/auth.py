@@ -1,14 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.api.schemas import AuthRequest, AuthResponse, UserResponse
-from backend.api.security import (
-    create_access_token,
-    get_current_user,
-    hash_password,
-    verify_password,
-)
+from backend.api.security import create_access_token, get_current_user
+from backend.application import auth as auth_service
 from backend.config import settings
-from backend.storage.sqlite import users as user_repo
 
 router = APIRouter(prefix="/auth")
 
@@ -23,11 +18,9 @@ def register(body: AuthRequest) -> AuthResponse:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username must be at least 2 characters")
     if len(body.password) < 6:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 6 characters")
-    existing = user_repo.get_user_by_username(username)
-    if existing is not None:
+    user = auth_service.register_user(username, body.password)
+    if user is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists")
-    hashed = hash_password(body.password)
-    user = user_repo.create_user(username, hashed)
     token = create_access_token(user["id"], user["username"])
     return AuthResponse(
         token=token,
@@ -40,8 +33,8 @@ def login(body: AuthRequest) -> AuthResponse:
     """用用户名密码换取 JWT。"""
     if not settings.jwt_secret_key:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Auth not configured")
-    user = user_repo.get_user_by_username(body.username.strip())
-    if user is None or not verify_password(body.password, user["hashed_password"]):
+    user = auth_service.authenticate(body.username.strip(), body.password)
+    if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
     token = create_access_token(user["id"], user["username"])
     return AuthResponse(
