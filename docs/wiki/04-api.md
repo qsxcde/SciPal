@@ -159,8 +159,8 @@ curl -X POST "http://127.0.0.1:8000/sessions/$SID/documents" \
 
 - `job_status` 声明为 `queued|running`，但创建即 `queued`，实际恒为 `queued`。
 - `session_status` 是硬编码 `"processing"`，并非数据库派生值。
-- 校验顺序：大小 ≤ `upload_max_bytes`（50 MiB）→ 前 4 字节为 `%PDF` → 会话存在。
-- 文件整体读入内存（`file.file.read()`），不做流式落盘。
+- 校验顺序：`Content-Length` 预检 → 分块读取并累计，超限立即 413 → 前 4 字节为 `%PDF` → 会话存在。
+- 上传按 1 MiB 分块读取（`api/uploads.py`），峰值内存有界（≈`upload_max_bytes`），不会因客户端发送超大 body 而打满内存；仍不落临时文件。
 
 | 状态码 | detail |
 |---|---|

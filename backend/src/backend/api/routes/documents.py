@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import FileResponse
 
 from backend.api.deps import get_accessible_session
+from backend.api.uploads import read_upload_with_limit, reject_by_content_length
 from backend.api.schemas import (
     DocumentContentResponse,
     DocumentIntakeResponse,
@@ -36,11 +37,13 @@ def list_documents(user: dict = Depends(get_current_user)) -> list[LibraryDocume
     response_model=DocumentIntakeResponse,
 )
 def upload_document(
+    request: Request,
     session_id: str,
     file: UploadFile = File(...),
     session: dict = Depends(get_accessible_session),
 ) -> DocumentIntakeResponse:
-    pdf_bytes = file.file.read()
+    reject_by_content_length(request.headers.get("content-length"))
+    pdf_bytes = read_upload_with_limit(file)
     intake = intake_document_upload(
         session_id=session["id"],
         filename=file.filename or "paper.pdf",
