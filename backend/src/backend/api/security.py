@@ -13,6 +13,11 @@ _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 _ANONYMOUS_ALLOWED_ENVS = frozenset({"development", "dev", "local", "test", "testing"})
 
 
+def anonymous_access_allowed() -> bool:
+    """Whether an unset JWT secret may degrade to anonymous access."""
+    return settings.app_env.strip().lower() in _ANONYMOUS_ALLOWED_ENVS
+
+
 def create_access_token(user_id: str, username: str) -> str:
     expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_expire_minutes)
     payload = {"sub": user_id, "username": username, "exp": expire}

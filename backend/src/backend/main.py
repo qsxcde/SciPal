@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.errors import register_exception_handlers
 from backend.api.routes import auth, chat, documents, sessions
+from backend.api.security import anonymous_access_allowed
 from backend.application.documents import recover_orphaned_documents
 from backend.config import env_file_path, repo_env_file_warning, settings
 from backend.storage.sqlite.schema import init_db
@@ -24,6 +25,26 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 runner = InProcessJobRunner()
+
+
+def _validate_runtime_config() -> None:
+    """Refuse to start with an auth bypass outside development.
+
+    An empty JWT secret silently disables authentication; in production that is
+    a full authorization bypass, so fail fast instead of serving traffic.
+    """
+    if settings.jwt_secret_key:
+        return
+    if anonymous_access_allowed():
+        logger.warning(
+            "JWT_SECRET_KEY is empty: anonymous access enabled (app_env=%s)",
+            settings.app_env,
+        )
+        return
+    raise RuntimeError(
+        "JWT_SECRET_KEY must be configured when APP_ENV is not a development environment "
+        f"(current app_env={settings.app_env!r})."
+    )
 
 
 def _log_configuration_source() -> None:
@@ -41,6 +62,7 @@ def _log_configuration_source() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _log_configuration_source()
+    _validate_runtime_config()
     await asyncio.to_thread(init_db)
     try:
         await asyncio.to_thread(recover_orphaned_documents)
