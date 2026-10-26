@@ -19,6 +19,12 @@ class DocumentRecord(TypedDict):
     error_message: str | None
     created_at: str
     updated_at: str
+    parsed_ir_path: str | None
+    parsed_markdown_path: str | None
+    quality_report_path: str | None
+    parser_name: str | None
+    parser_version: str | None
+    parse_quality_status: str | None
 
 
 class MessageRecord(TypedDict):
