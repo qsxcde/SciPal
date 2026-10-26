@@ -1,10 +1,13 @@
 """Resolve the active retrieval index of a session, waiting for it if needed."""
 
+from __future__ import annotations
+
 import asyncio
 import time
 from collections.abc import Callable
 
 from backend.adapters.vector import store_cache
+from backend.core.contracts.ports import VectorStore
 from backend.config import settings
 from backend.domain.exceptions import ActiveIndexNotReadyError, SessionNotFoundError
 from backend.storage.sqlite import index_snapshots as snapshot_repo
@@ -15,7 +18,7 @@ async def resolve_session_store(
     session_id: str,
     wait_timeout_seconds: float | None = None,
     on_wait_for_index: Callable[[], None] | None = None,
-) -> tuple[object, bool]:
+) -> tuple[VectorStore, bool]:
     if wait_timeout_seconds is None:
         wait_timeout_seconds = settings.index_max_wait
 

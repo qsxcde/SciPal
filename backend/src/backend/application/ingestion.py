@@ -8,6 +8,7 @@ from backend import composition
 from backend.application.indexing import build_candidate_snapshot
 from backend.application.indexing import cleanup_snapshot_files
 from backend.application.indexing import commit_ready_snapshot
+from backend.core.model.records import DocumentRecord
 from backend.domain.exceptions import SnapshotCommitError
 from backend.domain.states import DocumentStage, JobStatus
 from backend.adapters.embedding.limits import MAX_EMBEDDING_CHARS
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 def run_document_ingestion_job(
     session_id: str,
-    document: dict,
+    document: DocumentRecord,
     pdf_bytes: bytes,
 ) -> dict:
     document_id = document["id"]

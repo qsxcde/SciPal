@@ -7,6 +7,7 @@ from pathlib import Path
 
 from backend.application import index_maintenance
 from backend.config import data_dir, settings
+from backend.core.model.records import DocumentRecord
 from backend.domain.exceptions import (
     ChunkNotFoundError,
     JobInProgressError,
@@ -246,7 +247,7 @@ def _reject_if_job_running(session_id: str) -> None:
         )
 
 
-def _remove_document_files(document: dict) -> None:
+def _remove_document_files(document: DocumentRecord) -> None:
     for raw in (
         document.get("file_path"),
         document.get("parsed_markdown_path"),

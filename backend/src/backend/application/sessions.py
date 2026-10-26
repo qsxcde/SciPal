@@ -2,6 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from backend.core.model.records import (
+    DocumentRecord,
+    IndexRecord,
+    JobRecord,
+    MessageRecord,
+    SessionRecord,
+    SnapshotRecord,
+)
 from backend.domain.access import session_is_accessible
 from backend.config import settings
 from backend.domain.exceptions import SessionNotFoundError
@@ -86,13 +94,13 @@ def _derive_session_status(session_documents: list[dict]) -> str:
 
 def _build_session_snapshot(
     *,
-    session: dict,
-    documents: list[dict],
-    messages: list[dict],
+    session: SessionRecord,
+    documents: list[DocumentRecord],
+    messages: list[MessageRecord],
     indexed_chunks: int,
-    retrieval_index: dict | None,
-    active_index: dict | None,
-    jobs: list[dict],
+    retrieval_index: IndexRecord | None,
+    active_index: SnapshotRecord | None,
+    jobs: list[JobRecord],
 ) -> dict:
     snapshot = dict(session)
     snapshot["documents"] = documents

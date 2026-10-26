@@ -6,6 +6,7 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from backend.core.model.records import IndexRecord, SnapshotRecord
 from backend.domain.exceptions import SnapshotCommitError
 
 from backend.storage.sqlite import chunks as chunk_repo
@@ -93,7 +94,7 @@ def _collect_document_ids(session_id: str, document_id: str | None) -> list[str]
 
 def _load_or_create_store(
     session_id: str,
-    snapshot: dict,
+    snapshot: SnapshotRecord,
     document_ids: list[str],
     *,
     reuse_previous: bool = True,
@@ -255,7 +256,7 @@ def _rollback_promotion(
         raise RuntimeError("索引快照回滚失败")
 
 
-def _restore_index_publication(previous_index_metadata: dict | None, ready_snapshot: dict) -> None:
+def _restore_index_publication(previous_index_metadata: IndexRecord | None, ready_snapshot: SnapshotRecord) -> None:
     if previous_index_metadata is not None:
         index_repo.upsert_index(
             session_id=previous_index_metadata["session_id"],
@@ -272,7 +273,7 @@ def _restore_index_publication(previous_index_metadata: dict | None, ready_snaps
     )
 
 
-def cleanup_snapshot_files(snapshot: dict | None) -> None:
+def cleanup_snapshot_files(snapshot: SnapshotRecord | None) -> None:
     if snapshot is None:
         return
     _unlink_if_exists(Path(snapshot["index_path"]))

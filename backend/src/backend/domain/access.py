@@ -1,7 +1,10 @@
 """Authorization rules that can be evaluated without touching the storage layer."""
 
+from collections.abc import Mapping
+from typing import Any
 
-def session_is_accessible(session: dict | None, user_id: str | None) -> bool:
+
+def session_is_accessible(session: Mapping[str, Any] | None, user_id: str | None) -> bool:
     """Return True when ``user_id`` may read/write the given session row.
 
     Rules:
