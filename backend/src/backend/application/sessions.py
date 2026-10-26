@@ -10,7 +10,7 @@ from backend.storage.sqlite import indexes
 from backend.storage.sqlite import jobs
 from backend.storage.sqlite import messages
 from backend.storage.sqlite import sessions
-from backend.application import store_cache
+from backend.adapters.vector import store_cache
 from backend.storage.paths import remove_session_dir
 
 

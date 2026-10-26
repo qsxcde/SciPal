@@ -19,7 +19,7 @@ from backend.storage.sqlite import chunks as chunk_repo
 from backend.storage.sqlite import documents as document_repo
 from backend.storage.sqlite import jobs as job_repo
 from backend.storage.sqlite import index_snapshots as snapshot_repo
-from backend.application.store_cache import discard_store
+from backend.adapters.vector.store_cache import discard_store
 
 logger = logging.getLogger(__name__)
 

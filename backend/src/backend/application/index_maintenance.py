@@ -22,7 +22,7 @@ def refresh_after_document_change(session_id: str) -> None:
 
 def invalidate_session_index(session_id: str, reason: str) -> None:
     """Mark the active index unusable so retrieval stops serving stale vectors."""
-    from backend.application.store_cache import discard_store
+    from backend.adapters.vector.store_cache import discard_store
 
     snapshot = snapshot_repo.get_active_ready_snapshot(session_id)
     if snapshot is not None:

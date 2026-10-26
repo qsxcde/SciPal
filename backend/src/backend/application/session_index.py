@@ -4,7 +4,7 @@ import asyncio
 import time
 from collections.abc import Callable
 
-from backend.application import store_cache
+from backend.adapters.vector import store_cache
 from backend.config import settings
 from backend.domain.exceptions import ActiveIndexNotReadyError, SessionNotFoundError
 from backend.storage.sqlite import index_snapshots as snapshot_repo

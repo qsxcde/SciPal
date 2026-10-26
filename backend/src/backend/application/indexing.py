@@ -10,7 +10,7 @@ from backend.storage.sqlite import documents as document_repo
 from backend.storage.sqlite import index_snapshots as snapshot_repo
 from backend.storage.sqlite import indexes as index_repo
 from backend.rag.indexing.vector_store import FAISSVectorStore
-from backend.application.store_cache import discard_store
+from backend.adapters.vector.store_cache import discard_store
 from backend.storage.paths import session_indexes_dir
 from backend.rag.retrieval.filters import filter_indexable_chunks
 
