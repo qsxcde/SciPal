@@ -27,6 +27,32 @@ const totalPages = ref(0);
 const isLoading = ref(true);
 const errorMessage = ref("");
 let renderToken = 0;
+type RenderTask = ReturnType<pdfjs.PDFPageProxy["render"]>;
+const renderTaskRef = shallowRef<RenderTask | null>(null);
+
+/** pdf.js 用这个异常表示「被我们主动取消」，不是渲染失败。 */
+function isRenderCancelled(error: unknown): boolean {
+  return error instanceof Error && error.name === "RenderingCancelledException";
+}
+
+/**
+ * 取消在途渲染。
+ *
+ * 同一个 canvas 不能同时跑两个 render()，快速翻页或窗口缩放都会重入，必须
+ * 先取消上一个任务，否则 pdf.js 抛错后整页被 v-show 隐藏（表现为白屏）。
+ */
+async function cancelRender(): Promise<void> {
+  const task = renderTaskRef.value;
+  renderTaskRef.value = null;
+  if (!task) {
+    return;
+  }
+  try {
+    await task.cancel();
+  } catch {
+    // 任务已经开始或已完成，取消失败不影响后续渲染。
+  }
+}
 
 const pageBoxes = computed(() =>
   props.boxes.filter((box) => box.page_number === props.page && box.bbox),
@@ -55,6 +81,7 @@ async function renderCurrentPage(): Promise<void> {
     return;
   }
   const token = ++renderToken;
+  await cancelRender();
   try {
     const pdfPage = await doc.getPage(props.page);
     if (token !== renderToken) {
@@ -73,8 +100,19 @@ async function renderCurrentPage(): Promise<void> {
     canvas.height = Math.floor(viewport.height);
     canvas.style.width = `${Math.floor(viewport.width)}px`;
     canvas.style.height = `${Math.floor(viewport.height)}px`;
-    await pdfPage.render({ canvasContext: context, viewport, canvas }).promise;
+    const task = pdfPage.render({ canvasContext: context, viewport, canvas });
+    renderTaskRef.value = task;
+    try {
+      await task.promise;
+    } finally {
+      if (renderTaskRef.value === task) {
+        renderTaskRef.value = null;
+      }
+    }
   } catch (error) {
+    if (isRenderCancelled(error)) {
+      return;
+    }
     if (token === renderToken) {
       errorMessage.value = toErrorMessage(error, "PDF 渲染失败");
     }
@@ -84,6 +122,7 @@ async function renderCurrentPage(): Promise<void> {
 async function loadDocument(): Promise<void> {
   isLoading.value = true;
   errorMessage.value = "";
+  await cancelRender();
   await loadingTaskRef.value?.destroy();
   loadingTaskRef.value = null;
   documentRef.value = null;
@@ -135,6 +174,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleResize);
   window.clearTimeout(resizeTimer);
+  void cancelRender();
   void loadingTaskRef.value?.destroy();
 });
 </script>
