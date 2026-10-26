@@ -13,12 +13,12 @@ class LlmTextCompleter:
     """Adapter over the existing multi-provider LLM client."""
 
     def complete(self, prompt: str) -> str:
-        from backend.rag.generation.llm import complete_text
+        from backend.adapters.llm.llm import complete_text
 
         return complete_text(prompt)
 
     def stream(self, prompt: str):
-        from backend.rag.generation.llm import stream_completion_tokens
+        from backend.adapters.llm.llm import stream_completion_tokens
 
         return stream_completion_tokens(prompt)
 

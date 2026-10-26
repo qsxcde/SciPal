@@ -10,7 +10,7 @@ import logging
 from collections.abc import Generator
 
 from backend.config import require_generation_settings
-from backend.rag.generation.model_client import ModelClient, build_providers
+from backend.adapters.llm.model_client import ModelClient, build_providers
 
 logger = logging.getLogger(__name__)
 _client: ModelClient | None = None

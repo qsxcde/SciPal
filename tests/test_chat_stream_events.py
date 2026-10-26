@@ -249,7 +249,7 @@ async def test_assistant_message_records_the_generating_model(monkeypatch, sessi
 
 @pytest.mark.integration
 async def test_provider_usage_is_persisted_when_available(monkeypatch, session):
-    from backend.rag.generation import llm as llm_module
+    from backend.adapters.llm import llm as llm_module
     from backend.storage.sqlite import messages as message_repo
 
     def _stream(_store, _content, *, options, policy, history):

@@ -16,8 +16,6 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1] / "backend" / "src" / "backen
 RAG_SETTINGS_DEBT = {
     "rag/embedding/__init__.py",
     "rag/embedding/remote_embedder.py",
-    "rag/generation/llm.py",
-    "rag/generation/model_client.py",
     "rag/ingestion/mineru_api_backend.py",
     "rag/ingestion/mineru_backend.py",
     "rag/ingestion/pipeline.py",

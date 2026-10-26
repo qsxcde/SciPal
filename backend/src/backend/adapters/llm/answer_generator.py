@@ -1,7 +1,7 @@
 from collections.abc import Generator
 
-from backend.rag.generation.llm import stream_completion_tokens
-from backend.rag.generation.prompt_template import build_prompt
+from backend.adapters.llm.llm import stream_completion_tokens
+from backend.adapters.llm.prompt_template import build_prompt
 from backend.domain.models import Chunk, SourceRef
 
 DEFAULT_SOURCE_EXCERPT_MAX_CHARS = 220

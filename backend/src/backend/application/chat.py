@@ -35,7 +35,7 @@ MISSING_SOURCES_EVENT_ERROR = "Stream protocol error: missing sources event from
 
 def _read_usage() -> dict | None:
     """Token usage of the stream that just finished (provider-dependent)."""
-    from backend.rag.generation.llm import last_usage
+    from backend.adapters.llm.llm import last_usage
 
     return last_usage()
 

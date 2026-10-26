@@ -10,9 +10,9 @@ from typing import Generator, Literal, TypedDict
 
 from pydantic import BaseModel, Field
 
-from backend.rag.generation.answer_generator import build_sources
-from backend.rag.generation.answer_generator import generate_answer
-from backend.rag.generation.answer_generator import stream_answer as stream_answer_for_chunks
+from backend.adapters.llm.answer_generator import build_sources
+from backend.adapters.llm.answer_generator import generate_answer
+from backend.adapters.llm.answer_generator import stream_answer as stream_answer_for_chunks
 from backend.domain.models import Chunk, SourceRef
 from backend.core.contracts.ports import VectorStore
 from backend.rag.retrieval.context_builder import expand_context
