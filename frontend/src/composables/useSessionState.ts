@@ -95,6 +95,13 @@ export function useSessionState(options: UseSessionStateOptions) {
     uploadStatus.value = null;
   }
 
+  /** 登出用：连同会话列表与上传标记一起清空。 */
+  function reset(): void {
+    resetSessionState();
+    sessions.value = [];
+    isUploading.value = false;
+  }
+
   async function refreshSessions(activeSessionId?: string): Promise<void> {
     sessions.value = withActiveFlag(await listSessions(), activeSessionId);
   }
@@ -305,6 +312,7 @@ export function useSessionState(options: UseSessionStateOptions) {
     initializeSessions,
     openSession,
     renameSession,
+    reset,
     togglePinSession,
   };
 }

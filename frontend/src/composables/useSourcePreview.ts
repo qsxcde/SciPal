@@ -33,6 +33,12 @@ function close(): void {
   isLoading.value = false;
 }
 
+/** 登出用：关闭抽屉并忘掉当前会话。 */
+function reset(): void {
+  close();
+  activeSessionId.value = null;
+}
+
 async function openCitation(source: SourceRef, index: number): Promise<void> {
   selection.value = { index, source };
   chunk.value = null;
@@ -66,5 +72,6 @@ export function useSourcePreview() {
     setActiveSession,
     openCitation,
     close,
+    reset,
   };
 }

@@ -115,6 +115,18 @@ function invalidate(): void {
   loaded = false;
 }
 
+/** 登出用：停止轮询并丢弃已加载的列表与上传进度。 */
+function reset(): void {
+  stopPolling();
+  items.value = [];
+  isLoading.value = false;
+  isUploading.value = false;
+  uploadTotal.value = 0;
+  uploadDone.value = 0;
+  errorMessage.value = "";
+  loaded = false;
+}
+
 export function useLibrary() {
   return {
     items,
@@ -132,5 +144,6 @@ export function useLibrary() {
     startPolling,
     stopPolling,
     invalidate,
+    reset,
   };
 }

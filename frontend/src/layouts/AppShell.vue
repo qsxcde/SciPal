@@ -8,6 +8,7 @@ import PaperReader from "../components/PaperReader.vue";
 import SourceDrawer from "../components/SourceDrawer.vue";
 import { usePaperChat } from "../composables/usePaperChat";
 import { useAuth } from "../composables/useAuth";
+import { resetClientState } from "../composables/useClientReset";
 import { useLibrary } from "../composables/useLibrary";
 import { useSourcePreview } from "../composables/useSourcePreview";
 import type { SelectionAskMode, SidebarSessionItem, SuggestedPrompt } from "../types";
@@ -134,6 +135,7 @@ function handleAsk(text: string, mode: SelectionAskMode): void {
 }
 
 function handleLogout(): void {
+  resetClientState();
   logout();
   void router.push({ name: "login" });
 }

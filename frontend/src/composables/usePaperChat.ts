@@ -19,6 +19,16 @@ export function usePaperChat(): ReturnType<typeof createPaperChat> {
   return store;
 }
 
+/**
+ * Reset the shared store, aborting any in-flight stream.
+ *
+ * Module-level singletons survive route changes, so logging out (or switching
+ * accounts) must clear them explicitly or the next account inherits the state.
+ */
+export function resetPaperChat(): void {
+  store?.reset();
+}
+
 function createPaperChat() {
   const errorMessage = ref("");
   /** 递增令牌：ChatComposer 监听它来抢占焦点（选区提问后） */
@@ -114,6 +124,13 @@ function createPaperChat() {
     chatStream.stopStreaming();
   }
 
+  /** 清空会话、消息与在途流，用于登出/切换账号。 */
+  function reset(): void {
+    chatStream.clearConversation();
+    sessionState.reset();
+    errorMessage.value = "";
+  }
+
   function useDemoPaper(): void {
     errorMessage.value = "";
     sessionState.paperSession.value = {
@@ -174,6 +191,7 @@ function createPaperChat() {
     openSession,
     regenerateLast,
     renameSession,
+    reset,
     sendMessage,
     stopStreaming,
     togglePinSession: sessionState.togglePinSession,
