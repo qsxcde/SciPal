@@ -13,8 +13,8 @@ from functools import lru_cache
 from pathlib import Path
 
 from backend.config import settings
+from backend.composition import text_completer
 from backend.prompts.loader import load_prompt
-from backend.rag.generation.llm import complete_text
 from backend.rag.llm_output import parse_json_object
 
 logger = logging.getLogger(__name__)
@@ -114,7 +114,7 @@ def _cached_llm_expand(query: str) -> list[str]:
     """Call LLM to identify and expand academic terms. Cached for identical queries."""
     prompt = build_term_expand_prompt(query)
     try:
-        payload = parse_json_object(complete_text(prompt))
+        payload = parse_json_object(text_completer().complete(prompt))
         result: list[str] = []
         for entry in payload.get("terms", []):
             result.extend(entry.get("expansions", []))

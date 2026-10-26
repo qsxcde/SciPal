@@ -3,8 +3,8 @@ from collections.abc import Callable
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from backend.composition import text_completer
 from backend.prompts.loader import load_prompt
-from backend.rag.generation.llm import complete_text
 from backend.rag.llm_output import parse_json_object
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ def generate_query_pack(
     complete: Callable[[str], str] | None = None,
 ) -> QueryPack:
     prompt = build_query_rewrite_prompt(query, source_language, target_language)
-    completion = complete or complete_text
+    completion = complete or text_completer().complete
     try:
         payload = parse_json_object(completion(prompt))
         payload.setdefault("keywords", [])

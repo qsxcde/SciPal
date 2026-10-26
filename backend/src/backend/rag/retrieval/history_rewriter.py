@@ -10,8 +10,8 @@ import logging
 from functools import lru_cache
 
 from backend.config import settings
+from backend.composition import text_completer
 from backend.prompts.loader import load_prompt
-from backend.rag.generation.llm import complete_text
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ def _cached_rewrite(query: str, history_text: str) -> str:
     """Call LLM to rewrite query with history context. Cached for identical inputs."""
     prompt = build_rewrite_prompt(query, history_text)
     try:
-        raw = complete_text(prompt)
+        raw = text_completer().complete(prompt)
         result = raw.strip().strip('"').strip("'")
         return result if result else query
     except Exception:
