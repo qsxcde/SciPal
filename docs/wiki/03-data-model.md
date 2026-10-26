@@ -239,7 +239,7 @@ queued ──CAS──▶ running ──▶ succeeded
 ## 5. 磁盘目录布局
 
 ```
-backend/data/                              # 默认数据根 = backend_root().parent/"data"
+backend/data/                              # 默认数据根 = backend_project_dir()/"data"
 ├── raw/<session_id>/
 │   ├── <document_id>.pdf                  # documents.file_path
 │   └── parsed/<document_id>/
@@ -267,9 +267,9 @@ backend/data/                              # 默认数据根 = backend_root().pa
 |---|---|
 | 数据根 | `SCIPAL_DATA_DIR` → `backend/data` |
 | 模型缓存 | `SCIPAL_MODEL_DIR` → `<数据根>/model_cache` |
-| 数据库 | `SCIPAL_DB_PATH` → `<数据根>/scipal.db` → `backend/src/backend/storage/sqlite/scipal.db` |
+| 数据库 | `SCIPAL_DB_PATH` → `<数据根>/scipal.db` |
 
-> 最后一级回退会把 DB 写进源码包目录，仅适合未配置任何路径的本地开发；生产请显式设置 `SCIPAL_DB_PATH` 或 `SCIPAL_DATA_DIR`。
+> 不再回退到源码包目录：DB 与 `raw/`、`index/` 始终同源，避免 `git status` 里出现未跟踪的运行时数据库。
 
 `backend/src/backend/scripts/migrate_storage.py` 提供旧布局迁移：把 `data/uploads/sessions/<sid>/{documents,parsed,indexes}` 平移到 `backend/data/{raw,parsed,index}/<sid>`；同名冲突且内容不同会 `raise RuntimeError("Storage migration conflict")`。
 

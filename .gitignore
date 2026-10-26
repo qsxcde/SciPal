@@ -17,8 +17,7 @@ eval_outputs/
 docs/*
 !docs/wiki/
 CLAUDE.md
-backend/storage/sqlite/*.db
-backend/storage/sqlite/*.db-shm
-backend/storage/sqlite/*.db-wal
-backend/storage/sqlite/scipal.db-shm
-backend/storage/sqlite/scipal.db-wal
+# SQLite runtime files, wherever they are created
+*.db
+*.db-shm
+*.db-wal

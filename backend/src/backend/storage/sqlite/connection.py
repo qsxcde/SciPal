@@ -7,11 +7,15 @@ from backend import config
 
 
 def get_db_path() -> Path:
+    """Resolve the SQLite file.
+
+    The default lives in the data directory, never inside the installed package:
+    a database under backend/src is untracked runtime state that shows up in
+    git status and can be committed by accident.
+    """
     if config.settings.scipal_db_path:
         return Path(config.settings.scipal_db_path).expanduser()
-    if config.settings.scipal_data_dir:
-        return config.data_dir() / "scipal.db"
-    return Path(__file__).resolve().parent / "scipal.db"
+    return config.data_dir() / "scipal.db"
 
 
 def connect() -> sqlite3.Connection:

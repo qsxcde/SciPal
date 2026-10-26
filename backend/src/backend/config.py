@@ -137,8 +137,12 @@ def require_generation_settings() -> Settings:
 
 
 def default_data_dir() -> Path:
-    """Default runtime data root: ``backend/data`` (see .gitignore)."""
-    return backend_root().parent / "data"
+    """Default runtime data root: <repo>/backend/data (gitignored).
+
+    It must sit next to the package, not inside it: data under src/ is runtime
+    state that pollutes the source tree and can be committed by accident.
+    """
+    return backend_project_dir() / "data"
 
 
 def data_dir() -> Path:
