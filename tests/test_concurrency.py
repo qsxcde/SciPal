@@ -120,3 +120,32 @@ def test_concurrent_uploads_create_independent_documents(tmp_path: Path):
     stored = document_repo.list_documents(session_id)
     assert len(stored) == 2
     assert len({document["file_path"] for document in stored}) == 2
+
+
+@pytest.mark.integration
+def test_two_sessions_can_ingest_in_parallel():
+    """max_workers>1：慢任务不再独占整个队列。"""
+    first_session = sessions.create_session("parallel a")["id"]
+    second_session = sessions.create_session("parallel b")["id"]
+    for session_id in (first_session, second_session):
+        job_repo.create_job(
+            session_id=session_id,
+            document_id=None,
+            job_type="parallel_job",
+            stage=DocumentStage.uploaded,
+        )
+
+    # 两个 handler 必须同时到达栅栏，串行执行会超时并判失败
+    barrier = threading.Barrier(2, timeout=5)
+
+    def _handler(_job: dict) -> None:
+        barrier.wait()
+
+    register_handler("parallel_job", _handler)
+    runner = InProcessJobRunner(max_workers=2)
+    try:
+        assert runner.tick() == 2
+        assert runner.wait_idle(timeout=5) is True
+        assert barrier.n_waiting == 0
+    finally:
+        runner.stop()

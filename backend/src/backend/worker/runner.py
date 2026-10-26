@@ -2,7 +2,9 @@
 
 import logging
 import threading
+import time
 from collections.abc import Callable
+from concurrent.futures import Future, ThreadPoolExecutor
 
 from backend.config import settings
 from backend.domain.states import JobStatus
@@ -35,10 +37,21 @@ class InProcessJobRunner:
     this module.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, max_workers: int = 1) -> None:
         self._session_locks: dict[str, threading.Lock] = {}
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
+        self._max_workers = max(1, max_workers)
+        self._pool = (
+            ThreadPoolExecutor(
+                max_workers=self._max_workers,
+                thread_name_prefix="scipal-job",
+            )
+            if self._max_workers > 1
+            else None
+        )
+        self._in_flight = 0
+        self._inflight_lock = threading.Lock()
 
     def start(self) -> None:
         if self._thread is not None and self._thread.is_alive():
@@ -60,6 +73,8 @@ class InProcessJobRunner:
             if self._thread.is_alive():
                 logger.warning("Job runner did not stop before timeout", extra=self.health_status())
         self._thread = None
+        if self._pool is not None:
+            self._pool.shutdown(wait=True)
         logger.info("Stopped job runner", extra=self.health_status())
 
     def health_status(self) -> dict:
@@ -69,6 +84,8 @@ class InProcessJobRunner:
             "running": running,
             "thread_name": thread.name if thread is not None else None,
             "stop_requested": self._stop_event.is_set(),
+            "max_workers": self._max_workers,
+            "in_flight": self._in_flight,
         }
 
     def recover_interrupted_jobs(self) -> int:
@@ -84,19 +101,51 @@ class InProcessJobRunner:
         return recovered
 
     def tick(self) -> int:
-        jobs = job_repo.list_runnable_jobs(limit=1)
-        if not jobs:
+        """Claim and run queued jobs, up to the configured concurrency."""
+        capacity = self._capacity()
+        if capacity <= 0:
             return 0
-        job = jobs[0]
-        if not job_repo.mark_job_running(job["id"]):
-            logger.info("Skipped job %s because it was no longer queued", job["id"])
-            return 0
-        logger.info(
-            "Starting job %s type=%s for session %s document %s",
-            job["id"], job.get("type"), job["session_id"], job.get("document_id"),
-        )
-        self._run_job(job)
-        return 1
+        jobs = job_repo.list_runnable_jobs(limit=capacity)
+        submitted = 0
+        for job in jobs:
+            if not job_repo.mark_job_running(job["id"]):
+                logger.info("Skipped job %s because it was no longer queued", job["id"])
+                continue
+            logger.info(
+                "Starting job %s type=%s for session %s document %s",
+                job["id"], job.get("type"), job["session_id"], job.get("document_id"),
+            )
+            self._dispatch(job)
+            submitted += 1
+        return submitted
+
+    def _capacity(self) -> int:
+        with self._inflight_lock:
+            return self._max_workers - self._in_flight
+
+    def _dispatch(self, job: dict) -> None:
+        if self._pool is None:
+            self._run_job(job)
+            return
+        with self._inflight_lock:
+            self._in_flight += 1
+        future = self._pool.submit(self._run_job, job)
+        future.add_done_callback(self._release_slot)
+
+    def _release_slot(self, _future: Future) -> None:
+        with self._inflight_lock:
+            self._in_flight -= 1
+
+    def wait_idle(self, timeout: float | None = None) -> bool:
+        """Block until no job is running; returns False on timeout."""
+        deadline = None if timeout is None else time.monotonic() + timeout
+        while True:
+            with self._inflight_lock:
+                if self._in_flight == 0:
+                    return True
+            if deadline is not None and time.monotonic() >= deadline:
+                return False
+            time.sleep(0.01)
 
     def _run_job(self, job: dict) -> None:
         session_lock = self._session_locks.setdefault(job["session_id"], threading.Lock())

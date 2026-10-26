@@ -61,6 +61,8 @@ class RuntimeSettings(BaseSettings):
     index_poll_max_interval: float = 1.0
     index_max_wait: float = 10.0
     runner_idle_poll_interval: float = 0.05
+    # 摄取作业并发数：1 = 串行（旧行为），>1 时慢 PDF 不再阻塞其他会话
+    runner_concurrency: int = 2
     # Retrieval parameters
     source_excerpt_max_chars: int = 220
     max_expanded_chunks: int = 8

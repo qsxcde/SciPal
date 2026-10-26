@@ -24,7 +24,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-runner = InProcessJobRunner()
+runner = InProcessJobRunner(max_workers=settings.runner_concurrency)
 
 
 def _validate_runtime_config() -> None:
