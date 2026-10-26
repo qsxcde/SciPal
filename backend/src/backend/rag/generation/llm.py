@@ -36,3 +36,8 @@ def complete_text(prompt: str) -> str:
 def stream_completion_tokens(prompt: str) -> Generator[str, None, None]:
     """Streaming LLM completion. Delegates to ModelClient with fallback."""
     return _get_client().stream(prompt)
+
+
+def last_usage() -> dict | None:
+    """Token usage reported by the last completed stream, if any."""
+    return _client.last_usage if _client is not None else None

@@ -88,6 +88,7 @@ class ModelClient:
     """
 
     def __init__(self, providers: list[ProviderConfig] | None = None) -> None:
+        self.last_usage: dict[str, int | None] | None = None
         self._providers = sorted(
             providers if providers is not None else build_providers(),
             key=lambda p: p.priority,
@@ -154,7 +155,12 @@ class ModelClient:
         prompt: str,
         messages: list[dict[str, Any]] | None = None,
     ) -> Generator[str, None, None]:
-        """Stream tokens from the first successful provider."""
+        """Stream tokens from the first successful provider.
+
+        last_usage is populated when the provider reports token usage on the
+        final chunk (OpenAI-compatible stream_options), otherwise stays None.
+        """
+        self.last_usage = None
         if not self._providers:
             raise RuntimeError("No LLM providers configured")
 
@@ -165,13 +171,18 @@ class ModelClient:
                 msgs = messages if messages is not None else [
                     {"role": "user", "content": prompt},
                 ]
-                response = client.chat.completions.create(
-                    model=provider.model,
-                    messages=msgs,
-                    stream=True,
-                )
+                response = self._open_stream(client, provider, msgs)
                 for chunk in response:
-                    delta = chunk.choices[0].delta.content
+                    usage = getattr(chunk, "usage", None)
+                    if usage is not None:
+                        self.last_usage = {
+                            "prompt_tokens": getattr(usage, "prompt_tokens", None),
+                            "completion_tokens": getattr(usage, "completion_tokens", None),
+                        }
+                    choices = getattr(chunk, "choices", None)
+                    if not choices:
+                        continue
+                    delta = choices[0].delta.content
                     if delta:
                         yield delta
                 self._record_success(provider.name)
@@ -192,6 +203,23 @@ class ModelClient:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _open_stream(client, provider, msgs):
+        """Ask for usage on the final chunk; fall back if the provider rejects it."""
+        try:
+            return client.chat.completions.create(
+                model=provider.model,
+                messages=msgs,
+                stream=True,
+                stream_options={"include_usage": True},
+            )
+        except Exception:
+            return client.chat.completions.create(
+                model=provider.model,
+                messages=msgs,
+                stream=True,
+            )
 
     def _get_or_create_client(self, provider: ProviderConfig) -> OpenAI:
         cache_key = f"{provider.base_url}|{provider.api_key}"

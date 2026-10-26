@@ -30,6 +30,13 @@ logger = logging.getLogger(__name__)
 MISSING_SOURCES_EVENT_ERROR = "Stream protocol error: missing sources event from stream_answer()."
 
 
+def _read_usage() -> dict | None:
+    """Token usage of the stream that just finished (provider-dependent)."""
+    from backend.rag.generation.llm import last_usage
+
+    return last_usage()
+
+
 def _to_thread(fn, *args, **kwargs):
     """Wrap a sync call in asyncio.to_thread for non-blocking execution."""
     return asyncio.to_thread(fn, *args, **kwargs)
@@ -167,6 +174,7 @@ async def _stream_session_chat(
         raise SessionNotFoundError(f"Session not found: {session_id}", session_id=session_id)
 
     state = StreamCollector()
+    usage: dict | None = None
     pending_status_events: list[StatusEvent] = []
     try:
         store, _ = await resolve_session_store(
@@ -209,6 +217,7 @@ async def _stream_session_chat(
         try:
             async for token_event in state.consume_stream(stream):
                 yield token_event
+            usage = _read_usage()
         except (GeneratorExit, asyncio.CancelledError):
             # 客户端中止：把已生成的部分落库，避免刷新后这一轮凭空消失
             await _persist_interrupted_answer(session_id, state)
@@ -230,6 +239,8 @@ async def _stream_session_chat(
         state.full_content,
         sources=state.sources,
         model=settings.deepseek_model,
+        prompt_tokens=(usage or {}).get("prompt_tokens"),
+        completion_tokens=(usage or {}).get("completion_tokens"),
     )
     if replaced_answer_id is not None:
         await _to_thread(message_repo.delete_message, replaced_answer_id)
@@ -247,12 +258,14 @@ async def _persist_and_touch(
     status: str = "complete",
     client_message_id: str | None = None,
     model: str | None = None,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
 ) -> None:
     await _to_thread(
         message_repo.create_message,
         session_id=session_id, role=role, content=content,
         sources=sources, status=status, client_message_id=client_message_id,
-        model=model,
+        model=model, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
     )
     await _to_thread(touch_session, session_id)
 

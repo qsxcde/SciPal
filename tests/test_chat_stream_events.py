@@ -245,3 +245,22 @@ async def test_assistant_message_records_the_generating_model(monkeypatch, sessi
 
     stored = message_repo.list_messages(session["id"])
     assert stored[-1]["model"] == settings.deepseek_model
+
+
+@pytest.mark.integration
+async def test_provider_usage_is_persisted_when_available(monkeypatch, session):
+    from backend.rag.generation import llm as llm_module
+    from backend.storage.sqlite import messages as message_repo
+
+    def _stream(_store, _content, *, options, policy, history):
+        yield {"type": "token", "value": "answer"}
+        yield {"type": "sources", "value": []}
+
+    _stub(monkeypatch, _stream)
+    monkeypatch.setattr(llm_module, "last_usage", lambda: {"prompt_tokens": 11, "completion_tokens": 7})
+
+    await _collect(chat_module.stream_session_chat(session["id"], "question"))
+
+    stored = message_repo.list_messages(session["id"])[-1]
+    assert stored["prompt_tokens"] == 11
+    assert stored["completion_tokens"] == 7
