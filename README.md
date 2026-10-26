@@ -72,7 +72,7 @@ SciPal 是一个面向学术论文阅读场景的 RAG 问答系统。用户上�
    - `retrieving`
    - `generating`
 4. 基于 active snapshot 对应的 FAISS 索引检索上下文。
-5. 调用 LLM（DeepSeek 优先，不可用时自动降级到备用模型）进行中文流式生成。
+5. 调用 LLM（DeepSeek 优先；`LLM_FALLBACK_ENABLED=true` 时才启用 GLM/Qwen/Ollama 降级）进行中文流式生成。
 6. 返回 `sources` 和 `done` 事件，并持久化 assistant message。
 7. 若生成中途失败，assistant message 仍会以 `failed` 状态落库，保留已生成内容。
 
@@ -82,7 +82,7 @@ SciPal 是一个面向学术论文阅读场景的 RAG 问答系统。用户上�
 
 ```bash
 git clone <repo-url>
-cd 01-SciPal
+cd SciPal
 ```
 
 ### 2. 配置环境变量
@@ -119,7 +119,7 @@ MINERU_SHOW_DOWNLOAD_PROGRESS=false
 - 后端运行数据默认写入 `backend/data/`；部署时可通过 `SCIPAL_DATA_DIR` 覆盖。
 - 模型缓存默认写入 `backend/data/model_cache/`；部署时可通过 `SCIPAL_MODEL_DIR` 覆盖。
 - 通过 `EMBEDDING_MODEL` 指定模型仓库 ID，并用 `EMBEDDING_MODEL_SOURCE` 选择下载源。模型目录从仓库 ID 自动推导；切换模型后请重新建立文档索引，避免 FAISS 中混用不同向量空间。
-- 默认按 CPU 配置运行；如果你的本地环境验证通过，也可以自行切换设备配置。
+- `.env.example` 按本机（macOS Apple Silicon）填了 `mps`；Linux/无 GPU 环境请改成 `cpu`，否则摄取会失败。
 - 如果 MinerU 无法解析当前 PDF，文档状态会持久化为 `failed` 并保留错误信息。
 
 ### 3. 安装依赖
@@ -175,7 +175,7 @@ npm run dev
 测试位于仓库根目录 `tests/`，在仓库根执行：
 
 ```bash
-# 全部用例（当前 46 个，不需要 torch / faiss）
+# 全部用例（RAG 相关用例在缺少 torch / faiss 时自动 skip）
 uv run --project backend pytest
 
 # 按标记过滤

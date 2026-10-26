@@ -14,11 +14,11 @@
 | P0 止血 | ✅ 完成 | 0.1–0.6 全部落地 | — |
 | P1 测试网 | ✅ 完成 | 1.1–1.4、1.6（1.5 并入 P2） | — |
 | P2 契约 | ✅ 完成 | 2.1–2.5 全部落地 | — |
-| P3 结构收敛 | 🚧 进行中 | 3.1 端口、3.2 组合根、3.5 store_cache 下沉、api/worker 越层修复、边界矩阵 | 3.3 policies 收编、3.4 index_maintenance 延迟导入 |
+| P3 结构收敛 | ✅ 完成 | 3.1–3.6 全部落地 | — |
 | P4 能力拆分 | ⬜ 未开始 | — | 全部 |
 | P5 前端分层 | ⬜ 未开始 | — | 全部 |
 | P6 可靠性 | ⬜ 未开始 | — | 全部 |
-| P7 固化 | 🚧 进行中 | 7.5 启动自检、契约/端点表校验 | 7.1–7.4 |
+| P7 固化 | 🚧 进行中 | 7.3 README 修正、7.4 ruff+typecheck CI、7.5 启动自检、契约/端点表校验 | 7.1 自动生成清单、7.2 wiki 重写 |
 
 关键变化（截至 2026-10-27）：
 
@@ -26,8 +26,10 @@
 - 契约链路打通：`schemas/*.py → contracts/openapi.json → frontend/src/contracts/openapi.d.ts`，
   `types.ts` 只剩别名映射，SSE 联合类型也由契约生成。
 - `api/` 与 `worker/handlers.py` 不再直接访问存储；边界测试从「查一个文件」改为规则矩阵。
-- 已知遗留：RAG 仍有 11 个模块在模块作用域读全局 `settings`（棘轮清单锁定，P4 清零）。
+- 已知遗留：RAG 仍有 9 个模块在模块作用域读全局 `settings`（棘轮清单锁定，P4 清零）。
+- 用例层已与 torch/faiss/openai 解耦：`application/*` 可在精简依赖下导入（有子进程用例守卫）。
 - 检索层不再依赖生成层：三个改写器统一走 `composition.text_completer()`。
+- lint 门禁上线：根级 `ruff.toml` + CI `ruff check`，上线即抓到一个未定义名缺陷。
 
 ---
 ## 0. 阶段总览与依赖
