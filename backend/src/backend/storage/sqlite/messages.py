@@ -1,5 +1,8 @@
 import json
 import uuid
+from typing import cast
+
+from backend.core.model.records import MessageRecord
 from typing import Literal
 
 from backend.domain.models import SourceRef
@@ -31,7 +34,7 @@ def create_message(
     model: str | None = None,
     prompt_tokens: int | None = None,
     completion_tokens: int | None = None,
-) -> dict:
+) -> MessageRecord:
 
     if client_message_id is not None:
         existing = get_message_by_client_id(client_message_id)
@@ -58,7 +61,7 @@ def create_message(
     message = get_message(message_id)
     if message is None:
         raise RuntimeError("创建消息失败")
-    return message
+    return cast(MessageRecord, message)
 
 
 def delete_message(message_id: str) -> bool:
@@ -90,7 +93,7 @@ def delete_trailing_assistant_message(session_id: str) -> bool:
         return True
 
 
-def get_message_by_client_id(client_message_id: str) -> dict | None:
+def get_message_by_client_id(client_message_id: str) -> MessageRecord | None:
     """Idempotency lookup: a retried request reuses the original message row."""
     with connect() as conn:
         row = conn.execute(
@@ -100,10 +103,10 @@ def get_message_by_client_id(client_message_id: str) -> dict | None:
         return None
     message = dict(row)
     message["sources"] = _decode_sources(message.pop("sources_json"))
-    return message
+    return cast(MessageRecord, message)
 
 
-def get_message(message_id: str) -> dict | None:
+def get_message(message_id: str) -> MessageRecord | None:
 
     with connect() as conn:
         row = conn.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
@@ -111,10 +114,10 @@ def get_message(message_id: str) -> dict | None:
         return None
     message = dict(row)
     message["sources"] = _decode_sources(message.pop("sources_json"))
-    return message
+    return cast(MessageRecord, message)
 
 
-def list_messages(session_id: str) -> list[dict]:
+def list_messages(session_id: str) -> list[MessageRecord]:
 
     with connect() as conn:
         rows = conn.execute(
@@ -125,5 +128,5 @@ def list_messages(session_id: str) -> list[dict]:
     for row in rows:
         message = dict(row)
         message["sources"] = _decode_sources(message.pop("sources_json"))
-        result.append(message)
+        result.append(cast(MessageRecord, message))
     return result
