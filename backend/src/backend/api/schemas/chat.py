@@ -12,6 +12,8 @@ class ChatMessage(BaseModel):
     content: str
     """为 true 时复用上一条用户提问，先删除旧回答再重新生成。"""
     regenerate: bool = False
+    """客户端生成的消息 id，用于重试时去重（同一 id 只会落一条 user 消息）。"""
+    client_message_id: str | None = None
 
 
 class ChatStreamTokenEvent(BaseModel):

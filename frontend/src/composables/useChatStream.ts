@@ -64,12 +64,14 @@ export function useChatStream(options: UseChatStreamOptions) {
     content: string,
     assistant: ChatMessageViewModel,
     regenerate: boolean,
+    clientMessageId?: string,
   ): Promise<void> {
     let accumulated = "";
     assistant.text = "";
 
     for await (const chunk of streamChat(sessionId, content, abortController?.signal, {
       regenerate,
+      clientMessageId,
     })) {
       switch (chunk.type) {
         case "token":
@@ -102,6 +104,7 @@ export function useChatStream(options: UseChatStreamOptions) {
     content: string,
     assistant: ChatMessageViewModel,
     regenerate: boolean,
+    clientMessageId?: string,
   ): Promise<void> {
     let lastError: unknown;
     for (let attempt = 0; attempt <= SSE_RETRY_MAX_ATTEMPTS; attempt += 1) {
@@ -109,7 +112,7 @@ export function useChatStream(options: UseChatStreamOptions) {
         await delay(SSE_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
       }
       try {
-        await consumeOnce(sessionId, content, assistant, regenerate);
+        await consumeOnce(sessionId, content, assistant, regenerate, clientMessageId);
         return;
       } catch (error) {
         if (isAbortError(error)) {
@@ -138,6 +141,8 @@ export function useChatStream(options: UseChatStreamOptions) {
       return;
     }
 
+    // 重试复用同一个 id：服务端据此避免同一条提问落库多次
+    const clientMessageId = crypto.randomUUID();
     appendMessage({ id: createMessageId("user"), role: "user", text: content });
     const assistant = appendMessage({
       id: createMessageId("assistant"),
@@ -148,7 +153,7 @@ export function useChatStream(options: UseChatStreamOptions) {
     beginStreaming();
 
     try {
-      await runStream(sessionId, content, assistant, false);
+      await runStream(sessionId, content, assistant, false, clientMessageId);
     } catch (error) {
       if (isAbortError(error)) {
         return;

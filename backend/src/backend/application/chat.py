@@ -128,6 +128,7 @@ async def stream_session_chat(
     wait_timeout_seconds: float | None = None,
     user_id: str | None = None,
     regenerate: bool = False,
+    client_message_id: str | None = None,
 ) -> AsyncIterator[ChatEvent]:
     """Serialize turns within one session.
 
@@ -141,6 +142,7 @@ async def stream_session_chat(
             wait_timeout_seconds=wait_timeout_seconds,
             user_id=user_id,
             regenerate=regenerate,
+            client_message_id=client_message_id,
         )
         try:
             async for event in inner:
@@ -158,6 +160,7 @@ async def _stream_session_chat(
     wait_timeout_seconds: float | None = None,
     user_id: str | None = None,
     regenerate: bool = False,
+    client_message_id: str | None = None,
 ) -> AsyncIterator[ChatEvent]:
     session = await _to_thread(session_repo.get_session, session_id)
     if not session_is_accessible(session, user_id):
@@ -184,7 +187,9 @@ async def _stream_session_chat(
             if previous and previous[-1]["role"] == "assistant":
                 replaced_answer_id = previous[-1]["id"]
         else:
-            await _persist_and_touch(session_id, "user", content)
+            await _persist_and_touch(
+                session_id, "user", content, client_message_id=client_message_id
+            )
 
         # 历史在写入当前提问之后读取，重新生成时需要把这条提问排除掉
         history = await _to_thread(message_repo.list_messages, session_id)
@@ -234,11 +239,12 @@ async def _persist_and_touch(
     content: str,
     sources: list | None = None,
     status: str = "complete",
+    client_message_id: str | None = None,
 ) -> None:
     await _to_thread(
         message_repo.create_message,
         session_id=session_id, role=role, content=content,
-        sources=sources, status=status,
+        sources=sources, status=status, client_message_id=client_message_id,
     )
     await _to_thread(touch_session, session_id)
 

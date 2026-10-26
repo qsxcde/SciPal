@@ -205,3 +205,26 @@ async def test_turns_in_the_same_session_run_one_at_a_time(monkeypatch, session)
     )
 
     assert trace == [f"enter:{session['id']}", f"exit:{session['id']}", f"enter:{session['id']}", f"exit:{session['id']}"]
+
+
+@pytest.mark.integration
+async def test_retried_request_does_not_duplicate_the_user_message(monkeypatch, session):
+    """同一条 client_message_id 重试时只应落一条 user 消息。"""
+    from backend.storage.sqlite import messages as message_repo
+
+    def _stream(_store, _content, *, options, policy, history):
+        yield {"type": "token", "value": "answer"}
+        yield {"type": "sources", "value": []}
+
+    _stub(monkeypatch, _stream)
+
+    for _ in range(2):
+        await _collect(
+            chat_module.stream_session_chat(
+                session["id"], "question", client_message_id="client-1"
+            )
+        )
+
+    stored = message_repo.list_messages(session["id"])
+    assert [m["role"] for m in stored].count("user") == 1
+    assert len([m for m in stored if m["role"] == "assistant"]) == 2

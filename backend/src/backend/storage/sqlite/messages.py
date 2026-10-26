@@ -27,7 +27,13 @@ def create_message(
     content: str,
     sources: list[SourceRef] | None = None,
     status: MessageStatus = MessageStatus.complete,
+    client_message_id: str | None = None,
 ) -> dict:
+
+    if client_message_id is not None:
+        existing = get_message_by_client_id(client_message_id)
+        if existing is not None:
+            return existing
 
     message_id = str(uuid.uuid4())
     timestamp = now_iso()
@@ -35,10 +41,12 @@ def create_message(
     with transaction() as conn:
         conn.execute(
             """
-            INSERT INTO messages (id, session_id, role, content, sources_json, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO messages (
+              id, session_id, role, content, sources_json, status, client_message_id, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (message_id, session_id, role, content, sources_json, status, timestamp),
+            (message_id, session_id, role, content, sources_json, status, client_message_id, timestamp),
         )
     message = get_message(message_id)
     if message is None:
@@ -73,6 +81,19 @@ def delete_trailing_assistant_message(session_id: str) -> bool:
             return False
         conn.execute("DELETE FROM messages WHERE id = ?", (row["id"],))
         return True
+
+
+def get_message_by_client_id(client_message_id: str) -> dict | None:
+    """Idempotency lookup: a retried request reuses the original message row."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM messages WHERE client_message_id = ?", (client_message_id,)
+        ).fetchone()
+    if not row:
+        return None
+    message = dict(row)
+    message["sources"] = _decode_sources(message.pop("sources_json"))
+    return message
 
 
 def get_message(message_id: str) -> dict | None:

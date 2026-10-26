@@ -13,7 +13,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Login */
+        /**
+         * Login
+         * @description 用用户名密码换取 JWT。
+         */
         post: operations["login_auth_login_post"];
         delete?: never;
         options?: never;
@@ -28,7 +31,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Me */
+        /**
+         * Me
+         * @description 返回当前 token 对应的用户。
+         */
         get: operations["me_auth_me_get"];
         put?: never;
         post?: never;
@@ -47,7 +53,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Register */
+        /**
+         * Register
+         * @description 注册账号并直接签发 token。
+         */
         post: operations["register_auth_register_post"];
         delete?: never;
         options?: never;
@@ -82,7 +91,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Health */
+        /**
+         * Health
+         * @description 健康检查：进程存活与后台任务线程状态。
+         */
         get: operations["health_health_get"];
         put?: never;
         post?: never;
@@ -99,10 +111,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Sessions */
+        /**
+         * List Sessions
+         * @description 按当前用户列出会话（不含已归档）。
+         */
         get: operations["list_sessions_sessions_get"];
         put?: never;
-        /** Create Session */
+        /**
+         * Create Session
+         * @description 新建空会话。
+         */
         post: operations["create_session_sessions_post"];
         delete?: never;
         options?: never;
@@ -117,15 +135,24 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Session */
+        /**
+         * Get Session
+         * @description 读取会话快照：文档、消息、任务与索引状态。
+         */
         get: operations["get_session_sessions__session_id__get"];
         put?: never;
         post?: never;
-        /** Delete Session */
+        /**
+         * Delete Session
+         * @description 归档会话（幂等，不暴露会话是否存在）。
+         */
         delete: operations["delete_session_sessions__session_id__delete"];
         options?: never;
         head?: never;
-        /** Update Session */
+        /**
+         * Update Session
+         * @description 更新会话标题或置顶状态。
+         */
         patch: operations["update_session_sessions__session_id__patch"];
         trace?: never;
     };
@@ -138,7 +165,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Upload Document */
+        /**
+         * Upload Document
+         * @description 上传 PDF 并受理异步摄取任务，立即返回 202。
+         */
         post: operations["upload_document_sessions__session_id__documents_post"];
         delete?: never;
         options?: never;
@@ -235,7 +265,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Chat */
+        /**
+         * Chat
+         * @description 发送提问，以 text/event-stream 流式返回回答。
+         */
         post: operations["chat_sessions__session_id__messages_post"];
         delete?: never;
         options?: never;
@@ -267,6 +300,8 @@ export interface components {
         };
         /** ChatMessage */
         ChatMessage: {
+            /** Client Message Id */
+            client_message_id?: string | null;
             /** Content */
             content: string;
             /**
