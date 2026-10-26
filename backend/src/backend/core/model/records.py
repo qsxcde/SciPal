@@ -65,3 +65,19 @@ class IndexRecord(TypedDict):
     status: str
     created_at: str
     updated_at: str
+class SessionSummaryRecord(SessionRecord):
+    document_count: int
+    message_count: int
+    indexed_chunks: int
+
+
+class SnapshotRecord(TypedDict):
+    id: str
+    session_id: str
+    status: str
+    index_path: str
+    chunks_path: str
+    document_ids: list[str]
+    error_message: str | None
+    created_at: str
+    updated_at: str

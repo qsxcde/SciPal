@@ -2,6 +2,9 @@ import json
 import uuid
 
 from backend.domain.states import IndexSnapshotStatus
+from typing import cast
+
+from backend.core.model.records import SnapshotRecord
 from backend.storage.sqlite.connection import connect
 from backend.storage.sqlite.connection import row_to_dict
 from backend.storage.sqlite.connection import transaction
@@ -13,7 +16,7 @@ def create_building_snapshot(
     index_path: str,
     chunks_path: str,
     document_ids: list[str],
-) -> dict:
+) -> SnapshotRecord:
 
     snapshot_id = str(uuid.uuid4())
     timestamp = now_iso()
@@ -39,7 +42,7 @@ def create_building_snapshot(
     snapshot = get_snapshot(snapshot_id)
     if snapshot is None:
         raise RuntimeError("创建索引快照失败")
-    return snapshot
+    return cast(SnapshotRecord, snapshot)
 
 
 def mark_snapshot_ready(snapshot_id: str) -> bool:
@@ -154,7 +157,7 @@ def rollback_snapshot_promotion(
     return cursor.rowcount > 0
 
 
-def get_active_ready_snapshot(session_id: str) -> dict | None:
+def get_active_ready_snapshot(session_id: str) -> SnapshotRecord | None:
 
     with connect() as conn:
         row = conn.execute(
@@ -169,7 +172,7 @@ def get_active_ready_snapshot(session_id: str) -> dict | None:
         return _row_to_snapshot(row)
 
 
-def get_snapshot(snapshot_id: str) -> dict | None:
+def get_snapshot(snapshot_id: str) -> SnapshotRecord | None:
 
     with connect() as conn:
         row = conn.execute(
@@ -179,7 +182,7 @@ def get_snapshot(snapshot_id: str) -> dict | None:
         return _row_to_snapshot(row)
 
 
-def list_snapshots_pending_cleanup(stale_before: str) -> list[dict]:
+def list_snapshots_pending_cleanup(stale_before: str) -> list[SnapshotRecord]:
     """Return ``failed`` snapshots plus ``stale`` snapshots older than ``stale_before``.
 
     ``ready`` / ``building`` snapshots are never returned, so a GC pass cannot
@@ -220,9 +223,9 @@ def delete_snapshot(snapshot_id: str) -> bool:
     return cursor.rowcount > 0
 
 
-def _row_to_snapshot(row) -> dict | None:
+def _row_to_snapshot(row) -> SnapshotRecord | None:
     snapshot = row_to_dict(row)
     if snapshot is None:
         return None
     snapshot["document_ids"] = json.loads(snapshot.pop("document_ids_json"))
-    return snapshot
+    return cast(SnapshotRecord, snapshot)

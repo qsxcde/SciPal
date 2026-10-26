@@ -1,6 +1,9 @@
 import uuid
 from datetime import UTC, datetime
 
+from typing import cast
+
+from backend.core.model.records import SessionRecord, SessionSummaryRecord
 from backend.storage.sqlite.connection import connect, transaction
 
 
@@ -8,7 +11,7 @@ def now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def create_session(title: str, user_id: str | None = None) -> dict:
+def create_session(title: str, user_id: str | None = None) -> SessionRecord:
     session_id = str(uuid.uuid4())
     timestamp = now_iso()
     with transaction() as conn:
@@ -25,10 +28,10 @@ def create_session(title: str, user_id: str | None = None) -> dict:
     return session
 
 
-def get_session(session_id: str) -> dict | None:
+def get_session(session_id: str) -> SessionRecord | None:
     with connect() as conn:
         row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
-        return dict(row) if row else None
+        return cast(SessionRecord, dict(row)) if row else None
 
 
 def touch_session(session_id: str) -> None:
@@ -49,7 +52,7 @@ def update_session_title(session_id: str, title: str) -> None:
         )
 
 
-def list_sessions(user_id: str | None = None) -> list[dict]:
+def list_sessions(user_id: str | None = None) -> list[SessionRecord]:
     with connect() as conn:
         if user_id:
             rows = conn.execute(
@@ -78,7 +81,7 @@ def list_sessions(user_id: str | None = None) -> list[dict]:
                 ORDER BY s.is_pinned DESC, s.updated_at DESC
                 """
             ).fetchall()
-        return [dict(row) for row in rows]
+        return [cast(SessionRecord, dict(row)) for row in rows]
 
 
 def archive_session(session_id: str) -> None:
@@ -89,7 +92,7 @@ def archive_session(session_id: str) -> None:
         )
 
 
-def update_session(session_id: str, title: str | None = None, is_pinned: bool | None = None) -> dict | None:
+def update_session(session_id: str, title: str | None = None, is_pinned: bool | None = None) -> SessionRecord | None:
     session = get_session(session_id)
     if session is None:
         return None
@@ -105,10 +108,13 @@ def update_session(session_id: str, title: str | None = None, is_pinned: bool | 
             """,
             (next_title, next_is_pinned, timestamp, session_id),
         )
-    return get_session_summary(session_id)
+    summary = get_session_summary(session_id)
+    if summary is None:
+        raise RuntimeError("创建会话失败")
+    return cast(SessionRecord, summary)
 
 
-def get_session_summary(session_id: str) -> dict | None:
+def get_session_summary(session_id: str) -> SessionSummaryRecord | None:
     with connect() as conn:
         row = conn.execute(
             """
@@ -122,4 +128,4 @@ def get_session_summary(session_id: str) -> dict | None:
             """,
             (session_id,),
         ).fetchone()
-        return dict(row) if row else None
+        return cast(SessionSummaryRecord, dict(row)) if row else None
