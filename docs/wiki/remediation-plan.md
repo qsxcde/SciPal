@@ -224,3 +224,56 @@ application/** 不得 import fastapi（保留现有规则）
 ## 起手第一件事
 
 按序执行 **0.1 → 0.2 → 0.4**：三处加起来不到 30 行，但「stopped 会话 500」「鉴权静默失效」「跨账号残留」三个最严重的问题同时消失。随后开 P1 补测试。
+
+---
+
+## 交接：剩余任务的落地方案
+
+> 截至 `fb0818e`，P0–P3 完成，P4 两步、P6 七项完成。以下为剩余项的**具体改动点**，可直接照做。
+
+### P6.9 · token 统计与生成上限（schema v7）
+
+1. `storage/sqlite/schema.py`：`CURRENT_SCHEMA_VERSION = 7`；`messages` 增加
+   `prompt_tokens INTEGER NULL` / `completion_tokens INTEGER NULL` / `model TEXT NULL`；
+   迁移分支照 v6 的写法（先 `PRAGMA table_info` 判断再 `ALTER TABLE`）。
+2. `rag/generation/model_client.py`：调用 `create(stream=True)` 时传
+   `max_tokens=settings.llm_max_tokens`；若 provider 支持 `stream_options={"include_usage": True}`，
+   在最后一个 chunk 上取 `usage` 并通过事件回传。
+3. `application/chat.py`：`StreamCollector` 增加 `usage` 字段，`_persist_and_touch` 落库。
+4. 前端不需要改；契约只增不改，`npm run gen` 后自动同步。
+
+### P6.1 · 流式生命周期重做
+
+1. `application/chat.py`：`consume_stream` 的 `run_in_executor(None, ...)` 改为专用
+   `ThreadPoolExecutor(max_workers=4)`（模块级），避免与全站同步 IO 抢默认线程池。
+2. 用 `try/finally` 保证 `gen.close()`；落库改为 `asyncio.create_task` +
+   `asyncio.shield`，保证取消域内也能写完。
+3. 现有用例 `tests/test_chat_stream_events.py` 已覆盖顺序/中断/失败，直接作为回归网。
+
+### P7.1 · 清单自动生成
+
+- 已有：`backend/scripts/api_table.py` 生成 README 端点表，`tests/test_api_table.py` 守卫。
+- 待补：`backend/scripts/config_table.py` 从 `RuntimeSettings` 生成 wiki 08 的配置表，
+  在 `docs/wiki/08-configuration.md` 加 `<!-- config-table:start/end -->` 标记，照抄 api_table 的渲染与测试方式。
+
+### P7.2 · wiki 10 章
+
+- 10 章仍写着「测试 46 个」「psql 不适用」等旧信息，按 README 已修正的口径重写「测试与排障」两节。
+
+### P4 · 目录搬迁（按批，每批一个 PR）
+
+1. **4a** ✅ 端口化 + 解析器注入（`1098d52` `1af20c5`）。
+2. **4b** `rag/generation/` → `adapters/llm/`：先给 `model_client` 加 `TextCompleter` 实现，
+   再把 `LlmTextCompleter` 换成直接持有 `ModelClient`，最后删 `llm.py` 的模块级单例。
+3. **4c** `rag/embedding/` → `adapters/embedding/`：把 `create_embed_fn()` 移入 `composition`，
+   `FAISSVectorStore` 只接收 `embed_fn`；同时补快照的 embedding 指纹校验（审计 P1-3）。
+4. **4d** `storage/sqlite/*` 返回实体：先给 8 个 `-> dict` 函数加类型别名过渡，
+   再逐个换成 `core/model` 的 pydantic 模型；每换一个跑全量测试。
+
+### P5 · 前端分层
+
+1. 先 `git mv` 建 `features/{chat,library,reader,sessions}/`，只改 import 路径，零逻辑变更。
+2. 再把 5 个模块级单例（`usePaperChat` `useLibrary` `useAuth` `usePaperReader` `useSourcePreview`）
+   收进 `stores/`，暴露 `create/reset`；`resetClientState()` 改为调用它们。
+3. 最后拆 `PaperReader.vue`(587) 与 `LibraryPanel.vue`(471)，加 `eslint-plugin-boundaries` 规则。
+
