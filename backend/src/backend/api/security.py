@@ -1,5 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
+import asyncio
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -48,7 +50,8 @@ async def get_current_user(token: str | None = Depends(_oauth2_scheme)) -> dict:
     user_id: str | None = payload.get("sub")
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    user = auth_service.get_user(user_id)
+    # SQLite 是同步驱动：放到线程里查，避免阻塞事件循环（会影响同进程的 SSE）
+    user = await asyncio.to_thread(auth_service.get_user, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
