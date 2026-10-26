@@ -2,10 +2,10 @@
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { Delete, Refresh, UploadFilled } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { useLibrary } from "../composables/useLibrary";
-import { UPLOAD_STATUS_LABELS } from "../constants/upload";
-import type { LibraryDocument } from "../api";
-import { formatFileSize, formatUpdatedAt } from "../utils/format";
+import { useLibrary } from "../../../composables/useLibrary";
+import { UPLOAD_STATUS_LABELS } from "../../../constants/upload";
+import type { LibraryDocument } from "../../../api";
+import { formatFileSize, formatUpdatedAt } from "../../../utils/format";
 
 const emit = defineEmits<{
   open: [sessionId: string];

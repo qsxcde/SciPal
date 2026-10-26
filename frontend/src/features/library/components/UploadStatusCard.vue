@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UploadStatus } from "../types";
+import type { UploadStatus } from "../../../types";
 
 defineProps<{
   status: UploadStatus;
