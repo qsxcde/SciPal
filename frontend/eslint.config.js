@@ -32,6 +32,27 @@ export default defineConfig([
       },
     },
   },
+  // 业务域边界：features/* 只能向右依赖共用层，不能回头依赖编排层或别的域
+  {
+    files: ["src/features/**/*.{ts,vue}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/layouts/*", "**/views/*", "**/router/*", "**/main"],
+              message: "features 不得依赖编排层（layouts/views/router/main）",
+            },
+            {
+              group: ["**/features/*/components/*"],
+              message: "features 之间不得跨域引用，改为经 store 或共用 components/ 交互",
+            },
+          ],
+        },
+      ],
+    },
+  },
   // 关闭与 Prettier 冲突的格式规则，格式一律交给 prettier 决定
   prettier,
 ]);
