@@ -36,7 +36,7 @@ cd frontend && npm install && npm run dev
 
 ### 2.1 现状
 
-`tests/` 已纳入版本库，46 个用例覆盖"不需要 torch/faiss 的"核心不变量：
+`tests/` 已纳入版本库，用例覆盖核心不变量（数量不再手写，`pytest --collect-only -q | tail -1` 为准）：
 
 | 文件 | 覆盖内容 |
 |---|---|
@@ -74,7 +74,7 @@ uv run --project backend pytest -m integration -v
 uv run --project backend pytest            # 全部
 ```
 
-CI（`.github/workflows/ci.yml`）只安装轻量测试依赖（pytest / pydantic / fastapi / jose / bcrypt）并跑 `pytest -m "unit or integration"`，另外用 `compileall` 兜住重依赖模块的语法错误；前端 job 跑 `npm ci && npm run lint && npm run build`。
+CI（`.github/workflows/ci.yml`）后端 job 安装轻量依赖（pytest / pydantic / fastapi / jose / bcrypt / ruff），依次跑 `ruff check`、`compileall`、`pytest -m "unit or integration"`；依赖 torch/faiss 的用例用 `importorskip` 自动跳过。前端 job 跑 `npm ci`、`npm run lint`、`npm test`、`npm run gen` + `git diff --exit-code src/contracts`、`npm run build`。
 
 ### 2.3 补测时的入手点
 
