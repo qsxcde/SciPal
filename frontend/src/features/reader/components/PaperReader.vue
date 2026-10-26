@@ -9,14 +9,14 @@ import {
   watch,
 } from "vue";
 import { Close, Tickets } from "@element-plus/icons-vue";
-import MarkdownContent from "./MarkdownContent.vue";
+import MarkdownContent from "../../../components/MarkdownContent.vue";
 import PaperOutline from "./PaperOutline.vue";
 
 // pdf.js 体积较大，只在切到「原页」时才加载
 const PdfViewer = defineAsyncComponent(() => import("./PdfViewer.vue"));
-import { usePaperReader } from "../composables/usePaperReader";
-import type { PaperBlock } from "../api";
-import type { SelectionAskMode } from "../types";
+import { usePaperReader } from "../../../composables/usePaperReader";
+import type { PaperBlock } from "../../../api";
+import type { SelectionAskMode } from "../../../types";
 
 const props = defineProps<{
   sessionId: string;

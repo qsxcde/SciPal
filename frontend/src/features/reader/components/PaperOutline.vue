@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ReaderOutlineItem } from "../types";
+import type { ReaderOutlineItem } from "../../../types";
 
 defineProps<{
   items: ReaderOutlineItem[];

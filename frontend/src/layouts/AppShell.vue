@@ -4,7 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import AppSidebar from "../components/AppSidebar.vue";
 import ChatWorkspace from "../components/ChatWorkspace.vue";
 import LibraryPanel from "../components/LibraryPanel.vue";
-import PaperReader from "../components/PaperReader.vue";
+import PaperReader from "../features/reader/components/PaperReader.vue";
 import SourceDrawer from "../components/SourceDrawer.vue";
 import { usePaperChat } from "../composables/usePaperChat";
 import { useAuth } from "../composables/useAuth";

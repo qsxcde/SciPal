@@ -2,9 +2,9 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import * as pdfjs from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { fetchDocumentFile } from "../api";
-import type { SourceBlockBox } from "../api";
-import { toErrorMessage } from "../utils/error";
+import { fetchDocumentFile } from "../../../api";
+import type { SourceBlockBox } from "../../../api";
+import { toErrorMessage } from "../../../utils/error";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
