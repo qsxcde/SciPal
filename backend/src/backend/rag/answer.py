@@ -14,7 +14,7 @@ from backend.rag.generation.answer_generator import build_sources
 from backend.rag.generation.answer_generator import generate_answer
 from backend.rag.generation.answer_generator import stream_answer as stream_answer_for_chunks
 from backend.domain.models import Chunk, SourceRef
-from backend.rag.indexing.vector_store import AbstractVectorStore
+from backend.core.contracts.ports import VectorStore
 from backend.rag.retrieval.context_builder import expand_context
 from backend.rag.retrieval.hybrid_retriever import HybridRetrievalOptions
 from backend.rag.retrieval.hybrid_retriever import retrieve_hybrid_context
@@ -90,7 +90,7 @@ class RetrievalDiagnostics(BaseModel):
 
 
 def retrieve_context(
-    store: AbstractVectorStore,
+    store: VectorStore,
     query: str,
     dense_top_k: int | None = None,
     k: int | None = None,
@@ -152,7 +152,7 @@ def retrieve_context(
 
 
 def stream_answer(
-    store: AbstractVectorStore,
+    store: VectorStore,
     query: str,
     *,
     policy: AnswerPolicy,
@@ -189,7 +189,7 @@ def stream_answer(
 
 
 def evaluate_answer(
-    store: AbstractVectorStore,
+    store: VectorStore,
     query: str,
     *,
     policy: AnswerPolicy,
@@ -228,7 +228,7 @@ def evaluate_answer(
 
 
 def evaluate_retrieval(
-    store: AbstractVectorStore,
+    store: VectorStore,
     query: str,
     k: int | None = None,
     options: RetrievalOptions | None = None,

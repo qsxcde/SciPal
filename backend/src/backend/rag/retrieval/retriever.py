@@ -1,11 +1,11 @@
 from backend.config import settings
 from backend.domain.models import Chunk
-from backend.rag.indexing.vector_store import AbstractVectorStore
+from backend.core.contracts.ports import VectorStore
 from backend.rag.retrieval.filters import filter_indexable_chunks
 
 
 def retrieve_seed_chunks(
-    store: AbstractVectorStore,
+    store: VectorStore,
     question: str,
     k: int | None = None,
     default_k: int | None = None,

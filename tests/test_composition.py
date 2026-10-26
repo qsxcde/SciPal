@@ -24,3 +24,13 @@ def test_embedder_factory_returns_a_callable(monkeypatch):
     from backend.composition import embedder
 
     assert callable(embedder())
+
+
+@pytest.mark.unit
+def test_faiss_store_satisfies_the_vector_store_port():
+    pytest.importorskip("faiss", reason="faiss-cpu is not installed")
+    pytest.importorskip("torch", reason="the embedder import pulls torch")
+    from backend.core.contracts.ports import VectorStore
+    from backend.rag.indexing.vector_store import FAISSVectorStore
+
+    assert isinstance(FAISSVectorStore(), VectorStore)

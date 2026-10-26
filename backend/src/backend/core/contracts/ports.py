@@ -8,6 +8,8 @@ root, instead of every module importing a global singleton.
 from collections.abc import Iterator
 from typing import Protocol, runtime_checkable
 
+from backend.domain.models import Chunk
+
 
 @runtime_checkable
 class TextCompleter(Protocol):
@@ -23,3 +25,14 @@ class Embedder(Protocol):
     """Batch text embedding: one vector per input string."""
 
     def __call__(self, texts: list[str]) -> list[list[float]]: ...
+
+
+@runtime_checkable
+class VectorStore(Protocol):
+    """Read/write surface the retrieval and indexing code depends on."""
+
+    def add_chunks(self, chunks: list[Chunk]) -> None: ...
+
+    def search(self, query: str, k: int = 5) -> list[Chunk]: ...
+
+    def list_chunks(self) -> list[Chunk]: ...

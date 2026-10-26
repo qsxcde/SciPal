@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from backend.domain.models import Chunk
-from backend.rag.indexing.vector_store import AbstractVectorStore
+from backend.core.contracts.ports import VectorStore
 from backend.rag.retrieval.bm25 import BM25Retriever
 from backend.rag.retrieval.context_builder import expand_context_with_debug
 from backend.rag.retrieval.filters import filter_indexable_chunks
@@ -107,7 +107,7 @@ def _detect_and_rewrite(
 
 
 def _hybrid_search(
-    store: AbstractVectorStore,
+    store: VectorStore,
     dense_query: str,
     bm25_query: str,
     all_chunks: list[Chunk],
@@ -158,7 +158,7 @@ def _rerank_if_needed(
 
 
 def retrieve_hybrid_context(
-    store: AbstractVectorStore,
+    store: VectorStore,
     query: str,
     *,
     options: HybridRetrievalOptions | None = None,
@@ -246,7 +246,7 @@ def retrieve_hybrid_context(
 
 
 def _collect_dense_hits(
-    store: AbstractVectorStore,
+    store: VectorStore,
     query: str,
     k: int,
 ) -> tuple[list[RetrievalHit], bool]:
