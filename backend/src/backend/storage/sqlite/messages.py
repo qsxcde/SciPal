@@ -28,6 +28,9 @@ def create_message(
     sources: list[SourceRef] | None = None,
     status: MessageStatus = MessageStatus.complete,
     client_message_id: str | None = None,
+    model: str | None = None,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
 ) -> dict:
 
     if client_message_id is not None:
@@ -42,11 +45,15 @@ def create_message(
         conn.execute(
             """
             INSERT INTO messages (
-              id, session_id, role, content, sources_json, status, client_message_id, created_at
+              id, session_id, role, content, sources_json, status, client_message_id,
+              model, prompt_tokens, completion_tokens, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (message_id, session_id, role, content, sources_json, status, client_message_id, timestamp),
+            (
+                message_id, session_id, role, content, sources_json, status,
+                client_message_id, model, prompt_tokens, completion_tokens, timestamp,
+            ),
         )
     message = get_message(message_id)
     if message is None:

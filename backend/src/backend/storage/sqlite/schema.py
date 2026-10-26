@@ -2,7 +2,7 @@ import threading
 
 from backend.storage.sqlite.connection import connect
 
-CURRENT_SCHEMA_VERSION = 6
+CURRENT_SCHEMA_VERSION = 7
 
 _init_lock = threading.RLock()
 
@@ -57,6 +57,15 @@ def _migrate_schema(conn, from_version: int) -> None:
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_client_id "
             "ON messages(client_message_id) WHERE client_message_id IS NOT NULL"
         )
+    if from_version < 7:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(messages)")}
+        for column, ddl_type in (
+            ("model", "TEXT"),
+            ("prompt_tokens", "INTEGER"),
+            ("completion_tokens", "INTEGER"),
+        ):
+            if column not in columns:
+                conn.execute(f"ALTER TABLE messages ADD COLUMN {column} {ddl_type} NULL")
 
 
 def _migrate_add_users_table(conn) -> None:
@@ -234,6 +243,9 @@ def _create_initial_schema(conn) -> None:
           sources_json TEXT NULL,
           status TEXT NOT NULL,
           client_message_id TEXT NULL,
+          model TEXT NULL,
+          prompt_tokens INTEGER NULL,
+          completion_tokens INTEGER NULL,
           created_at TEXT NOT NULL
         );
 

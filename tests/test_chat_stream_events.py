@@ -228,3 +228,20 @@ async def test_retried_request_does_not_duplicate_the_user_message(monkeypatch, 
     stored = message_repo.list_messages(session["id"])
     assert [m["role"] for m in stored].count("user") == 1
     assert len([m for m in stored if m["role"] == "assistant"]) == 2
+
+
+@pytest.mark.integration
+async def test_assistant_message_records_the_generating_model(monkeypatch, session):
+    from backend.config import settings
+    from backend.storage.sqlite import messages as message_repo
+
+    def _stream(_store, _content, *, options, policy, history):
+        yield {"type": "token", "value": "answer"}
+        yield {"type": "sources", "value": []}
+
+    _stub(monkeypatch, _stream)
+
+    await _collect(chat_module.stream_session_chat(session["id"], "question"))
+
+    stored = message_repo.list_messages(session["id"])
+    assert stored[-1]["model"] == settings.deepseek_model

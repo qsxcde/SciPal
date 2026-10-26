@@ -224,7 +224,13 @@ async def _stream_session_chat(
             yield event
         return
 
-    await _persist_and_touch(session_id, "assistant", state.full_content, sources=state.sources)
+    await _persist_and_touch(
+        session_id,
+        "assistant",
+        state.full_content,
+        sources=state.sources,
+        model=settings.deepseek_model,
+    )
     if replaced_answer_id is not None:
         await _to_thread(message_repo.delete_message, replaced_answer_id)
     if state.warning:
@@ -240,11 +246,13 @@ async def _persist_and_touch(
     sources: list | None = None,
     status: str = "complete",
     client_message_id: str | None = None,
+    model: str | None = None,
 ) -> None:
     await _to_thread(
         message_repo.create_message,
         session_id=session_id, role=role, content=content,
         sources=sources, status=status, client_message_id=client_message_id,
+        model=model,
     )
     await _to_thread(touch_session, session_id)
 
