@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from backend.api.deps import get_accessible_session
 from backend.api.schemas import ChatMessage
 from backend.api.security import get_current_user
-from backend.api.streaming import encode_sse_event
+from backend.api.streaming import encode_sse_event, stream_with_heartbeat
 from backend.application.chat import stream_session_chat
 from backend.application.events import DoneEvent, ErrorEvent
 
@@ -32,8 +32,8 @@ async def chat(
 
     async def generate():
         try:
-            async for event in events:
-                yield encode_sse_event(event)
+            async for frame in stream_with_heartbeat(events):
+                yield frame
         except asyncio.CancelledError:
             logger.info("SSE stream cancelled by client session=%s", session_id)
             return
@@ -42,4 +42,12 @@ async def chat(
             yield encode_sse_event(ErrorEvent(value="internal_error"))
             yield encode_sse_event(DoneEvent())
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            # nginx 默认缓冲会让流式退化成「等全部生成完再吐」，必须显式关闭
+            "X-Accel-Buffering": "no",
+        },
+    )
