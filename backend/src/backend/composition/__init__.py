@@ -45,6 +45,6 @@ def parser_chain() -> list:
 @lru_cache(maxsize=1)
 def embedder() -> Embedder:
     """Process-wide embedder (remote -> local fallback chain)."""
-    from backend.rag.embedding import create_embed_fn
+    from backend.adapters.embedding import create_embed_fn
 
     return create_embed_fn()

@@ -10,7 +10,7 @@ from backend.application.indexing import cleanup_snapshot_files
 from backend.application.indexing import commit_ready_snapshot
 from backend.domain.exceptions import SnapshotCommitError
 from backend.domain.states import DocumentStage, JobStatus
-from backend.rag.embedding.limits import MAX_EMBEDDING_CHARS
+from backend.adapters.embedding.limits import MAX_EMBEDDING_CHARS
 from backend.rag.ingestion.artifacts import save_ingestion_artifacts
 from backend.domain.models import Chunk
 from backend.rag.ingestion.chunking import estimate_tokens

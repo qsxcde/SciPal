@@ -2,7 +2,7 @@
 
 Usage:
 
-    from backend.rag.embedding import create_embed_fn
+    from backend.adapters.embedding import create_embed_fn
 
     embed_fn = create_embed_fn()
     vectors = embed_fn(["text1", "text2"])
@@ -11,8 +11,8 @@ import logging
 from typing import Callable
 
 from backend.config import settings
-from backend.rag.embedding import local_embedder
-from backend.rag.embedding import remote_embedder
+from backend.adapters.embedding import local_embedder
+from backend.adapters.embedding import remote_embedder
 
 logger = logging.getLogger(__name__)
 

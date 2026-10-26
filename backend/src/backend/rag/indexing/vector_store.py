@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Callable
 
 from backend import config
-from backend.rag.embedding import create_embed_fn
+from backend.adapters.embedding import create_embed_fn
 from backend.domain.models import Chunk
 
 logger = logging.getLogger(__name__)

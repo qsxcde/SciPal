@@ -14,8 +14,6 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1] / "backend" / "src" / "backen
 # 已知违反：RAG 能力层仍在模块作用域读取全局 settings（配置未注入）。
 # 这是棘轮清单：新增违规会让测试失败，修掉后可以直接删掉对应条目。
 RAG_SETTINGS_DEBT = {
-    "rag/embedding/__init__.py",
-    "rag/embedding/remote_embedder.py",
     "rag/ingestion/mineru_api_backend.py",
     "rag/ingestion/mineru_backend.py",
     "rag/ingestion/pipeline.py",

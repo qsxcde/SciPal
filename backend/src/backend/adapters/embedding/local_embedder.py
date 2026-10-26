@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer
 
 from backend import config
 from backend.domain.exceptions import EmbeddingModelUnavailableError
-from backend.rag.embedding.limits import MAX_EMBEDDING_CHARS, MAX_EMBEDDING_WORDS
+from backend.adapters.embedding.limits import MAX_EMBEDDING_CHARS, MAX_EMBEDDING_WORDS
 
 logger = logging.getLogger(__name__)
 
