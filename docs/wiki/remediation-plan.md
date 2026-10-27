@@ -24,7 +24,7 @@
 
 关键变化（截至 2026-10-27）：
 
-- 测试从 68 → 130（后端）+ 5（前端 Vitest），索引快照、SSE 顺序、摄取失败、并发均有覆盖。
+- 测试从 68 → 128（后端）+ 5（前端 Vitest），索引快照、SSE 顺序、摄取失败、并发均有覆盖。
 - 契约链路打通：`schemas/*.py → contracts/openapi.json → frontend/src/contracts/openapi.d.ts`，
   `types.ts` 只剩别名映射，SSE 联合类型也由契约生成。
 - `api/` 与 `worker/handlers.py` 不再直接访问存储；边界测试从「查一个文件」改为规则矩阵。

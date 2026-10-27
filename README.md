@@ -183,10 +183,40 @@ uv run --project backend pytest -m unit -v
 uv run --project backend pytest -m integration -v
 ```
 
-当前覆盖：SQLite 仓储的状态流转与 CAS、索引快照提升与回滚、上传入口校验、会话归属与开发旁路、索引快照回收、分层依赖边界（AST 静态校验）。
-索引构建（`FAISSVectorStore`）与 SSE 状态机的用例需要完整 RAG 依赖，尚未纳入。
+当前覆盖 128 个后端用例：SQLite 仓储的状态流转与 CAS、索引快照的构建/提升/回滚与回收、上传入口校验、摄取失败回滚、SSE 事件顺序与中断语义、并发与 job 恢复、会话归属、契约快照、分层依赖边界（AST 静态校验）。需要 torch / faiss 的用例在缺少依赖时自动 skip。
 
-CI 见 `.github/workflows/ci.yml`（后端测试 + 前端 lint/build）。
+前端：
+
+```bash
+cd frontend
+npm test          # Vitest
+npm run lint      # ESLint
+npm run typecheck
+```
+
+CI 见 `.github/workflows/ci.yml`（后端 ruff + mypy + pytest，前端 lint + test + 契约 diff + build）。
+
+## 验收记录
+
+2026-10-27 完成 P0–P7 全量整改，以下结果在仓库根目录实测，各阶段验收标准见 [remediation-plan.md](docs/wiki/remediation-plan.md)：
+
+| 关卡 | 命令 | 结果 |
+|---|---|---|
+| 后端测试 | `uv run --project backend pytest` | 128 passed |
+| 后端 lint | `uv run --project backend ruff check backend/src tests` | All checks passed |
+| 后端类型检查 | `uv run --project backend mypy --config-file backend/pyproject.toml backend/src/backend/storage backend/src/backend/core backend/src/backend/application` | 30 source files, no issues |
+| 前端 lint | `cd frontend && npm run lint` | 通过 |
+| 前端单测 | `npm test` | 5 passed |
+| 前端类型 + 构建 | `npm run typecheck && npm run build` | 通过 |
+| 契约一致性 | `python -m backend.scripts.export_openapi` 后 `git diff --exit-code contracts/` | 无差异 |
+| 端点表 | `python -m backend.scripts.api_table` 后 `git diff --exit-code README.md` | 无差异 |
+
+发布前手工回归（自动化未覆盖的部分）：
+
+- 启动日志打印实际加载的 `.env` 绝对路径；仓库根目录放 `.env` 时打印 warning。
+- 上传超过 50 MiB 的 PDF 返回 413，进程内存不随文件体积增长。
+- 生成过程中断后重新生成，上一轮回答仍保留；SSE 空闲 15s 内有 `: keep-alive` 帧。
+- 登出后切换账号，不出现上一账号的会话、文档与消息。
 
 ## 离线评测
 
