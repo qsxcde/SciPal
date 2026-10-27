@@ -131,7 +131,8 @@ settings = RuntimeSettings()
 
 def require_generation_settings() -> Settings:
     try:
-        return Settings()
+        # 必填字段由 pydantic-settings 在运行期从环境变量注入
+        return Settings()  # type: ignore[call-arg]
     except ValidationError as exc:
         raise RuntimeError(
             "DeepSeek generation requires DEEPSEEK_API_KEY to be configured."

@@ -10,9 +10,9 @@ from dataclasses import dataclass, field
 from backend.domain.models import Chunk
 from backend.core.contracts.ports import VectorStore
 from backend.rag.retrieval.bm25 import BM25Retriever
-from backend.rag.retrieval.context_builder import expand_context_with_debug
+from backend.rag.retrieval.context_builder import ExpansionDebugEntry, expand_context_with_debug
 from backend.rag.retrieval.filters import filter_indexable_chunks
-from backend.rag.retrieval.fusion import RetrievalHit, reciprocal_rank_fusion
+from backend.rag.retrieval.fusion import RankedCandidate, RetrievalHit, reciprocal_rank_fusion
 from backend.rag.retrieval.language import Language, detect_language, infer_document_language
 from backend.rag.retrieval.query_rewriter import QueryPack, generate_query_pack
 from backend.rag.retrieval.history_rewriter import history_aware_rewrite
@@ -82,7 +82,7 @@ class HybridRetrievalResult:
     ranked_chunks: list[Chunk]
     prompt_chunks: list[Chunk]
     ranked_debug: list[dict[str, object]] = field(default_factory=list)
-    expansion_debug: list[dict[str, object]] = field(default_factory=list)
+    expansion_debug: list[ExpansionDebugEntry] = field(default_factory=list)
 
 
 def _detect_and_rewrite(
@@ -112,7 +112,7 @@ def _hybrid_search(
     bm25_query: str,
     all_chunks: list[Chunk],
     options: HybridRetrievalOptions,
-) -> tuple[list[Chunk], list[RetrievalHit], bool]:
+) -> tuple[list[Chunk], list[RankedCandidate], bool]:
     """Execute dense + BM25 hybrid search and fuse via RRF."""
     bm25 = _get_bm25_retriever(all_chunks)
     bm25_hits = [
@@ -276,7 +276,7 @@ def _expand_prompt_chunks(
     same_section_window: int,
     adjacent_window: int,
     include_linked_blocks: bool,
-) -> tuple[list[Chunk], list[dict[str, object]]]:
+) -> tuple[list[Chunk], list[ExpansionDebugEntry]]:
     return expand_context_with_debug(
         seed_chunks=seed_chunks,
         all_chunks=all_chunks,

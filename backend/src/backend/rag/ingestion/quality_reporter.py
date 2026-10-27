@@ -1,4 +1,4 @@
-from backend.rag.ingestion.document_ir import BlockIR, BBox, QualityReport
+from backend.rag.ingestion.document_ir import BlockIR, BBox, QualityReport, QualityStatus
 from backend.rag.ingestion.reading_order import is_page_margin_block
 
 
@@ -16,6 +16,7 @@ def build_quality_report(
         warnings.append("NO_HEADINGS_DETECTED")
     if not blocks:
         warnings.append("LOW_TEXT_DENSITY")
+    status: QualityStatus
     if not blocks and heading_count == 0:
         status = "failed"
     elif not blocks or heading_count == 0:

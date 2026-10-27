@@ -6,7 +6,7 @@ policy explicitly, so the capability can be reused outside the HTTP app.
 
 from dataclasses import asdict, dataclass, is_dataclass
 import re
-from typing import Generator, Literal, TypedDict
+from typing import Generator, Literal, TypedDict, cast, overload
 
 from pydantic import BaseModel, Field
 
@@ -89,6 +89,33 @@ class RetrievalDiagnostics(BaseModel):
     expansion_debug: list[dict[str, object]] = Field(default_factory=list)
 
 
+@overload
+def retrieve_context(
+    store: VectorStore,
+    query: str,
+    dense_top_k: int | None = None,
+    k: int | None = None,
+    options: RetrievalOptions | None = None,
+    include_diagnostics: Literal[False] = False,
+    history: list[dict] | None = None,
+    source_excerpt_max_chars: int = 220,
+) -> tuple[list[Chunk], list[SourceRef]]: ...
+
+
+@overload
+def retrieve_context(
+    store: VectorStore,
+    query: str,
+    dense_top_k: int | None = None,
+    k: int | None = None,
+    options: RetrievalOptions | None = None,
+    *,
+    include_diagnostics: Literal[True],
+    history: list[dict] | None = None,
+    source_excerpt_max_chars: int = 220,
+) -> tuple[list[Chunk], list[SourceRef], RetrievalDiagnostics]: ...
+
+
 def retrieve_context(
     store: VectorStore,
     query: str,
@@ -129,7 +156,7 @@ def retrieve_context(
             ranked_chunks=hybrid_result.ranked_chunks,
             route=_serialize_route(hybrid_result.route),
             ranked_debug=hybrid_result.ranked_debug,
-            expansion_debug=hybrid_result.expansion_debug,
+            expansion_debug=cast(list[dict[str, object]], hybrid_result.expansion_debug),
         )
         if include_diagnostics:
             return hybrid_result.prompt_chunks, sources, diagnostics
@@ -255,7 +282,7 @@ def evaluate_retrieval(
 
 
 def _serialize_route(route: object) -> dict[str, object]:
-    if is_dataclass(route):
+    if is_dataclass(route) and not isinstance(route, type):
         return asdict(route)
     if hasattr(route, "__dict__"):
         return dict(vars(route))

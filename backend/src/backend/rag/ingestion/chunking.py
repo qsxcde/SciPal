@@ -5,7 +5,7 @@ import re
 
 from backend.rag.ingestion.document_ir import BBox, BlockIR, DocumentIR
 from backend.rag.ingestion.render import ordered_blocks, render_block
-from backend.domain.models import Chunk, ChunkMetadata
+from backend.domain.models import Chunk, ChunkMetadata, ChunkType
 
 
 DEFAULT_CHUNK_SIZE = 2000
@@ -49,7 +49,7 @@ def build_chunks(
         page_start = min(block.page_number for block in text_buffer)
         page_end = max(block.page_number for block in text_buffer)
         is_reference = _is_reference_section(section_path)
-        chunk_type = "reference" if is_reference else _chunk_type(text_buffer[0])
+        chunk_type: ChunkType = "reference" if is_reference else _chunk_type(text_buffer[0])
         for part in _recursive_split(body, chunk_size=chunk_size, chunk_overlap=chunk_overlap):
             _append_chunk(
                 chunks,
@@ -108,7 +108,11 @@ def _build_markdown_only_chunks(
         if not body:
             return
         is_reference = _is_reference_section(section_path)
-        chunk_type = "reference" if is_reference else ("abstract" if section_path[-1].lower() == "abstract" else "paragraph")
+        chunk_type: ChunkType = (
+            "reference"
+            if is_reference
+            else ("abstract" if section_path[-1].lower() == "abstract" else "paragraph")
+        )
         for part in _recursive_split(body, chunk_size=chunk_size, chunk_overlap=chunk_overlap):
             _append_chunk(
                 chunks,
@@ -168,7 +172,7 @@ def _heading_prefix(section_path: list[str]) -> str:
     return "\n".join(f"{'#' * min(index + 2, 6)} {title}" for index, title in enumerate(section_path))
 
 
-def _chunk_type(block: BlockIR) -> str:
+def _chunk_type(block: BlockIR) -> ChunkType:
     if block.type == "table":
         return "table"
     if block.type == "formula":
@@ -189,7 +193,9 @@ def _is_reference_section(section_path: list[str]) -> bool:
     return any(part.strip().lower() in {"references", "bibliography"} for part in section_path)
 
 
-def _append_single_block_chunk(chunks: list[Chunk], paper_id: str, block: BlockIR, chunk_type: str) -> None:
+def _append_single_block_chunk(
+    chunks: list[Chunk], paper_id: str, block: BlockIR, chunk_type: ChunkType
+) -> None:
     _append_chunk(
         chunks,
         paper_id=paper_id,
@@ -213,7 +219,7 @@ def _append_chunk(
     paper_id: str,
     section_path: list[str],
     body: str,
-    chunk_type: str,
+    chunk_type: ChunkType,
     block_ids: list[str],
     block_types: list[str],
     linked_block_ids: list[str] | None,

@@ -8,11 +8,16 @@ from typing import Literal
 from pydantic import BaseModel
 
 
+ChunkType = Literal[
+    "abstract", "paragraph", "table", "heading", "formula", "code", "caption", "reference"
+]
+
+
 class ChunkMetadata(BaseModel):
     paper_id: str
     section: str
     chunk_index: int
-    type: Literal["abstract", "paragraph", "table", "heading", "formula", "code", "caption", "reference"]
+    type: ChunkType
     section_path: list[str] | None = None
     page_start: int | None = None
     page_end: int | None = None

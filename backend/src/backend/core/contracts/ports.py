@@ -5,7 +5,7 @@ Use cases are typed against these protocols so the concrete implementation
 root, instead of every module importing a global singleton.
 """
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Protocol, runtime_checkable
 
 from backend.domain.models import Chunk
@@ -20,11 +20,8 @@ class TextCompleter(Protocol):
     def stream(self, prompt: str) -> Iterator[str]: ...
 
 
-@runtime_checkable
-class Embedder(Protocol):
-    """Batch text embedding: one vector per input string."""
-
-    def __call__(self, texts: list[str]) -> list[list[float]]: ...
+# Batch text embedding: one vector per input string.
+Embedder = Callable[[list[str]], list[list[float]]]
 
 
 @runtime_checkable

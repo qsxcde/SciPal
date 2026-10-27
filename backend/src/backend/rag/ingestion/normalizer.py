@@ -1,6 +1,7 @@
 import logging
+from typing import cast
 
-from backend.rag.ingestion.document_ir import BBox, BlockIR, DocumentIR, PageIR
+from backend.rag.ingestion.document_ir import BBox, BlockIR, BlockType, DocumentIR, PageIR
 from backend.rag.ingestion.document_ir import BlockLink
 from backend.rag.ingestion.block_classifier import clean_heading, confidence_for_type, detect_block_type
 from backend.rag.ingestion.linker import attach_caption_links
@@ -131,7 +132,7 @@ def _resolve_block_type(
     page_height: float,
     repeated_header_footer_texts: set[str],
     in_references: bool,
-) -> str:
+) -> BlockType:
     raw_type = str(block_data.get("type", "")).strip().lower()
     if raw_type in {
         "title",
@@ -146,7 +147,7 @@ def _resolve_block_type(
         "header_footer",
         "unknown",
     }:
-        return raw_type
+        return cast(BlockType, raw_type)
     return detect_block_type(
         text=text,
         bbox=bbox,
@@ -156,7 +157,7 @@ def _resolve_block_type(
     )
 
 
-def _resolve_confidence(block_data: dict, block_type: str, text: str) -> float:
+def _resolve_confidence(block_data: dict, block_type: BlockType, text: str) -> float:
     raw_confidence = block_data.get("confidence")
     if raw_confidence is not None:
         try:

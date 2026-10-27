@@ -226,13 +226,14 @@ class ModelClient:
         with self._clients_lock:
             resource = self._clients.get(cache_key)
             if resource is None:
-                resource = LazyResource(
-                    lambda p=provider: OpenAI(
+                def _build_client(p: ProviderConfig = provider) -> OpenAI:
+                    return OpenAI(
                         api_key=p.api_key,
                         base_url=p.base_url,
                         timeout=p.timeout,
                     )
-                )
+
+                resource = LazyResource(_build_client)
                 self._clients[cache_key] = resource
         return resource.get()
 
